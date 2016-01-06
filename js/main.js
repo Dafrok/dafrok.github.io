@@ -9936,10 +9936,10 @@
 	Object.defineProperty(exports, "__esModule", {
 	    value: true
 	});
-	// const username = location.hostname.split('.')[0]
-	// const repo = location.pathname.split('/')[1] || location.hostname
-	var username = 'dafrok';
-	var repo = 'dafrok.github.io';
+	var username = location.hostname.split('.')[0];
+	var repo = location.pathname.split('/')[1] || location.hostname;
+	// const username = 'dafrok'
+	// const repo = 'dafrok.github.io'
 
 	var apiUrl = 'https://api.github.com';
 	var repoUrl = apiUrl + '/repos/' + username + '/' + repo;
