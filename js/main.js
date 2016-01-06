@@ -54,9 +54,11 @@
 
 	var _app2 = _interopRequireDefault(_app);
 
-	var _highlight = __webpack_require__(58);
+	var _highlight = __webpack_require__(57);
 
 	var _highlight2 = _interopRequireDefault(_highlight);
+
+	__webpack_require__(200);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -9489,7 +9491,7 @@
 	module.exports = __webpack_require__(15)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(57)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(56)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -9874,7 +9876,7 @@
 
 	var _menu2 = _interopRequireDefault(_menu);
 
-	var _main = __webpack_require__(46);
+	var _main = __webpack_require__(45);
 
 	var _main2 = _interopRequireDefault(_main);
 
@@ -9918,8 +9920,9 @@
 	        }, function () {
 	            console.log('Loading failed!');
 	        }).then(function (data) {
-	            if (Array.isArray(data)) {
-	                _articles2.default.actions.updateList(data);
+	            if (data.items) {
+	                _articles2.default.actions.updateList(data.items);
+	                _base2.default.actions.updateCount(data.total_count);
 	            } else {
 	                _articles2.default.actions.updateList([]);
 	            }
@@ -9945,7 +9948,8 @@
 	var repoUrl = apiUrl + '/repos/' + username + '/' + repo;
 	var searchUrl = apiUrl + '/search/issues';
 	// const repoUrl = 'https://api.github.com/repos/vuejs/vue'
-	var issueUrl = repoUrl + '/issues';
+	var issueUrl = searchUrl + '?q=author:' + username + '+repo:' + username + '/' + repo;
+	console.log(issueUrl);
 	var search = {
 	    per_page: 10
 	};
@@ -9965,7 +9969,7 @@
 	module.exports = __webpack_require__(20)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(45)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(44)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -10040,7 +10044,7 @@
 
 	var _articleList2 = _interopRequireDefault(_articleList);
 
-	var _tools = __webpack_require__(40);
+	var _tools = __webpack_require__(39);
 
 	var _tools2 = _interopRequireDefault(_tools);
 
@@ -10123,7 +10127,7 @@
 
 
 	// module
-	exports.push([module.id, ".info {\n  position: absolute;\n  overflow: hidden;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 6rem;\n}\n.info .avartar {\n  position: absolute;\n  left: 1rem;\n  width: 4rem;\n  height: 4rem;\n  border-radius: 100%;\n  display: block;\n  margin: 1rem auto;\n  box-shadow: 0 0 3px #fff;\n}\n.info label {\n  display: block;\n  overflow: hidden;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n}\n.info .login {\n  position: absolute;\n  left: 6rem;\n  top: 1rem;\n  font-size: 1.5rem;\n}\n.info .count {\n  position: absolute;\n  left: 6rem;\n  top: 4rem;\n}\n", ""]);
+	exports.push([module.id, ".info {\n  position: absolute;\n  overflow: hidden;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 6rem;\n}\n.info .avartar {\n  position: absolute;\n  left: 1rem;\n  width: 4rem;\n  height: 4rem;\n  border-radius: 100%;\n  display: block;\n  margin: 1rem auto;\n  box-shadow: 0 0 3px #fff;\n}\n.info label {\n  display: block;\n  overflow: hidden;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n}\n.info .login {\n  position: absolute;\n  left: 6rem;\n  top: 1.5rem;\n  font-size: 1.5rem;\n}\n.info .count {\n  position: absolute;\n  left: 6rem;\n  top: 3.5rem;\n}\n", ""]);
 
 	// exports
 
@@ -10147,7 +10151,7 @@
 	exports.default = {
 	    computed: {
 	        count: function count() {
-	            var count = this.info.open_issues_count;
+	            var count = _base2.default.state.count;
 	            return '(' + (count ? count : 0) + ')';
 	        },
 	        info: function info() {
@@ -10182,6 +10186,7 @@
 	    info: {
 	        owner: {}
 	    },
+	    count: 0,
 	    title: 'Blog',
 	    menu: false
 	};
@@ -10195,13 +10200,17 @@
 	    },
 	    TOGGLEMENUSTATE: function TOGGLEMENUSTATE(state, bool) {
 	        state.menu = typeof bool === 'boolean' ? bool : !state.menu;
+	    },
+	    UPDATECOUNT: function UPDATECOUNT(state, count) {
+	        state.count = count;
 	    }
 	};
 
 	var actions = {
 	    updateInfo: 'UPDATEINFO',
 	    updateTitle: 'UPDATETITLE',
-	    toggleMenu: 'TOGGLEMENUSTATE'
+	    toggleMenu: 'TOGGLEMENUSTATE',
+	    updateCount: 'UPDATECOUNT'
 	};
 
 	exports.default = new _vuex2.default.Store({
@@ -10707,7 +10716,7 @@
 	module.exports = __webpack_require__(34)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(39)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(38)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -10794,7 +10803,7 @@
 
 	var _vue2 = _interopRequireDefault(_vue);
 
-	var _iscroll = __webpack_require__(38);
+	var _iscroll = __webpack_require__(37);
 
 	var _iscroll2 = _interopRequireDefault(_iscroll);
 
@@ -10911,8 +10920,6 @@
 
 	var _vuex2 = _interopRequireDefault(_vuex);
 
-	__webpack_require__(37);
-
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	_vue2.default.use(_vuex2.default);
@@ -10939,369 +10946,6 @@
 
 /***/ },
 /* 37 */
-/***/ function(module, exports) {
-
-	(function() {
-	  'use strict';
-
-	  if (self.fetch) {
-	    return
-	  }
-
-	  function normalizeName(name) {
-	    if (typeof name !== 'string') {
-	      name = name.toString();
-	    }
-	    if (/[^a-z0-9\-#$%&'*+.\^_`|~]/i.test(name)) {
-	      throw new TypeError('Invalid character in header field name')
-	    }
-	    return name.toLowerCase()
-	  }
-
-	  function normalizeValue(value) {
-	    if (typeof value !== 'string') {
-	      value = value.toString();
-	    }
-	    return value
-	  }
-
-	  function Headers(headers) {
-	    this.map = {}
-
-	    var self = this
-	    if (headers instanceof Headers) {
-	      headers.forEach(function(name, values) {
-	        values.forEach(function(value) {
-	          self.append(name, value)
-	        })
-	      })
-
-	    } else if (headers) {
-	      Object.getOwnPropertyNames(headers).forEach(function(name) {
-	        self.append(name, headers[name])
-	      })
-	    }
-	  }
-
-	  Headers.prototype.append = function(name, value) {
-	    name = normalizeName(name)
-	    value = normalizeValue(value)
-	    var list = this.map[name]
-	    if (!list) {
-	      list = []
-	      this.map[name] = list
-	    }
-	    list.push(value)
-	  }
-
-	  Headers.prototype['delete'] = function(name) {
-	    delete this.map[normalizeName(name)]
-	  }
-
-	  Headers.prototype.get = function(name) {
-	    var values = this.map[normalizeName(name)]
-	    return values ? values[0] : null
-	  }
-
-	  Headers.prototype.getAll = function(name) {
-	    return this.map[normalizeName(name)] || []
-	  }
-
-	  Headers.prototype.has = function(name) {
-	    return this.map.hasOwnProperty(normalizeName(name))
-	  }
-
-	  Headers.prototype.set = function(name, value) {
-	    this.map[normalizeName(name)] = [normalizeValue(value)]
-	  }
-
-	  // Instead of iterable for now.
-	  Headers.prototype.forEach = function(callback) {
-	    var self = this
-	    Object.getOwnPropertyNames(this.map).forEach(function(name) {
-	      callback(name, self.map[name])
-	    })
-	  }
-
-	  function consumed(body) {
-	    if (body.bodyUsed) {
-	      return fetch.Promise.reject(new TypeError('Already read'))
-	    }
-	    body.bodyUsed = true
-	  }
-
-	  function fileReaderReady(reader) {
-	    return new fetch.Promise(function(resolve, reject) {
-	      reader.onload = function() {
-	        resolve(reader.result)
-	      }
-	      reader.onerror = function() {
-	        reject(reader.error)
-	      }
-	    })
-	  }
-
-	  function readBlobAsArrayBuffer(blob) {
-	    var reader = new FileReader()
-	    reader.readAsArrayBuffer(blob)
-	    return fileReaderReady(reader)
-	  }
-
-	  function readBlobAsText(blob) {
-	    var reader = new FileReader()
-	    reader.readAsText(blob)
-	    return fileReaderReady(reader)
-	  }
-
-	  var support = {
-	    blob: 'FileReader' in self && 'Blob' in self && (function() {
-	      try {
-	        new Blob();
-	        return true
-	      } catch(e) {
-	        return false
-	      }
-	    })(),
-	    formData: 'FormData' in self
-	  }
-
-	  function Body() {
-	    this.bodyUsed = false
-
-
-	    this._initBody = function(body) {
-	      this._bodyInit = body
-	      if (typeof body === 'string') {
-	        this._bodyText = body
-	      } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
-	        this._bodyBlob = body
-	      } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
-	        this._bodyFormData = body
-	      } else if (!body) {
-	        this._bodyText = ''
-	      } else {
-	        throw new Error('unsupported BodyInit type')
-	      }
-	    }
-
-	    if (support.blob) {
-	      this.blob = function() {
-	        var rejected = consumed(this)
-	        if (rejected) {
-	          return rejected
-	        }
-
-	        if (this._bodyBlob) {
-	          return fetch.Promise.resolve(this._bodyBlob)
-	        } else if (this._bodyFormData) {
-	          throw new Error('could not read FormData body as blob')
-	        } else {
-	          return fetch.Promise.resolve(new Blob([this._bodyText]))
-	        }
-	      }
-
-	      this.arrayBuffer = function() {
-	        return this.blob().then(readBlobAsArrayBuffer)
-	      }
-
-	      this.text = function() {
-	        var rejected = consumed(this)
-	        if (rejected) {
-	          return rejected
-	        }
-
-	        if (this._bodyBlob) {
-	          return readBlobAsText(this._bodyBlob)
-	        } else if (this._bodyFormData) {
-	          throw new Error('could not read FormData body as text')
-	        } else {
-	          return fetch.Promise.resolve(this._bodyText)
-	        }
-	      }
-	    } else {
-	      this.text = function() {
-	        var rejected = consumed(this)
-	        return rejected ? rejected : fetch.Promise.resolve(this._bodyText)
-	      }
-	    }
-
-	    if (support.formData) {
-	      this.formData = function() {
-	        return this.text().then(decode)
-	      }
-	    }
-
-	    this.json = function() {
-	      return this.text().then(function (text) {
-	          return JSON.parse(text);
-	      });
-	    }
-
-	    return this
-	  }
-
-	  // HTTP methods whose capitalization should be normalized
-	  var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT']
-
-	  function normalizeMethod(method) {
-	    var upcased = method.toUpperCase()
-	    return (methods.indexOf(upcased) > -1) ? upcased : method
-	  }
-
-	  function Request(url, options) {
-	    options = options || {}
-	    this.url = url
-
-	    this.credentials = options.credentials || 'omit'
-	    this.headers = new Headers(options.headers)
-	    this.method = normalizeMethod(options.method || 'GET')
-	    this.mode = options.mode || null
-	    this.referrer = null
-
-	    if ((this.method === 'GET' || this.method === 'HEAD') && options.body) {
-	      throw new TypeError('Body not allowed for GET or HEAD requests')
-	    }
-	    this._initBody(options.body)
-	  }
-
-	  function decode(body) {
-	    var form = new FormData()
-	    body.trim().split('&').forEach(function(bytes) {
-	      if (bytes) {
-	        var split = bytes.split('=')
-	        var name = split.shift().replace(/\+/g, ' ')
-	        var value = split.join('=').replace(/\+/g, ' ')
-	        form.append(decodeURIComponent(name), decodeURIComponent(value))
-	      }
-	    })
-	    return form
-	  }
-
-	  function headers(xhr) {
-	    var head = new Headers()
-	    var pairs = xhr.getAllResponseHeaders().trim().split('\n')
-	    pairs.forEach(function(header) {
-	      var split = header.trim().split(':')
-	      var key = split.shift().trim()
-	      var value = split.join(':').trim()
-	      head.append(key, value)
-	    })
-	    return head
-	  }
-
-	  var noXhrPatch =
-	    typeof window !== 'undefined' && !!window.ActiveXObject &&
-	      !(window.XMLHttpRequest && (new XMLHttpRequest).dispatchEvent);
-
-	  function getXhr() {
-	    // from backbone.js 1.1.2
-	    // https://github.com/jashkenas/backbone/blob/1.1.2/backbone.js#L1181
-	    if (noXhrPatch && !(/^(get|post|head|put|delete|options)$/i.test(this.method))) {
-	      this.usingActiveXhr = true;
-	      return new ActiveXObject("Microsoft.XMLHTTP");
-	    }
-	    return new XMLHttpRequest();
-	  }
-
-	  Body.call(Request.prototype)
-
-	  function Response(bodyInit, options) {
-	    if (!options) {
-	      options = {}
-	    }
-
-	    this._initBody(bodyInit)
-	    this.type = 'default'
-	    this.url = null
-	    this.status = options.status
-	    this.ok = this.status >= 200 && this.status < 300
-	    this.statusText = options.statusText
-	    this.headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers)
-	    this.url = options.url || ''
-	  }
-
-	  Body.call(Response.prototype)
-
-	  self.Headers = Headers;
-	  self.Request = Request;
-	  self.Response = Response;
-
-	  self.fetch = function(input, init) {
-	    // TODO: Request constructor should accept input, init
-	    var request
-	    if (Request.prototype.isPrototypeOf(input) && !init) {
-	      request = input
-	    } else {
-	      request = new Request(input, init)
-	    }
-
-	    return new fetch.Promise(function(resolve, reject) {
-	      var xhr = getXhr();
-	      if (request.credentials === 'cors') {
-	        xhr.withCredentials = true;
-	      }
-
-	      function responseURL() {
-	        if ('responseURL' in xhr) {
-	          return xhr.responseURL
-	        }
-
-	        // Avoid security warnings on getResponseHeader when not allowed by CORS
-	        if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
-	          return xhr.getResponseHeader('X-Request-URL')
-	        }
-
-	        return;
-	      }
-
-	      function onload() {
-	        if (xhr.readyState !== 4) {
-	          return
-	        }
-	        var status = (xhr.status === 1223) ? 204 : xhr.status
-	        if (status < 100 || status > 599) {
-	          reject(new TypeError('Network request failed'))
-	          return
-	        }
-	        var options = {
-	          status: status,
-	          statusText: xhr.statusText,
-	          headers: headers(xhr),
-	          url: responseURL()
-	        }
-	        var body = 'response' in xhr ? xhr.response : xhr.responseText;
-	        resolve(new Response(body, options))
-	      }
-	      xhr.onreadystatechange = onload;
-	      if (!self.usingActiveXhr) {
-	        xhr.onload = onload;
-	        xhr.onerror = function() {
-	          reject(new TypeError('Network request failed'))
-	        }
-	      }
-
-	      xhr.open(request.method, request.url, true)
-
-	      if ('responseType' in xhr && support.blob) {
-	        xhr.responseType = 'blob'
-	      }
-
-	      request.headers.forEach(function(name, values) {
-	        values.forEach(function(value) {
-	          xhr.setRequestHeader(name, value)
-	        })
-	      })
-
-	      xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit)
-	    })
-	  }
-	  fetch.Promise = self.Promise; // you could change it to your favorite alternative
-	  self.fetch.polyfill = true
-	})();
-
-
-/***/ },
-/* 38 */
 /***/ function(module, exports) {
 
 	/*! iScroll v5.1.3 ~ (c) 2008-2014 Matteo Spinelli ~ http://cubiq.org/license */
@@ -13317,20 +12961,20 @@
 	})(window, document, Math);
 
 /***/ },
-/* 39 */
+/* 38 */
 /***/ function(module, exports) {
 
 	module.exports = "<section id=\"article-list\"><ul class=\"article-list\"><li v-for=\"article in articles\" @click=\"loadArticle(article.url)\" :class=\"{active: article.active ? 'active' : ''}\" class=\"title\"><a v-text=\"article.title\"></a></li></ul></section>";
 
 /***/ },
-/* 40 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
-	__webpack_require__(41)
-	module.exports = __webpack_require__(43)
+	__webpack_require__(40)
+	module.exports = __webpack_require__(42)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(44)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(43)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -13348,13 +12992,13 @@
 	}
 
 /***/ },
-/* 41 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 
 	// load the styles
-	var content = __webpack_require__(42);
+	var content = __webpack_require__(41);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
 	var update = __webpack_require__(14)(content, {});
@@ -13374,7 +13018,7 @@
 	}
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(13)();
@@ -13388,7 +13032,7 @@
 
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -13417,7 +13061,7 @@
 	                    formData[els[i].name] = els[i].value;
 	                }
 	            }
-	            fetch(_config2.default.searchUrl + '?q=' + formData.q + '+repo:' + _config2.default.username + '/' + _config2.default.repo).then(function (res) {
+	            fetch(_config2.default.searchUrl + '?q=' + formData.q + '+author:' + _config2.default.username + '+repo:' + _config2.default.username + '/' + _config2.default.repo).then(function (res) {
 	                return res.json();
 	            }, function () {
 	                console.log('Loading failed!');
@@ -13433,26 +13077,26 @@
 	};
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports) {
 
 	module.exports = "<section class=\"tools\"><form @submit.prevent=\"search\" class=\"search\"><input type=\"search\" placeholder=\"Search\" name=\"q\"/></form></section>";
 
 /***/ },
-/* 45 */
+/* 44 */
 /***/ function(module, exports) {
 
 	module.exports = "<section :class=\"{show: isShowMenu}\" class=\"menu\"><info></info><tools></tools><article-list :articles=\"articles\"></article-list></section>";
 
 /***/ },
-/* 46 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
-	__webpack_require__(47)
-	module.exports = __webpack_require__(49)
+	__webpack_require__(46)
+	module.exports = __webpack_require__(48)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(56)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(55)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -13470,13 +13114,13 @@
 	}
 
 /***/ },
-/* 47 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 
 	// load the styles
-	var content = __webpack_require__(48);
+	var content = __webpack_require__(47);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
 	var update = __webpack_require__(14)(content, {});
@@ -13496,7 +13140,7 @@
 	}
 
 /***/ },
-/* 48 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(13)();
@@ -13510,7 +13154,7 @@
 
 
 /***/ },
-/* 49 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -13531,15 +13175,15 @@
 
 	var _base2 = _interopRequireDefault(_base);
 
-	var _loading = __webpack_require__(50);
+	var _loading = __webpack_require__(49);
 
 	var _loading2 = _interopRequireDefault(_loading);
 
-	var _marked = __webpack_require__(55);
+	var _marked = __webpack_require__(54);
 
 	var _marked2 = _interopRequireDefault(_marked);
 
-	var _iscroll = __webpack_require__(38);
+	var _iscroll = __webpack_require__(37);
 
 	var _iscroll2 = _interopRequireDefault(_iscroll);
 
@@ -13593,14 +13237,14 @@
 	};
 
 /***/ },
-/* 50 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
-	__webpack_require__(51)
-	module.exports = __webpack_require__(53)
+	__webpack_require__(50)
+	module.exports = __webpack_require__(52)
 
 	if (module.exports.__esModule) module.exports = module.exports.default
-	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(54)
+	;(typeof module.exports === "function" ? module.exports.options : module.exports).template = __webpack_require__(53)
 	if (false) {
 	(function () {
 	var hotAPI = require("vue-hot-reload-api")
@@ -13618,13 +13262,13 @@
 	}
 
 /***/ },
-/* 51 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 
 	// load the styles
-	var content = __webpack_require__(52);
+	var content = __webpack_require__(51);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
 	var update = __webpack_require__(14)(content, {});
@@ -13644,7 +13288,7 @@
 	}
 
 /***/ },
-/* 52 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(13)();
@@ -13658,7 +13302,7 @@
 
 
 /***/ },
-/* 53 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -13682,13 +13326,13 @@
 	};
 
 /***/ },
-/* 54 */
+/* 53 */
 /***/ function(module, exports) {
 
 	module.exports = "<aside v-if=\"isLoading\" transition=\"fade\" class=\"loading\" _v-7e1f3d2d=\"\"><i class=\"icon\" _v-7e1f3d2d=\"\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 44 44\" stroke=\"#fff\" _v-7e1f3d2d=\"\"><g fill=\"none\" fill-rule=\"evenodd\" stroke-width=\".3rem\" _v-7e1f3d2d=\"\"><circle cx=\"22\" cy=\"22\" r=\"6.68326\" class=\"layer-1\" _v-7e1f3d2d=\"\"></circle><circle cx=\"22\" cy=\"22\" r=\"18.9267\" class=\"layer-2\" _v-7e1f3d2d=\"\"></circle></g></svg></i></aside>";
 
 /***/ },
-/* 55 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/**
@@ -14980,169 +14624,169 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 56 */
+/* 55 */
 /***/ function(module, exports) {
 
 	module.exports = "<section class=\"main\" _v-1ee119d0=\"\"><header _v-1ee119d0=\"\"><a :style=\"{backgroundImage: avatar}\" @click.stop=\"toggleMenu\" _v-1ee119d0=\"\"></a><h2 v-text=\"title\" _v-1ee119d0=\"\"></h2></header><section id=\"content\" class=\"wrapper\" _v-1ee119d0=\"\"><article v-html=\"article\" class=\"markdown-body\" _v-1ee119d0=\"\"></article><loading _v-1ee119d0=\"\"></loading></section></section>";
 
 /***/ },
-/* 57 */
+/* 56 */
 /***/ function(module, exports) {
 
 	module.exports = "<menu></menu><main @click=\"hideMenu\"></main>";
 
 /***/ },
-/* 58 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var hljs = __webpack_require__(59);
+	var hljs = __webpack_require__(58);
 
-	hljs.registerLanguage('1c', __webpack_require__(60));
-	hljs.registerLanguage('accesslog', __webpack_require__(61));
-	hljs.registerLanguage('actionscript', __webpack_require__(62));
-	hljs.registerLanguage('apache', __webpack_require__(63));
-	hljs.registerLanguage('applescript', __webpack_require__(64));
-	hljs.registerLanguage('armasm', __webpack_require__(65));
-	hljs.registerLanguage('xml', __webpack_require__(66));
-	hljs.registerLanguage('asciidoc', __webpack_require__(67));
-	hljs.registerLanguage('aspectj', __webpack_require__(68));
-	hljs.registerLanguage('autohotkey', __webpack_require__(69));
-	hljs.registerLanguage('autoit', __webpack_require__(70));
-	hljs.registerLanguage('avrasm', __webpack_require__(71));
-	hljs.registerLanguage('axapta', __webpack_require__(72));
-	hljs.registerLanguage('bash', __webpack_require__(73));
-	hljs.registerLanguage('brainfuck', __webpack_require__(74));
-	hljs.registerLanguage('cal', __webpack_require__(75));
-	hljs.registerLanguage('capnproto', __webpack_require__(76));
-	hljs.registerLanguage('ceylon', __webpack_require__(77));
-	hljs.registerLanguage('clojure', __webpack_require__(78));
-	hljs.registerLanguage('clojure-repl', __webpack_require__(79));
-	hljs.registerLanguage('cmake', __webpack_require__(80));
-	hljs.registerLanguage('coffeescript', __webpack_require__(81));
-	hljs.registerLanguage('cos', __webpack_require__(82));
-	hljs.registerLanguage('cpp', __webpack_require__(83));
-	hljs.registerLanguage('crmsh', __webpack_require__(84));
-	hljs.registerLanguage('crystal', __webpack_require__(85));
-	hljs.registerLanguage('cs', __webpack_require__(86));
-	hljs.registerLanguage('css', __webpack_require__(87));
-	hljs.registerLanguage('d', __webpack_require__(88));
-	hljs.registerLanguage('markdown', __webpack_require__(89));
-	hljs.registerLanguage('dart', __webpack_require__(90));
-	hljs.registerLanguage('delphi', __webpack_require__(91));
-	hljs.registerLanguage('diff', __webpack_require__(92));
-	hljs.registerLanguage('django', __webpack_require__(93));
-	hljs.registerLanguage('dns', __webpack_require__(94));
-	hljs.registerLanguage('dockerfile', __webpack_require__(95));
-	hljs.registerLanguage('dos', __webpack_require__(96));
-	hljs.registerLanguage('dust', __webpack_require__(97));
-	hljs.registerLanguage('elixir', __webpack_require__(98));
-	hljs.registerLanguage('elm', __webpack_require__(99));
-	hljs.registerLanguage('ruby', __webpack_require__(100));
-	hljs.registerLanguage('erb', __webpack_require__(101));
-	hljs.registerLanguage('erlang-repl', __webpack_require__(102));
-	hljs.registerLanguage('erlang', __webpack_require__(103));
-	hljs.registerLanguage('fix', __webpack_require__(104));
-	hljs.registerLanguage('fortran', __webpack_require__(105));
-	hljs.registerLanguage('fsharp', __webpack_require__(106));
-	hljs.registerLanguage('gams', __webpack_require__(107));
-	hljs.registerLanguage('gcode', __webpack_require__(108));
-	hljs.registerLanguage('gherkin', __webpack_require__(109));
-	hljs.registerLanguage('glsl', __webpack_require__(110));
-	hljs.registerLanguage('go', __webpack_require__(111));
-	hljs.registerLanguage('golo', __webpack_require__(112));
-	hljs.registerLanguage('gradle', __webpack_require__(113));
-	hljs.registerLanguage('groovy', __webpack_require__(114));
-	hljs.registerLanguage('haml', __webpack_require__(115));
-	hljs.registerLanguage('handlebars', __webpack_require__(116));
-	hljs.registerLanguage('haskell', __webpack_require__(117));
-	hljs.registerLanguage('haxe', __webpack_require__(118));
-	hljs.registerLanguage('hsp', __webpack_require__(119));
-	hljs.registerLanguage('http', __webpack_require__(120));
-	hljs.registerLanguage('inform7', __webpack_require__(121));
-	hljs.registerLanguage('ini', __webpack_require__(122));
-	hljs.registerLanguage('irpf90', __webpack_require__(123));
-	hljs.registerLanguage('java', __webpack_require__(124));
-	hljs.registerLanguage('javascript', __webpack_require__(125));
-	hljs.registerLanguage('json', __webpack_require__(126));
-	hljs.registerLanguage('julia', __webpack_require__(127));
-	hljs.registerLanguage('kotlin', __webpack_require__(128));
-	hljs.registerLanguage('lasso', __webpack_require__(129));
-	hljs.registerLanguage('less', __webpack_require__(130));
-	hljs.registerLanguage('lisp', __webpack_require__(131));
-	hljs.registerLanguage('livecodeserver', __webpack_require__(132));
-	hljs.registerLanguage('livescript', __webpack_require__(133));
-	hljs.registerLanguage('lua', __webpack_require__(134));
-	hljs.registerLanguage('makefile', __webpack_require__(135));
-	hljs.registerLanguage('mathematica', __webpack_require__(136));
-	hljs.registerLanguage('matlab', __webpack_require__(137));
-	hljs.registerLanguage('mel', __webpack_require__(138));
-	hljs.registerLanguage('mercury', __webpack_require__(139));
-	hljs.registerLanguage('mipsasm', __webpack_require__(140));
-	hljs.registerLanguage('mizar', __webpack_require__(141));
-	hljs.registerLanguage('perl', __webpack_require__(142));
-	hljs.registerLanguage('mojolicious', __webpack_require__(143));
-	hljs.registerLanguage('monkey', __webpack_require__(144));
-	hljs.registerLanguage('nginx', __webpack_require__(145));
-	hljs.registerLanguage('nimrod', __webpack_require__(146));
-	hljs.registerLanguage('nix', __webpack_require__(147));
-	hljs.registerLanguage('nsis', __webpack_require__(148));
-	hljs.registerLanguage('objectivec', __webpack_require__(149));
-	hljs.registerLanguage('ocaml', __webpack_require__(150));
-	hljs.registerLanguage('openscad', __webpack_require__(151));
-	hljs.registerLanguage('oxygene', __webpack_require__(152));
-	hljs.registerLanguage('parser3', __webpack_require__(153));
-	hljs.registerLanguage('pf', __webpack_require__(154));
-	hljs.registerLanguage('php', __webpack_require__(155));
-	hljs.registerLanguage('powershell', __webpack_require__(156));
-	hljs.registerLanguage('processing', __webpack_require__(157));
-	hljs.registerLanguage('profile', __webpack_require__(158));
-	hljs.registerLanguage('prolog', __webpack_require__(159));
-	hljs.registerLanguage('protobuf', __webpack_require__(160));
-	hljs.registerLanguage('puppet', __webpack_require__(161));
-	hljs.registerLanguage('python', __webpack_require__(162));
-	hljs.registerLanguage('q', __webpack_require__(163));
-	hljs.registerLanguage('r', __webpack_require__(164));
-	hljs.registerLanguage('rib', __webpack_require__(165));
-	hljs.registerLanguage('roboconf', __webpack_require__(166));
-	hljs.registerLanguage('rsl', __webpack_require__(167));
-	hljs.registerLanguage('ruleslanguage', __webpack_require__(168));
-	hljs.registerLanguage('rust', __webpack_require__(169));
-	hljs.registerLanguage('scala', __webpack_require__(170));
-	hljs.registerLanguage('scheme', __webpack_require__(171));
-	hljs.registerLanguage('scilab', __webpack_require__(172));
-	hljs.registerLanguage('scss', __webpack_require__(173));
-	hljs.registerLanguage('smali', __webpack_require__(174));
-	hljs.registerLanguage('smalltalk', __webpack_require__(175));
-	hljs.registerLanguage('sml', __webpack_require__(176));
-	hljs.registerLanguage('sqf', __webpack_require__(177));
-	hljs.registerLanguage('sql', __webpack_require__(178));
-	hljs.registerLanguage('stata', __webpack_require__(179));
-	hljs.registerLanguage('step21', __webpack_require__(180));
-	hljs.registerLanguage('stylus', __webpack_require__(181));
-	hljs.registerLanguage('swift', __webpack_require__(182));
-	hljs.registerLanguage('tcl', __webpack_require__(183));
-	hljs.registerLanguage('tex', __webpack_require__(184));
-	hljs.registerLanguage('thrift', __webpack_require__(185));
-	hljs.registerLanguage('tp', __webpack_require__(186));
-	hljs.registerLanguage('twig', __webpack_require__(187));
-	hljs.registerLanguage('typescript', __webpack_require__(188));
-	hljs.registerLanguage('vala', __webpack_require__(189));
-	hljs.registerLanguage('vbnet', __webpack_require__(190));
-	hljs.registerLanguage('vbscript', __webpack_require__(191));
-	hljs.registerLanguage('vbscript-html', __webpack_require__(192));
-	hljs.registerLanguage('verilog', __webpack_require__(193));
-	hljs.registerLanguage('vhdl', __webpack_require__(194));
-	hljs.registerLanguage('vim', __webpack_require__(195));
-	hljs.registerLanguage('x86asm', __webpack_require__(196));
-	hljs.registerLanguage('xl', __webpack_require__(197));
-	hljs.registerLanguage('xquery', __webpack_require__(198));
-	hljs.registerLanguage('yaml', __webpack_require__(199));
-	hljs.registerLanguage('zephir', __webpack_require__(200));
+	hljs.registerLanguage('1c', __webpack_require__(59));
+	hljs.registerLanguage('accesslog', __webpack_require__(60));
+	hljs.registerLanguage('actionscript', __webpack_require__(61));
+	hljs.registerLanguage('apache', __webpack_require__(62));
+	hljs.registerLanguage('applescript', __webpack_require__(63));
+	hljs.registerLanguage('armasm', __webpack_require__(64));
+	hljs.registerLanguage('xml', __webpack_require__(65));
+	hljs.registerLanguage('asciidoc', __webpack_require__(66));
+	hljs.registerLanguage('aspectj', __webpack_require__(67));
+	hljs.registerLanguage('autohotkey', __webpack_require__(68));
+	hljs.registerLanguage('autoit', __webpack_require__(69));
+	hljs.registerLanguage('avrasm', __webpack_require__(70));
+	hljs.registerLanguage('axapta', __webpack_require__(71));
+	hljs.registerLanguage('bash', __webpack_require__(72));
+	hljs.registerLanguage('brainfuck', __webpack_require__(73));
+	hljs.registerLanguage('cal', __webpack_require__(74));
+	hljs.registerLanguage('capnproto', __webpack_require__(75));
+	hljs.registerLanguage('ceylon', __webpack_require__(76));
+	hljs.registerLanguage('clojure', __webpack_require__(77));
+	hljs.registerLanguage('clojure-repl', __webpack_require__(78));
+	hljs.registerLanguage('cmake', __webpack_require__(79));
+	hljs.registerLanguage('coffeescript', __webpack_require__(80));
+	hljs.registerLanguage('cos', __webpack_require__(81));
+	hljs.registerLanguage('cpp', __webpack_require__(82));
+	hljs.registerLanguage('crmsh', __webpack_require__(83));
+	hljs.registerLanguage('crystal', __webpack_require__(84));
+	hljs.registerLanguage('cs', __webpack_require__(85));
+	hljs.registerLanguage('css', __webpack_require__(86));
+	hljs.registerLanguage('d', __webpack_require__(87));
+	hljs.registerLanguage('markdown', __webpack_require__(88));
+	hljs.registerLanguage('dart', __webpack_require__(89));
+	hljs.registerLanguage('delphi', __webpack_require__(90));
+	hljs.registerLanguage('diff', __webpack_require__(91));
+	hljs.registerLanguage('django', __webpack_require__(92));
+	hljs.registerLanguage('dns', __webpack_require__(93));
+	hljs.registerLanguage('dockerfile', __webpack_require__(94));
+	hljs.registerLanguage('dos', __webpack_require__(95));
+	hljs.registerLanguage('dust', __webpack_require__(96));
+	hljs.registerLanguage('elixir', __webpack_require__(97));
+	hljs.registerLanguage('elm', __webpack_require__(98));
+	hljs.registerLanguage('ruby', __webpack_require__(99));
+	hljs.registerLanguage('erb', __webpack_require__(100));
+	hljs.registerLanguage('erlang-repl', __webpack_require__(101));
+	hljs.registerLanguage('erlang', __webpack_require__(102));
+	hljs.registerLanguage('fix', __webpack_require__(103));
+	hljs.registerLanguage('fortran', __webpack_require__(104));
+	hljs.registerLanguage('fsharp', __webpack_require__(105));
+	hljs.registerLanguage('gams', __webpack_require__(106));
+	hljs.registerLanguage('gcode', __webpack_require__(107));
+	hljs.registerLanguage('gherkin', __webpack_require__(108));
+	hljs.registerLanguage('glsl', __webpack_require__(109));
+	hljs.registerLanguage('go', __webpack_require__(110));
+	hljs.registerLanguage('golo', __webpack_require__(111));
+	hljs.registerLanguage('gradle', __webpack_require__(112));
+	hljs.registerLanguage('groovy', __webpack_require__(113));
+	hljs.registerLanguage('haml', __webpack_require__(114));
+	hljs.registerLanguage('handlebars', __webpack_require__(115));
+	hljs.registerLanguage('haskell', __webpack_require__(116));
+	hljs.registerLanguage('haxe', __webpack_require__(117));
+	hljs.registerLanguage('hsp', __webpack_require__(118));
+	hljs.registerLanguage('http', __webpack_require__(119));
+	hljs.registerLanguage('inform7', __webpack_require__(120));
+	hljs.registerLanguage('ini', __webpack_require__(121));
+	hljs.registerLanguage('irpf90', __webpack_require__(122));
+	hljs.registerLanguage('java', __webpack_require__(123));
+	hljs.registerLanguage('javascript', __webpack_require__(124));
+	hljs.registerLanguage('json', __webpack_require__(125));
+	hljs.registerLanguage('julia', __webpack_require__(126));
+	hljs.registerLanguage('kotlin', __webpack_require__(127));
+	hljs.registerLanguage('lasso', __webpack_require__(128));
+	hljs.registerLanguage('less', __webpack_require__(129));
+	hljs.registerLanguage('lisp', __webpack_require__(130));
+	hljs.registerLanguage('livecodeserver', __webpack_require__(131));
+	hljs.registerLanguage('livescript', __webpack_require__(132));
+	hljs.registerLanguage('lua', __webpack_require__(133));
+	hljs.registerLanguage('makefile', __webpack_require__(134));
+	hljs.registerLanguage('mathematica', __webpack_require__(135));
+	hljs.registerLanguage('matlab', __webpack_require__(136));
+	hljs.registerLanguage('mel', __webpack_require__(137));
+	hljs.registerLanguage('mercury', __webpack_require__(138));
+	hljs.registerLanguage('mipsasm', __webpack_require__(139));
+	hljs.registerLanguage('mizar', __webpack_require__(140));
+	hljs.registerLanguage('perl', __webpack_require__(141));
+	hljs.registerLanguage('mojolicious', __webpack_require__(142));
+	hljs.registerLanguage('monkey', __webpack_require__(143));
+	hljs.registerLanguage('nginx', __webpack_require__(144));
+	hljs.registerLanguage('nimrod', __webpack_require__(145));
+	hljs.registerLanguage('nix', __webpack_require__(146));
+	hljs.registerLanguage('nsis', __webpack_require__(147));
+	hljs.registerLanguage('objectivec', __webpack_require__(148));
+	hljs.registerLanguage('ocaml', __webpack_require__(149));
+	hljs.registerLanguage('openscad', __webpack_require__(150));
+	hljs.registerLanguage('oxygene', __webpack_require__(151));
+	hljs.registerLanguage('parser3', __webpack_require__(152));
+	hljs.registerLanguage('pf', __webpack_require__(153));
+	hljs.registerLanguage('php', __webpack_require__(154));
+	hljs.registerLanguage('powershell', __webpack_require__(155));
+	hljs.registerLanguage('processing', __webpack_require__(156));
+	hljs.registerLanguage('profile', __webpack_require__(157));
+	hljs.registerLanguage('prolog', __webpack_require__(158));
+	hljs.registerLanguage('protobuf', __webpack_require__(159));
+	hljs.registerLanguage('puppet', __webpack_require__(160));
+	hljs.registerLanguage('python', __webpack_require__(161));
+	hljs.registerLanguage('q', __webpack_require__(162));
+	hljs.registerLanguage('r', __webpack_require__(163));
+	hljs.registerLanguage('rib', __webpack_require__(164));
+	hljs.registerLanguage('roboconf', __webpack_require__(165));
+	hljs.registerLanguage('rsl', __webpack_require__(166));
+	hljs.registerLanguage('ruleslanguage', __webpack_require__(167));
+	hljs.registerLanguage('rust', __webpack_require__(168));
+	hljs.registerLanguage('scala', __webpack_require__(169));
+	hljs.registerLanguage('scheme', __webpack_require__(170));
+	hljs.registerLanguage('scilab', __webpack_require__(171));
+	hljs.registerLanguage('scss', __webpack_require__(172));
+	hljs.registerLanguage('smali', __webpack_require__(173));
+	hljs.registerLanguage('smalltalk', __webpack_require__(174));
+	hljs.registerLanguage('sml', __webpack_require__(175));
+	hljs.registerLanguage('sqf', __webpack_require__(176));
+	hljs.registerLanguage('sql', __webpack_require__(177));
+	hljs.registerLanguage('stata', __webpack_require__(178));
+	hljs.registerLanguage('step21', __webpack_require__(179));
+	hljs.registerLanguage('stylus', __webpack_require__(180));
+	hljs.registerLanguage('swift', __webpack_require__(181));
+	hljs.registerLanguage('tcl', __webpack_require__(182));
+	hljs.registerLanguage('tex', __webpack_require__(183));
+	hljs.registerLanguage('thrift', __webpack_require__(184));
+	hljs.registerLanguage('tp', __webpack_require__(185));
+	hljs.registerLanguage('twig', __webpack_require__(186));
+	hljs.registerLanguage('typescript', __webpack_require__(187));
+	hljs.registerLanguage('vala', __webpack_require__(188));
+	hljs.registerLanguage('vbnet', __webpack_require__(189));
+	hljs.registerLanguage('vbscript', __webpack_require__(190));
+	hljs.registerLanguage('vbscript-html', __webpack_require__(191));
+	hljs.registerLanguage('verilog', __webpack_require__(192));
+	hljs.registerLanguage('vhdl', __webpack_require__(193));
+	hljs.registerLanguage('vim', __webpack_require__(194));
+	hljs.registerLanguage('x86asm', __webpack_require__(195));
+	hljs.registerLanguage('xl', __webpack_require__(196));
+	hljs.registerLanguage('xquery', __webpack_require__(197));
+	hljs.registerLanguage('yaml', __webpack_require__(198));
+	hljs.registerLanguage('zephir', __webpack_require__(199));
 
 	module.exports = hljs;
 
 /***/ },
-/* 59 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -15919,7 +15563,7 @@
 
 
 /***/ },
-/* 60 */
+/* 59 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -16002,7 +15646,7 @@
 	};
 
 /***/ },
-/* 61 */
+/* 60 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16044,7 +15688,7 @@
 	};
 
 /***/ },
-/* 62 */
+/* 61 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16121,7 +15765,7 @@
 	};
 
 /***/ },
-/* 63 */
+/* 62 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16171,7 +15815,7 @@
 	};
 
 /***/ },
-/* 64 */
+/* 63 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16261,7 +15905,7 @@
 	};
 
 /***/ },
-/* 65 */
+/* 64 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16357,7 +16001,7 @@
 	};
 
 /***/ },
-/* 66 */
+/* 65 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16463,7 +16107,7 @@
 	};
 
 /***/ },
-/* 67 */
+/* 66 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16655,7 +16299,7 @@
 	};
 
 /***/ },
-/* 68 */
+/* 67 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -16803,7 +16447,7 @@
 	};
 
 /***/ },
-/* 69 */
+/* 68 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16855,7 +16499,7 @@
 	};
 
 /***/ },
-/* 70 */
+/* 69 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18613,7 +18257,7 @@
 	};
 
 /***/ },
-/* 71 */
+/* 70 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18679,7 +18323,7 @@
 	};
 
 /***/ },
-/* 72 */
+/* 71 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18714,7 +18358,7 @@
 	};
 
 /***/ },
-/* 73 */
+/* 72 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18793,7 +18437,7 @@
 	};
 
 /***/ },
-/* 74 */
+/* 73 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -18834,7 +18478,7 @@
 	};
 
 /***/ },
-/* 75 */
+/* 74 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18918,7 +18562,7 @@
 	};
 
 /***/ },
-/* 76 */
+/* 75 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18971,7 +18615,7 @@
 	};
 
 /***/ },
-/* 77 */
+/* 76 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19042,7 +18686,7 @@
 	};
 
 /***/ },
-/* 78 */
+/* 77 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19141,7 +18785,7 @@
 	};
 
 /***/ },
-/* 79 */
+/* 78 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19160,7 +18804,7 @@
 	};
 
 /***/ },
-/* 80 */
+/* 79 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19202,7 +18846,7 @@
 	};
 
 /***/ },
-/* 81 */
+/* 80 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19345,7 +18989,7 @@
 	};
 
 /***/ },
-/* 82 */
+/* 81 */
 /***/ function(module, exports) {
 
 	module.exports = function cos (hljs) {
@@ -19472,7 +19116,7 @@
 	};
 
 /***/ },
-/* 83 */
+/* 82 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19618,7 +19262,7 @@
 	};
 
 /***/ },
-/* 84 */
+/* 83 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19716,7 +19360,7 @@
 	};
 
 /***/ },
-/* 85 */
+/* 84 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19896,7 +19540,7 @@
 	};
 
 /***/ },
-/* 86 */
+/* 85 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20014,7 +19658,7 @@
 	};
 
 /***/ },
-/* 87 */
+/* 86 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20115,7 +19759,7 @@
 	};
 
 /***/ },
-/* 88 */
+/* 87 */
 /***/ function(module, exports) {
 
 	module.exports = /**
@@ -20377,7 +20021,7 @@
 	};
 
 /***/ },
-/* 89 */
+/* 88 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20482,7 +20126,7 @@
 	};
 
 /***/ },
-/* 90 */
+/* 89 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -20587,7 +20231,7 @@
 	};
 
 /***/ },
-/* 91 */
+/* 90 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20658,7 +20302,7 @@
 	};
 
 /***/ },
-/* 92 */
+/* 91 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20702,7 +20346,7 @@
 	};
 
 /***/ },
-/* 93 */
+/* 92 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20770,7 +20414,7 @@
 	};
 
 /***/ },
-/* 94 */
+/* 93 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20803,7 +20447,7 @@
 	};
 
 /***/ },
-/* 95 */
+/* 94 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20836,7 +20480,7 @@
 	};
 
 /***/ },
-/* 96 */
+/* 95 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20892,7 +20536,7 @@
 	};
 
 /***/ },
-/* 97 */
+/* 96 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20928,7 +20572,7 @@
 	};
 
 /***/ },
-/* 98 */
+/* 97 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21029,7 +20673,7 @@
 	};
 
 /***/ },
-/* 99 */
+/* 98 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21116,7 +20760,7 @@
 	};
 
 /***/ },
-/* 100 */
+/* 99 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21280,7 +20924,7 @@
 	};
 
 /***/ },
-/* 101 */
+/* 100 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21299,7 +20943,7 @@
 	};
 
 /***/ },
-/* 102 */
+/* 101 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21349,7 +20993,7 @@
 	};
 
 /***/ },
-/* 103 */
+/* 102 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21499,7 +21143,7 @@
 	};
 
 /***/ },
-/* 104 */
+/* 103 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21532,7 +21176,7 @@
 	};
 
 /***/ },
-/* 105 */
+/* 104 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21607,7 +21251,7 @@
 	};
 
 /***/ },
-/* 106 */
+/* 105 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21670,7 +21314,7 @@
 	};
 
 /***/ },
-/* 107 */
+/* 106 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -21710,7 +21354,7 @@
 	};
 
 /***/ },
-/* 108 */
+/* 107 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21781,7 +21425,7 @@
 	};
 
 /***/ },
-/* 109 */
+/* 108 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -21821,7 +21465,7 @@
 	};
 
 /***/ },
-/* 110 */
+/* 109 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21942,7 +21586,7 @@
 	};
 
 /***/ },
-/* 111 */
+/* 110 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21984,7 +21628,7 @@
 	};
 
 /***/ },
-/* 112 */
+/* 111 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22011,7 +21655,7 @@
 	};
 
 /***/ },
-/* 113 */
+/* 112 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22050,7 +21694,7 @@
 	};
 
 /***/ },
-/* 114 */
+/* 113 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22148,7 +21792,7 @@
 	};
 
 /***/ },
-/* 115 */
+/* 114 */
 /***/ function(module, exports) {
 
 	module.exports = // TODO support filter tags like :javascript, support inline HTML
@@ -22259,7 +21903,7 @@
 	};
 
 /***/ },
-/* 116 */
+/* 115 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22297,7 +21941,7 @@
 	};
 
 /***/ },
-/* 117 */
+/* 116 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22423,7 +22067,7 @@
 	};
 
 /***/ },
-/* 118 */
+/* 117 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22485,7 +22129,7 @@
 	};
 
 /***/ },
-/* 119 */
+/* 118 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22534,7 +22178,7 @@
 	};
 
 /***/ },
-/* 120 */
+/* 119 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22579,7 +22223,7 @@
 	};
 
 /***/ },
-/* 121 */
+/* 120 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22640,7 +22284,7 @@
 	};
 
 /***/ },
-/* 122 */
+/* 121 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22710,7 +22354,7 @@
 	};
 
 /***/ },
-/* 123 */
+/* 122 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22790,7 +22434,7 @@
 	};
 
 /***/ },
-/* 124 */
+/* 123 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22900,7 +22544,7 @@
 	};
 
 /***/ },
-/* 125 */
+/* 124 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23013,7 +22657,7 @@
 	};
 
 /***/ },
-/* 126 */
+/* 125 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23054,7 +22698,7 @@
 	};
 
 /***/ },
-/* 127 */
+/* 126 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23236,7 +22880,7 @@
 	};
 
 /***/ },
-/* 128 */
+/* 127 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -23341,7 +22985,7 @@
 	};
 
 /***/ },
-/* 129 */
+/* 128 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23513,7 +23157,7 @@
 	};
 
 /***/ },
-/* 130 */
+/* 129 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23648,7 +23292,7 @@
 	};
 
 /***/ },
-/* 131 */
+/* 130 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23755,7 +23399,7 @@
 	};
 
 /***/ },
-/* 132 */
+/* 131 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23915,7 +23559,7 @@
 	};
 
 /***/ },
-/* 133 */
+/* 132 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24068,7 +23712,7 @@
 	};
 
 /***/ },
-/* 134 */
+/* 133 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24128,7 +23772,7 @@
 	};
 
 /***/ },
-/* 135 */
+/* 134 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24177,7 +23821,7 @@
 	};
 
 /***/ },
-/* 136 */
+/* 135 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24239,7 +23883,7 @@
 	};
 
 /***/ },
-/* 137 */
+/* 136 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24331,7 +23975,7 @@
 	};
 
 /***/ },
-/* 138 */
+/* 137 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24560,7 +24204,7 @@
 	};
 
 /***/ },
-/* 139 */
+/* 138 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24646,7 +24290,7 @@
 	};
 
 /***/ },
-/* 140 */
+/* 139 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24736,7 +24380,7 @@
 	};
 
 /***/ },
-/* 141 */
+/* 140 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24759,7 +24403,7 @@
 	};
 
 /***/ },
-/* 142 */
+/* 141 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24919,7 +24563,7 @@
 	};
 
 /***/ },
-/* 143 */
+/* 142 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24948,7 +24592,7 @@
 	};
 
 /***/ },
-/* 144 */
+/* 143 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25027,7 +24671,7 @@
 	};
 
 /***/ },
-/* 145 */
+/* 144 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25124,7 +24768,7 @@
 	};
 
 /***/ },
-/* 146 */
+/* 145 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25173,7 +24817,7 @@
 	};
 
 /***/ },
-/* 147 */
+/* 146 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25226,7 +24870,7 @@
 	};
 
 /***/ },
-/* 148 */
+/* 147 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25316,7 +24960,7 @@
 	};
 
 /***/ },
-/* 149 */
+/* 148 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25398,7 +25042,7 @@
 	};
 
 /***/ },
-/* 150 */
+/* 149 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25473,7 +25117,7 @@
 	};
 
 /***/ },
-/* 151 */
+/* 150 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25534,7 +25178,7 @@
 	};
 
 /***/ },
-/* 152 */
+/* 151 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25607,7 +25251,7 @@
 	};
 
 /***/ },
-/* 153 */
+/* 152 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25659,7 +25303,7 @@
 	};
 
 /***/ },
-/* 154 */
+/* 153 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25715,7 +25359,7 @@
 	};
 
 /***/ },
-/* 155 */
+/* 154 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25844,7 +25488,7 @@
 	};
 
 /***/ },
-/* 156 */
+/* 155 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25900,7 +25544,7 @@
 	};
 
 /***/ },
-/* 157 */
+/* 156 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25952,7 +25596,7 @@
 	};
 
 /***/ },
-/* 158 */
+/* 157 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25986,7 +25630,7 @@
 	};
 
 /***/ },
-/* 159 */
+/* 158 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26078,7 +25722,7 @@
 	};
 
 /***/ },
-/* 160 */
+/* 159 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26118,7 +25762,7 @@
 	};
 
 /***/ },
-/* 161 */
+/* 160 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26237,7 +25881,7 @@
 	};
 
 /***/ },
-/* 162 */
+/* 161 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26326,7 +25970,7 @@
 	};
 
 /***/ },
-/* 163 */
+/* 162 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26353,7 +25997,7 @@
 	};
 
 /***/ },
-/* 164 */
+/* 163 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26427,7 +26071,7 @@
 	};
 
 /***/ },
-/* 165 */
+/* 164 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26458,7 +26102,7 @@
 	};
 
 /***/ },
-/* 166 */
+/* 165 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26529,7 +26173,7 @@
 	};
 
 /***/ },
-/* 167 */
+/* 166 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26569,7 +26213,7 @@
 	};
 
 /***/ },
-/* 168 */
+/* 167 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26634,7 +26278,7 @@
 	};
 
 /***/ },
-/* 169 */
+/* 168 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26734,7 +26378,7 @@
 	};
 
 /***/ },
-/* 170 */
+/* 169 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26853,7 +26497,7 @@
 	};
 
 /***/ },
-/* 171 */
+/* 170 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26978,7 +26622,7 @@
 	};
 
 /***/ },
-/* 172 */
+/* 171 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27036,7 +26680,7 @@
 	};
 
 /***/ },
-/* 173 */
+/* 172 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27138,7 +26782,7 @@
 	};
 
 /***/ },
-/* 174 */
+/* 173 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27198,7 +26842,7 @@
 	};
 
 /***/ },
-/* 175 */
+/* 174 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27252,7 +26896,7 @@
 	};
 
 /***/ },
-/* 176 */
+/* 175 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27321,7 +26965,7 @@
 	};
 
 /***/ },
-/* 177 */
+/* 176 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27422,7 +27066,7 @@
 	};
 
 /***/ },
-/* 178 */
+/* 177 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27585,7 +27229,7 @@
 	};
 
 /***/ },
-/* 179 */
+/* 178 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27627,7 +27271,7 @@
 	};
 
 /***/ },
-/* 180 */
+/* 179 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27678,7 +27322,7 @@
 	};
 
 /***/ },
-/* 181 */
+/* 180 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28122,7 +27766,7 @@
 	};
 
 /***/ },
-/* 182 */
+/* 181 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28245,7 +27889,7 @@
 	};
 
 /***/ },
-/* 183 */
+/* 182 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28310,7 +27954,7 @@
 	};
 
 /***/ },
-/* 184 */
+/* 183 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28376,7 +28020,7 @@
 	};
 
 /***/ },
-/* 185 */
+/* 184 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28415,7 +28059,7 @@
 	};
 
 /***/ },
-/* 186 */
+/* 185 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28503,7 +28147,7 @@
 	};
 
 /***/ },
-/* 187 */
+/* 186 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28573,7 +28217,7 @@
 	};
 
 /***/ },
-/* 188 */
+/* 187 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28681,7 +28325,7 @@
 	};
 
 /***/ },
-/* 189 */
+/* 188 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28735,7 +28379,7 @@
 	};
 
 /***/ },
-/* 190 */
+/* 189 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28795,7 +28439,7 @@
 	};
 
 /***/ },
-/* 191 */
+/* 190 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28838,7 +28482,7 @@
 	};
 
 /***/ },
-/* 192 */
+/* 191 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28854,7 +28498,7 @@
 	};
 
 /***/ },
-/* 193 */
+/* 192 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28896,7 +28540,7 @@
 	};
 
 /***/ },
-/* 194 */
+/* 193 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28956,7 +28600,7 @@
 	};
 
 /***/ },
-/* 195 */
+/* 194 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29023,7 +28667,7 @@
 	};
 
 /***/ },
-/* 196 */
+/* 195 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29161,7 +28805,7 @@
 	};
 
 /***/ },
-/* 197 */
+/* 196 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29238,7 +28882,7 @@
 	};
 
 /***/ },
-/* 198 */
+/* 197 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29314,7 +28958,7 @@
 	};
 
 /***/ },
-/* 199 */
+/* 198 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29402,7 +29046,7 @@
 	};
 
 /***/ },
-/* 200 */
+/* 199 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29511,6 +29155,369 @@
 	    ]
 	  };
 	};
+
+/***/ },
+/* 200 */
+/***/ function(module, exports) {
+
+	(function() {
+	  'use strict';
+
+	  if (self.fetch) {
+	    return
+	  }
+
+	  function normalizeName(name) {
+	    if (typeof name !== 'string') {
+	      name = name.toString();
+	    }
+	    if (/[^a-z0-9\-#$%&'*+.\^_`|~]/i.test(name)) {
+	      throw new TypeError('Invalid character in header field name')
+	    }
+	    return name.toLowerCase()
+	  }
+
+	  function normalizeValue(value) {
+	    if (typeof value !== 'string') {
+	      value = value.toString();
+	    }
+	    return value
+	  }
+
+	  function Headers(headers) {
+	    this.map = {}
+
+	    var self = this
+	    if (headers instanceof Headers) {
+	      headers.forEach(function(name, values) {
+	        values.forEach(function(value) {
+	          self.append(name, value)
+	        })
+	      })
+
+	    } else if (headers) {
+	      Object.getOwnPropertyNames(headers).forEach(function(name) {
+	        self.append(name, headers[name])
+	      })
+	    }
+	  }
+
+	  Headers.prototype.append = function(name, value) {
+	    name = normalizeName(name)
+	    value = normalizeValue(value)
+	    var list = this.map[name]
+	    if (!list) {
+	      list = []
+	      this.map[name] = list
+	    }
+	    list.push(value)
+	  }
+
+	  Headers.prototype['delete'] = function(name) {
+	    delete this.map[normalizeName(name)]
+	  }
+
+	  Headers.prototype.get = function(name) {
+	    var values = this.map[normalizeName(name)]
+	    return values ? values[0] : null
+	  }
+
+	  Headers.prototype.getAll = function(name) {
+	    return this.map[normalizeName(name)] || []
+	  }
+
+	  Headers.prototype.has = function(name) {
+	    return this.map.hasOwnProperty(normalizeName(name))
+	  }
+
+	  Headers.prototype.set = function(name, value) {
+	    this.map[normalizeName(name)] = [normalizeValue(value)]
+	  }
+
+	  // Instead of iterable for now.
+	  Headers.prototype.forEach = function(callback) {
+	    var self = this
+	    Object.getOwnPropertyNames(this.map).forEach(function(name) {
+	      callback(name, self.map[name])
+	    })
+	  }
+
+	  function consumed(body) {
+	    if (body.bodyUsed) {
+	      return fetch.Promise.reject(new TypeError('Already read'))
+	    }
+	    body.bodyUsed = true
+	  }
+
+	  function fileReaderReady(reader) {
+	    return new fetch.Promise(function(resolve, reject) {
+	      reader.onload = function() {
+	        resolve(reader.result)
+	      }
+	      reader.onerror = function() {
+	        reject(reader.error)
+	      }
+	    })
+	  }
+
+	  function readBlobAsArrayBuffer(blob) {
+	    var reader = new FileReader()
+	    reader.readAsArrayBuffer(blob)
+	    return fileReaderReady(reader)
+	  }
+
+	  function readBlobAsText(blob) {
+	    var reader = new FileReader()
+	    reader.readAsText(blob)
+	    return fileReaderReady(reader)
+	  }
+
+	  var support = {
+	    blob: 'FileReader' in self && 'Blob' in self && (function() {
+	      try {
+	        new Blob();
+	        return true
+	      } catch(e) {
+	        return false
+	      }
+	    })(),
+	    formData: 'FormData' in self
+	  }
+
+	  function Body() {
+	    this.bodyUsed = false
+
+
+	    this._initBody = function(body) {
+	      this._bodyInit = body
+	      if (typeof body === 'string') {
+	        this._bodyText = body
+	      } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
+	        this._bodyBlob = body
+	      } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
+	        this._bodyFormData = body
+	      } else if (!body) {
+	        this._bodyText = ''
+	      } else {
+	        throw new Error('unsupported BodyInit type')
+	      }
+	    }
+
+	    if (support.blob) {
+	      this.blob = function() {
+	        var rejected = consumed(this)
+	        if (rejected) {
+	          return rejected
+	        }
+
+	        if (this._bodyBlob) {
+	          return fetch.Promise.resolve(this._bodyBlob)
+	        } else if (this._bodyFormData) {
+	          throw new Error('could not read FormData body as blob')
+	        } else {
+	          return fetch.Promise.resolve(new Blob([this._bodyText]))
+	        }
+	      }
+
+	      this.arrayBuffer = function() {
+	        return this.blob().then(readBlobAsArrayBuffer)
+	      }
+
+	      this.text = function() {
+	        var rejected = consumed(this)
+	        if (rejected) {
+	          return rejected
+	        }
+
+	        if (this._bodyBlob) {
+	          return readBlobAsText(this._bodyBlob)
+	        } else if (this._bodyFormData) {
+	          throw new Error('could not read FormData body as text')
+	        } else {
+	          return fetch.Promise.resolve(this._bodyText)
+	        }
+	      }
+	    } else {
+	      this.text = function() {
+	        var rejected = consumed(this)
+	        return rejected ? rejected : fetch.Promise.resolve(this._bodyText)
+	      }
+	    }
+
+	    if (support.formData) {
+	      this.formData = function() {
+	        return this.text().then(decode)
+	      }
+	    }
+
+	    this.json = function() {
+	      return this.text().then(function (text) {
+	          return JSON.parse(text);
+	      });
+	    }
+
+	    return this
+	  }
+
+	  // HTTP methods whose capitalization should be normalized
+	  var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT']
+
+	  function normalizeMethod(method) {
+	    var upcased = method.toUpperCase()
+	    return (methods.indexOf(upcased) > -1) ? upcased : method
+	  }
+
+	  function Request(url, options) {
+	    options = options || {}
+	    this.url = url
+
+	    this.credentials = options.credentials || 'omit'
+	    this.headers = new Headers(options.headers)
+	    this.method = normalizeMethod(options.method || 'GET')
+	    this.mode = options.mode || null
+	    this.referrer = null
+
+	    if ((this.method === 'GET' || this.method === 'HEAD') && options.body) {
+	      throw new TypeError('Body not allowed for GET or HEAD requests')
+	    }
+	    this._initBody(options.body)
+	  }
+
+	  function decode(body) {
+	    var form = new FormData()
+	    body.trim().split('&').forEach(function(bytes) {
+	      if (bytes) {
+	        var split = bytes.split('=')
+	        var name = split.shift().replace(/\+/g, ' ')
+	        var value = split.join('=').replace(/\+/g, ' ')
+	        form.append(decodeURIComponent(name), decodeURIComponent(value))
+	      }
+	    })
+	    return form
+	  }
+
+	  function headers(xhr) {
+	    var head = new Headers()
+	    var pairs = xhr.getAllResponseHeaders().trim().split('\n')
+	    pairs.forEach(function(header) {
+	      var split = header.trim().split(':')
+	      var key = split.shift().trim()
+	      var value = split.join(':').trim()
+	      head.append(key, value)
+	    })
+	    return head
+	  }
+
+	  var noXhrPatch =
+	    typeof window !== 'undefined' && !!window.ActiveXObject &&
+	      !(window.XMLHttpRequest && (new XMLHttpRequest).dispatchEvent);
+
+	  function getXhr() {
+	    // from backbone.js 1.1.2
+	    // https://github.com/jashkenas/backbone/blob/1.1.2/backbone.js#L1181
+	    if (noXhrPatch && !(/^(get|post|head|put|delete|options)$/i.test(this.method))) {
+	      this.usingActiveXhr = true;
+	      return new ActiveXObject("Microsoft.XMLHTTP");
+	    }
+	    return new XMLHttpRequest();
+	  }
+
+	  Body.call(Request.prototype)
+
+	  function Response(bodyInit, options) {
+	    if (!options) {
+	      options = {}
+	    }
+
+	    this._initBody(bodyInit)
+	    this.type = 'default'
+	    this.url = null
+	    this.status = options.status
+	    this.ok = this.status >= 200 && this.status < 300
+	    this.statusText = options.statusText
+	    this.headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers)
+	    this.url = options.url || ''
+	  }
+
+	  Body.call(Response.prototype)
+
+	  self.Headers = Headers;
+	  self.Request = Request;
+	  self.Response = Response;
+
+	  self.fetch = function(input, init) {
+	    // TODO: Request constructor should accept input, init
+	    var request
+	    if (Request.prototype.isPrototypeOf(input) && !init) {
+	      request = input
+	    } else {
+	      request = new Request(input, init)
+	    }
+
+	    return new fetch.Promise(function(resolve, reject) {
+	      var xhr = getXhr();
+	      if (request.credentials === 'cors') {
+	        xhr.withCredentials = true;
+	      }
+
+	      function responseURL() {
+	        if ('responseURL' in xhr) {
+	          return xhr.responseURL
+	        }
+
+	        // Avoid security warnings on getResponseHeader when not allowed by CORS
+	        if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
+	          return xhr.getResponseHeader('X-Request-URL')
+	        }
+
+	        return;
+	      }
+
+	      function onload() {
+	        if (xhr.readyState !== 4) {
+	          return
+	        }
+	        var status = (xhr.status === 1223) ? 204 : xhr.status
+	        if (status < 100 || status > 599) {
+	          reject(new TypeError('Network request failed'))
+	          return
+	        }
+	        var options = {
+	          status: status,
+	          statusText: xhr.statusText,
+	          headers: headers(xhr),
+	          url: responseURL()
+	        }
+	        var body = 'response' in xhr ? xhr.response : xhr.responseText;
+	        resolve(new Response(body, options))
+	      }
+	      xhr.onreadystatechange = onload;
+	      if (!self.usingActiveXhr) {
+	        xhr.onload = onload;
+	        xhr.onerror = function() {
+	          reject(new TypeError('Network request failed'))
+	        }
+	      }
+
+	      xhr.open(request.method, request.url, true)
+
+	      if ('responseType' in xhr && support.blob) {
+	        xhr.responseType = 'blob'
+	      }
+
+	      request.headers.forEach(function(name, values) {
+	        values.forEach(function(value) {
+	          xhr.setRequestHeader(name, value)
+	        })
+	      })
+
+	      xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit)
+	    })
+	  }
+	  fetch.Promise = self.Promise; // you could change it to your favorite alternative
+	  self.fetch.polyfill = true
+	})();
+
 
 /***/ }
 /******/ ]);
