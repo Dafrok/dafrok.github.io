@@ -1,21 +1,20 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import 'fetch-polyfill'
 
 Vue.use(Vuex)
 
 const state = {
-    isLoading: false
+    isArticleLoading: false
 }
 
 const mutations = {
-    UPDATELOADINGSTATE (state, bool) {
-        state.isLoading = bool
+    UPDATEARTICLELOADINGSTATE (state, bool) {
+        state.isArticleLoading = bool
     }
 }
 
 const actions = {
-    updateLoadingState: 'UPDATELOADINGSTATE'
+    updateArticleLoadingState: 'UPDATEARTICLELOADINGSTATE'
 }
 
 export default new Vuex.Store({

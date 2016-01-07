@@ -31,12 +31,12 @@ section.info
     .login
         position absolute
         left 6rem
-        top 1rem
+        top 1.5rem
         font-size 1.5rem
     .count
         position absolute
         left 6rem
-        top 4rem
+        top 3.5rem
 </style>
 
 <script>
@@ -44,7 +44,7 @@ import store from '../store/base.js'
 export default {
     computed: {
         count () {
-            var count = this.info.open_issues_count
+            var count = store.state.count
             return '(' + (count ? count : 0) + ')'
         },
         info () {

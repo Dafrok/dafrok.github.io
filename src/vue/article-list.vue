@@ -80,7 +80,7 @@ export default {
             }.bind(this))
         },
         loadArticle (url) {
-            loadingData.actions.updateLoadingState(true)
+            loadingData.actions.updateArticleLoadingState(true)
             baseData.actions.toggleMenu(false)
             fetch(url)
                 .then(function (res) {
@@ -91,15 +91,19 @@ export default {
                 .then(function (data) {
                     articlesData.actions.updateArticle(data.body)
                     baseData.actions.updateTitle(data.title)
-                    loadingData.actions.updateLoadingState(false)
+                    loadingData.actions.updateArticleLoadingState(false)
                 })
         }
     },
     compiled () {
         Vue.nextTick(function () {
             this.iscroll = new IScroll('#article-list', {
-                preventDefault: false
+                preventDefault: false,
+                mouseWheel: true
             })
+            this.iscroll.on('scrollEnd', function () {
+                console.log(this.iscroll.maxScrollY, this.iscroll.directionY)
+            }.bind(this))
         }.bind(this))
     }
 }

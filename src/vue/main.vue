@@ -1,9 +1,9 @@
 <template lang="jade">
 section.main
     header
-        a(:style='{backgroundImage: avatar}', @click.stop='toggleMenu')
+        a(:style='{backgroundImage: avatar}', @click.stop='toggleMenu', @touchstart.stop='toggleMenu')
         h2(v-text='title')
-    section.wrapper#content
+    section.wrapper#content(@click.stop='toggleMenu(false)', @touchstart.stop='toggleMenu(false)')
         article.markdown-body(v-html='article')
         loading
 </template>
@@ -80,12 +80,19 @@ export default {
         loading: Loading
     },
     methods: {
-        toggleMenu () {
-            baseData.actions.toggleMenu()
+        toggleMenu (bool) {
+            baseData.actions.toggleMenu(bool)
         },
         refresh () {
             Vue.nextTick(function () {
                 this.iscroll.refresh()
+                // var codes = document.querySelectorAll('pre')
+                // for (let el of codes) {
+                //     el.style.overflow = 'hidden'
+                //     let codeScroll = new IScroll(el, {
+                //         mouseWheel: true
+                //     })
+                // }
             }.bind(this))
         }
     },
@@ -110,7 +117,8 @@ export default {
     compiled () {
         Vue.nextTick(function () {
             this.iscroll = new IScroll('#content', {
-                preventDefault: false
+                preventDefault: false,
+                mouseWheel: true
             })
         }.bind(this))
     }

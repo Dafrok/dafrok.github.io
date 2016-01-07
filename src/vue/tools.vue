@@ -13,8 +13,12 @@ section.tools
     right 0
     .search
         height 3rem
+        padding 0 .5rem
+        background white
+        margin 0 .5rem
+        overflow hidden
+        border-radius .5rem
         input
-            padding 0 .5rem 0 .5rem
             width 100%
             height 100%
             font-size 1rem
@@ -49,7 +53,7 @@ export default {
                     formData[els[i].name] = els[i].value
                 }
             }
-            fetch(config.searchUrl + '?q=' + formData.q + '+repo:' + config.username + '/' + config.repo)
+            fetch(config.searchUrl + '?q=' + formData.q + '+author:' + config.username + '+repo:' + config.username + '/' + config.repo)
                 .then(function(res){
                     return res.json()
                 }, function(){

@@ -1,6 +1,7 @@
 <template lang="jade">
-menu
-main(@click='hideMenu')
+section.body(@touchmove.prevent='prevent')
+    menu
+    main
 </template>
 
 <style lang="stylus">
@@ -21,6 +22,13 @@ ul,ol
     margin 0
 li
     list-style none
+.body
+    position fixed
+    top 0
+    bottom 0
+    left 0
+    right 0
+    overflow hidden
 </style>
 
 <script>
@@ -41,6 +49,11 @@ export default {
     methods: {
         hideMenu () {
             baseData.actions.toggleMenu(false)
+        },
+        prevent (e) {
+            // if (e.target.tagName !== 'CODE') {
+            //     e.defaultPrevented = true
+            // }
         }
     },
     compiled () {
@@ -64,8 +77,9 @@ export default {
                 console.log('Loading failed!')
             })
             .then(function(data){
-                if (Array.isArray(data)) {
-                    articlesData.actions.updateList(data)
+                if (data.items) {
+                    articlesData.actions.updateList(data.items)
+                    baseData.actions.updateCount(data.total_count)
                 } else {
                     articlesData.actions.updateList([])
                 }

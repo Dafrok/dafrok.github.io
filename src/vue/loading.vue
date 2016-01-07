@@ -57,7 +57,7 @@ import store from '../store/loading.js'
 export default {
     computed: {
         isLoading () {
-            return store.state.isLoading
+            return store.state.isArticleLoading
         }
     }
 }

@@ -7,6 +7,7 @@ const state = {
     info: {
         owner: {}
     },
+    count: 0,
     title: 'Blog',
     menu: false
 }
@@ -19,14 +20,18 @@ const mutations = {
         state.title = title
     },
     TOGGLEMENUSTATE (state, bool) {
-        state.menu = typeof bool === 'boolean' ? bool : !state.menu
+        state.menu = (typeof bool === 'boolean') ? bool : !state.menu
+    },
+    UPDATECOUNT (state, count) {
+        state.count = count
     }
 }
 
 const actions = {
     updateInfo: 'UPDATEINFO',
     updateTitle: 'UPDATETITLE',
-    toggleMenu: 'TOGGLEMENUSTATE'
+    toggleMenu: 'TOGGLEMENUSTATE',
+    updateCount: 'UPDATECOUNT'
 }
 
 export default new Vuex.Store({
