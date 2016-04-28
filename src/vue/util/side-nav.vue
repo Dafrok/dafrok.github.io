@@ -1,12 +1,14 @@
 <template lang="jade">
 section.side-nav(:class='{show: isShowMenu}')
     info
+    navigator
 </template>
 
 <style lang="stylus">
 .side-nav
     user-select none
     transition all .2s
+    min-width 18rem
     width 18rem
     top 0
     bottom 0
@@ -18,11 +20,7 @@ section.side-nav(:class='{show: isShowMenu}')
     box-shadow 0 0 .5rem black
     max-width 80%
     z-index 1
-
-@media screen and (max-width: 64rem)
-    .menu
-        transform translate(-100%, 0)
-        box-shadow none
+    transform translate(-100%, 0)
 
 .show
     transform translate(0, 0)
@@ -31,13 +29,16 @@ section.side-nav(:class='{show: isShowMenu}')
 
 <script>
 import Info from './info.vue'
+import Navigator from './navigator.vue'
+import BaseStore from '../../store/base.js'
 export default {
     components: {
-        info: Info
+        info: Info,
+        navigator: Navigator
     },
     computed: {
         isShowMenu () {
-            return true
+            return BaseStore.state.menu
         }
     }
 }
