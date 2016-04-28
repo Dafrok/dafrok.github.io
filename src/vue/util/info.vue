@@ -45,7 +45,7 @@ export default {
     computed: {
         count () {
             var count = StoreBase.state.count
-            return ` (${count ? count : 0})`
+            return ` (${count ? count : 0}) `
         },
         info () {
             return StoreBase.state.info
