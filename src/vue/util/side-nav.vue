@@ -7,7 +7,7 @@ section.side-nav(@click.stop="", :class='{show: isShowMenu}')
 <style lang="stylus">
 .side-nav
     user-select none
-    transition all .2s
+    transition all .35s
     min-width 16rem
     width 16rem
     top 0
@@ -21,8 +21,9 @@ section.side-nav(@click.stop="", :class='{show: isShowMenu}')
     max-width 80%
     z-index 1
     transform translate(-100%, 0)
-
+    opacity 0
 .show
+    opacity 1
     transform translate(0, 0)
     box-shadow 0 0 .5rem black
 </style>

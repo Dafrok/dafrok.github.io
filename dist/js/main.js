@@ -30652,7 +30652,7 @@
 
 
 	// module
-	exports.push([module.id, ".side-nav {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.2s;\n  transition: all 0.2s;\n  min-width: 16rem;\n  width: 16rem;\n  top: 0;\n  bottom: 0;\n  background: #69c;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: hidden;\n/*box-shadow 0 0 .5rem black*/\n  max-width: 80%;\n  z-index: 1;\n  -webkit-transform: translate(-100%, 0);\n          transform: translate(-100%, 0);\n}\n.show {\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
+	exports.push([module.id, ".side-nav {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.35s;\n  transition: all 0.35s;\n  min-width: 16rem;\n  width: 16rem;\n  top: 0;\n  bottom: 0;\n  background: #69c;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: hidden;\n/*box-shadow 0 0 .5rem black*/\n  max-width: 80%;\n  z-index: 1;\n  -webkit-transform: translate(-100%, 0);\n          transform: translate(-100%, 0);\n  opacity: 0;\n}\n.show {\n  opacity: 1;\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
 
 	// exports
 
