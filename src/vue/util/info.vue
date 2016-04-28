@@ -2,7 +2,7 @@
 section.info
     img.avartar(:src='info.owner.avatar_url')
     label.login(v-text='info.owner.login')
-    label.count Aritcles 
+    label.count Aritcles
         i(v-text='count')
 </template>
 
@@ -40,15 +40,15 @@ section.info
 </style>
 
 <script>
-import store from '../store/base.js'
+import StoreBase from '../../store/base.js'
 export default {
     computed: {
         count () {
-            var count = store.state.count
-            return '(' + (count ? count : 0) + ')'
+            var count = StoreBase.state.count
+            return ` (${count ? count : 0})`
         },
         info () {
-            return store.state.info
+            return StoreBase.state.info
         }
     }
 }

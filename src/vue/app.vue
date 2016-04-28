@@ -1,7 +1,7 @@
 <template lang="jade">
-section.body(@touchmove.prevent='prevent')
-    menu
-    main
+section.body
+    appbar
+    side-nav
 </template>
 
 <style lang="stylus">
@@ -33,57 +33,21 @@ li
 
 <script>
 import config from '../js/config.js'
-import Menu from './menu.vue'
-import Main from './main.vue'
-import baseData from '../store/base.js'
-import articlesData from '../store/articles.js'
+import StoreBase from '../store/base.js'
+import SideNav from './util/side-nav.vue'
+import Appbar from './util/appbar.vue'
 
-let repoUrl = config.repoUrl
-let issueUrl = config.issueUrl
+const repoUrl = config.repoUrl
+const issueUrl = config.issueUrl
 
 export default {
     components: {
-        menu: Menu,
-        main: Main
+        appbar: Appbar,
+        sideNav: SideNav
     },
     methods: {
-        hideMenu () {
-            baseData.actions.toggleMenu(false)
-        },
-        prevent (e) {
-            // if (e.target.tagName !== 'CODE') {
-            //     e.defaultPrevented = true
-            // }
-        }
     },
     compiled () {
-        fetch(repoUrl)
-            .then(function (res) {
-                return res.json()
-            }, function(){
-                console.log('Loading failed!')
-            })
-            .then(function (data) {
-                if (data.owner) {
-                    baseData.actions.updateInfo(data)
-                } else {
-                    // todo: forbidden
-                }
-            })
-        fetch(issueUrl)
-            .then(function(res){
-                return res.json()
-            }, function(){
-                console.log('Loading failed!')
-            })
-            .then(function(data){
-                if (data.items) {
-                    articlesData.actions.updateList(data.items)
-                    baseData.actions.updateCount(data.total_count)
-                } else {
-                    articlesData.actions.updateList([])
-                }
-        })
     }
 }
 </script>

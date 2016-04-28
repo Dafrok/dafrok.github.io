@@ -54,11 +54,11 @@
 
 	var _app2 = _interopRequireDefault(_app);
 
-	var _highlight = __webpack_require__(50);
+	var _highlight = __webpack_require__(31);
 
 	var _highlight2 = _interopRequireDefault(_highlight);
 
-	__webpack_require__(193);
+	__webpack_require__(185);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -75,9 +75,9 @@
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(process) {/*!
-	 * Vue.js v1.0.10
-	 * (c) 2015 Evan You
+	/* WEBPACK VAR INJECTION */(function(global, process) {/*!
+	 * Vue.js v1.0.21
+	 * (c) 2016 Evan You
 	 * Released under the MIT License.
 	 */
 	'use strict';
@@ -106,6 +106,7 @@
 	      vm._digest();
 	    }
 	  }
+	  return val;
 	}
 
 	/**
@@ -155,7 +156,7 @@
 	 * @return {Boolean}
 	 */
 
-	var literalValueRE = /^\s?(true|false|[\d\.]+|'[^']*'|"[^"]*")\s?$/;
+	var literalValueRE = /^\s?(true|false|-?[\d\.]+|'[^']*'|"[^"]*")\s?$/;
 
 	function isLiteral(exp) {
 	  return literalValueRE.test(exp);
@@ -282,7 +283,7 @@
 	 * @return {Function}
 	 */
 
-	function bind$1(fn, ctx) {
+	function bind(fn, ctx) {
 	  return function (a) {
 	    var l = arguments.length;
 	    return l ? l > 1 ? fn.apply(ctx, arguments) : fn.call(ctx, a) : fn.call(ctx);
@@ -361,7 +362,7 @@
 	var isArray = Array.isArray;
 
 	/**
-	 * Define a non-enumerable property
+	 * Define a property.
 	 *
 	 * @param {Object} obj
 	 * @param {String} key
@@ -465,9 +466,13 @@
 	// Browser environment sniffing
 	var inBrowser = typeof window !== 'undefined' && Object.prototype.toString.call(window) !== '[object Object]';
 
-	var isIE9 = inBrowser && navigator.userAgent.toLowerCase().indexOf('msie 9.0') > 0;
+	// detect devtools
+	var devtools = inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
 
-	var isAndroid = inBrowser && navigator.userAgent.toLowerCase().indexOf('android') > 0;
+	// UA sniffing for working around browser-specific quirks
+	var UA = inBrowser && window.navigator.userAgent.toLowerCase();
+	var isIE9 = UA && UA.indexOf('msie 9.0') > 0;
+	var isAndroid = UA && UA.indexOf('android') > 0;
 
 	var transitionProp = undefined;
 	var transitionEndEvent = undefined;
@@ -506,6 +511,7 @@
 	      copies[i]();
 	    }
 	  }
+
 	  /* istanbul ignore if */
 	  if (typeof MutationObserver !== 'undefined') {
 	    var counter = 1;
@@ -519,7 +525,11 @@
 	      textNode.data = counter;
 	    };
 	  } else {
-	    timerFunc = setTimeout;
+	    // webpack attempts to inject a shim for setImmediate
+	    // if it is used as a global, so we have to work around that to
+	    // avoid bundling unnecessary code.
+	    var context = inBrowser ? window : typeof global !== 'undefined' ? global : {};
+	    timerFunc = context.setImmediate || setTimeout;
 	  }
 	  return function (cb, ctx) {
 	    var func = ctx ? function () {
@@ -553,23 +563,29 @@
 	 */
 
 	p.put = function (key, value) {
-	  var entry = {
-	    key: key,
-	    value: value
-	  };
-	  this._keymap[key] = entry;
-	  if (this.tail) {
-	    this.tail.newer = entry;
-	    entry.older = this.tail;
-	  } else {
-	    this.head = entry;
-	  }
-	  this.tail = entry;
+	  var removed;
 	  if (this.size === this.limit) {
-	    return this.shift();
-	  } else {
+	    removed = this.shift();
+	  }
+
+	  var entry = this.get(key, true);
+	  if (!entry) {
+	    entry = {
+	      key: key
+	    };
+	    this._keymap[key] = entry;
+	    if (this.tail) {
+	      this.tail.newer = entry;
+	      entry.older = this.tail;
+	    } else {
+	      this.head = entry;
+	    }
+	    this.tail = entry;
 	    this.size++;
 	  }
+	  entry.value = value;
+
+	  return removed;
 	};
 
 	/**
@@ -585,6 +601,7 @@
 	    this.head.older = undefined;
 	    entry.newer = entry.older = undefined;
 	    this._keymap[entry.key] = undefined;
+	    this.size--;
 	  }
 	  return entry;
 	};
@@ -637,6 +654,7 @@
 	var str;
 	var dir;
 	var c;
+	var prev;
 	var i;
 	var l;
 	var lastFilterIndex;
@@ -703,12 +721,11 @@
 	 *   ]
 	 * }
 	 *
-	 * @param {String} str
+	 * @param {String} s
 	 * @return {Object}
 	 */
 
 	function parseDirective(s) {
-
 	  var hit = cache$1.get(s);
 	  if (hit) {
 	    return hit;
@@ -722,13 +739,14 @@
 	  dir = {};
 
 	  for (i = 0, l = str.length; i < l; i++) {
+	    prev = c;
 	    c = str.charCodeAt(i);
 	    if (inSingle) {
 	      // check single quote
-	      if (c === 0x27) inSingle = !inSingle;
+	      if (c === 0x27 && prev !== 0x5C) inSingle = !inSingle;
 	    } else if (inDouble) {
 	      // check double quote
-	      if (c === 0x22) inDouble = !inDouble;
+	      if (c === 0x22 && prev !== 0x5C) inDouble = !inDouble;
 	    } else if (c === 0x7C && // pipe
 	    str.charCodeAt(i + 1) !== 0x7C && str.charCodeAt(i - 1) !== 0x7C) {
 	      if (dir.expression == null) {
@@ -795,7 +813,7 @@
 	  var close = escapeRegex(config.delimiters[1]);
 	  var unsafeOpen = escapeRegex(config.unsafeDelimiters[0]);
 	  var unsafeClose = escapeRegex(config.unsafeDelimiters[1]);
-	  tagRE = new RegExp(unsafeOpen + '(.+?)' + unsafeClose + '|' + open + '(.+?)' + close, 'g');
+	  tagRE = new RegExp(unsafeOpen + '((?:.|\\n)+?)' + unsafeClose + '|' + open + '((?:.|\\n)+?)' + close, 'g');
 	  htmlRE = new RegExp('^' + unsafeOpen + '.*' + unsafeClose + '$');
 	  // reset cache
 	  cache = new Cache(1000);
@@ -820,7 +838,6 @@
 	  if (hit) {
 	    return hit;
 	  }
-	  text = text.replace(/\n/g, '');
 	  if (!tagRE.test(text)) {
 	    return null;
 	  }
@@ -866,16 +883,17 @@
 	 * into one single expression as '"a " + b + " c"'.
 	 *
 	 * @param {Array} tokens
+	 * @param {Vue} [vm]
 	 * @return {String}
 	 */
 
-	function tokensToExp(tokens) {
+	function tokensToExp(tokens, vm) {
 	  if (tokens.length > 1) {
 	    return tokens.map(function (token) {
-	      return formatToken(token);
+	      return formatToken(token, vm);
 	    }).join('+');
 	  } else {
-	    return formatToken(tokens[0], true);
+	    return formatToken(tokens[0], vm, true);
 	  }
 	}
 
@@ -883,12 +901,13 @@
 	 * Format a single token.
 	 *
 	 * @param {Object} token
-	 * @param {Boolean} single
+	 * @param {Vue} [vm]
+	 * @param {Boolean} [single]
 	 * @return {String}
 	 */
 
-	function formatToken(token, single) {
-	  return token.tag ? inlineFilters(token.value, single) : '"' + token.value + '"';
+	function formatToken(token, vm, single) {
+	  return token.tag ? token.oneTime && vm ? '"' + vm.$eval(token.value) + '"' : inlineFilters(token.value, single) : '"' + token.value + '"';
 	}
 
 	/**
@@ -904,9 +923,9 @@
 	 * @return {String}
 	 */
 
-	var filterRE$1 = /[^|]\|[^|]/;
+	var filterRE = /[^|]\|[^|]/;
 	function inlineFilters(exp, single) {
-	  if (!filterRE$1.test(exp)) {
+	  if (!filterRE.test(exp)) {
 	    return single ? exp : '(' + exp + ')';
 	  } else {
 	    var dir = parseDirective(exp);
@@ -921,7 +940,7 @@
 	  }
 	}
 
-	var text$1 = Object.freeze({
+	var text = Object.freeze({
 	  compileRegex: compileRegex,
 	  parseText: parseText,
 	  tokensToExp: tokensToExp
@@ -963,12 +982,11 @@
 	  warnExpressionErrors: true,
 
 	  /**
-	   * Whether or not to handle fully object properties which
-	   * are already backed by getters and seters. Depending on
-	   * use case and environment, this might introduce non-neglible
-	   * performance penalties.
+	   * Whether to allow devtools inspection.
+	   * Disabled by default in production builds.
 	   */
-	  convertAllProperties: false,
+
+	  devtools: process.env.NODE_ENV !== 'production',
 
 	  /**
 	   * Internal flag to indicate the delimiters have been
@@ -1035,22 +1053,21 @@
 	});
 
 	var warn = undefined;
+	var formatComponentName = undefined;
 
 	if (process.env.NODE_ENV !== 'production') {
 	  (function () {
 	    var hasConsole = typeof console !== 'undefined';
-	    warn = function (msg, e) {
-	      if (hasConsole && (!config.silent || config.debug)) {
-	        console.warn('[Vue warn]: ' + msg);
-	        /* istanbul ignore if */
-	        if (config.debug) {
-	          if (e) {
-	            throw e;
-	          } else {
-	            console.warn(new Error('Warning Stack Trace').stack);
-	          }
-	        }
+
+	    warn = function (msg, vm) {
+	      if (hasConsole && !config.silent) {
+	        console.error('[Vue warn]: ' + msg + (vm ? formatComponentName(vm) : ''));
 	      }
+	    };
+
+	    formatComponentName = function (vm) {
+	      var name = vm._isVue ? vm.$options.name : vm.name;
+	      return name ? ' (found in component: <' + hyphenate(name) + '>)' : '';
 	    };
 	  })();
 	}
@@ -1131,6 +1148,13 @@
 	  transition[action](op, cb);
 	}
 
+	var transition = Object.freeze({
+	  appendWithTransition: appendWithTransition,
+	  beforeWithTransition: beforeWithTransition,
+	  removeWithTransition: removeWithTransition,
+	  applyTransition: applyTransition
+	});
+
 	/**
 	 * Query an element selector if it's not an element already.
 	 *
@@ -1196,6 +1220,18 @@
 	    val = getAttr(node, 'v-bind:' + name);
 	  }
 	  return val;
+	}
+
+	/**
+	 * Check the presence of a bind attribute.
+	 *
+	 * @param {Node} node
+	 * @param {String} name
+	 * @return {Boolean}
+	 */
+
+	function hasBindAttr(node, name) {
+	  return node.hasAttribute(name) || node.hasAttribute(':' + name) || node.hasAttribute('v-bind:' + name);
 	}
 
 	/**
@@ -1269,10 +1305,11 @@
 	 * @param {Element} el
 	 * @param {String} event
 	 * @param {Function} cb
+	 * @param {Boolean} [useCapture]
 	 */
 
-	function on$1(el, event, cb) {
-	  el.addEventListener(event, cb);
+	function on(el, event, cb, useCapture) {
+	  el.addEventListener(event, cb, useCapture);
 	}
 
 	/**
@@ -1288,19 +1325,54 @@
 	}
 
 	/**
+	 * For IE9 compat: when both class and :class are present
+	 * getAttribute('class') returns wrong value...
+	 *
+	 * @param {Element} el
+	 * @return {String}
+	 */
+
+	function getClass(el) {
+	  var classname = el.className;
+	  if (typeof classname === 'object') {
+	    classname = classname.baseVal || '';
+	  }
+	  return classname;
+	}
+
+	/**
+	 * In IE9, setAttribute('class') will result in empty class
+	 * if the element also has the :class attribute; However in
+	 * PhantomJS, setting `className` does not work on SVG elements...
+	 * So we have to do a conditional check here.
+	 *
+	 * @param {Element} el
+	 * @param {String} cls
+	 */
+
+	function setClass(el, cls) {
+	  /* istanbul ignore if */
+	  if (isIE9 && !/svg$/.test(el.namespaceURI)) {
+	    el.className = cls;
+	  } else {
+	    el.setAttribute('class', cls);
+	  }
+	}
+
+	/**
 	 * Add class with compatibility for IE & SVG
 	 *
 	 * @param {Element} el
-	 * @param {Strong} cls
+	 * @param {String} cls
 	 */
 
 	function addClass(el, cls) {
 	  if (el.classList) {
 	    el.classList.add(cls);
 	  } else {
-	    var cur = ' ' + (el.getAttribute('class') || '') + ' ';
+	    var cur = ' ' + getClass(el) + ' ';
 	    if (cur.indexOf(' ' + cls + ' ') < 0) {
-	      el.setAttribute('class', (cur + cls).trim());
+	      setClass(el, (cur + cls).trim());
 	    }
 	  }
 	}
@@ -1309,19 +1381,19 @@
 	 * Remove class with compatibility for IE & SVG
 	 *
 	 * @param {Element} el
-	 * @param {Strong} cls
+	 * @param {String} cls
 	 */
 
 	function removeClass(el, cls) {
 	  if (el.classList) {
 	    el.classList.remove(cls);
 	  } else {
-	    var cur = ' ' + (el.getAttribute('class') || '') + ' ';
+	    var cur = ' ' + getClass(el) + ' ';
 	    var tar = ' ' + cls + ' ';
 	    while (cur.indexOf(tar) >= 0) {
 	      cur = cur.replace(tar, ' ');
 	    }
-	    el.setAttribute('class', cur.trim());
+	    setClass(el, cur.trim());
 	  }
 	  if (!el.className) {
 	    el.removeAttribute('class');
@@ -1334,14 +1406,14 @@
 	 *
 	 * @param {Element} el
 	 * @param {Boolean} asFragment
-	 * @return {Element}
+	 * @return {Element|DocumentFragment}
 	 */
 
 	function extractContent(el, asFragment) {
 	  var child;
 	  var rawContent;
 	  /* istanbul ignore if */
-	  if (isTemplate(el) && el.content instanceof DocumentFragment) {
+	  if (isTemplate(el) && isFragment(el.content)) {
 	    el = el.content;
 	  }
 	  if (el.hasChildNodes()) {
@@ -1357,20 +1429,26 @@
 	}
 
 	/**
-	 * Trim possible empty head/tail textNodes inside a parent.
+	 * Trim possible empty head/tail text and comment
+	 * nodes inside a parent.
 	 *
 	 * @param {Node} node
 	 */
 
 	function trimNode(node) {
-	  trim(node, node.firstChild);
-	  trim(node, node.lastChild);
+	  var child;
+	  /* eslint-disable no-sequences */
+	  while ((child = node.firstChild, isTrimmable(child))) {
+	    node.removeChild(child);
+	  }
+	  while ((child = node.lastChild, isTrimmable(child))) {
+	    node.removeChild(child);
+	  }
+	  /* eslint-enable no-sequences */
 	}
 
-	function trim(parent, node) {
-	  if (node && node.nodeType === 3 && !node.data.trim()) {
-	    parent.removeChild(node);
-	  }
+	function isTrimmable(node) {
+	  return node && (node.nodeType === 3 && !node.data.trim() || node.nodeType === 8);
 	}
 
 	/**
@@ -1405,7 +1483,7 @@
 
 	function createAnchor(content, persist) {
 	  var anchor = config.debug ? document.createComment(content) : document.createTextNode(persist ? ' ' : '');
-	  anchor.__vue_anchor = true;
+	  anchor.__v_anchor = true;
 	  return anchor;
 	}
 
@@ -1480,7 +1558,53 @@
 	  }
 	}
 
-	var commonTagRE = /^(div|p|span|img|a|b|i|br|ul|ol|li|h1|h2|h3|h4|h5|h6|code|pre|table|th|td|tr|form|label|input|select|option|nav|article|section|header|footer)$/;
+	/**
+	 * Check if a node is a DocumentFragment.
+	 *
+	 * @param {Node} node
+	 * @return {Boolean}
+	 */
+
+	function isFragment(node) {
+	  return node && node.nodeType === 11;
+	}
+
+	/**
+	 * Get outerHTML of elements, taking care
+	 * of SVG elements in IE as well.
+	 *
+	 * @param {Element} el
+	 * @return {String}
+	 */
+
+	function getOuterHTML(el) {
+	  if (el.outerHTML) {
+	    return el.outerHTML;
+	  } else {
+	    var container = document.createElement('div');
+	    container.appendChild(el.cloneNode(true));
+	    return container.innerHTML;
+	  }
+	}
+
+	var commonTagRE = /^(div|p|span|img|a|b|i|br|ul|ol|li|h1|h2|h3|h4|h5|h6|code|pre|table|th|td|tr|form|label|input|select|option|nav|article|section|header|footer)$/i;
+	var reservedTagRE = /^(slot|partial|component)$/i;
+
+	var isUnknownElement = undefined;
+	if (process.env.NODE_ENV !== 'production') {
+	  isUnknownElement = function (el, tag) {
+	    if (tag.indexOf('-') > -1) {
+	      // http://stackoverflow.com/a/28210364/1070244
+	      return el.constructor === window.HTMLUnknownElement || el.constructor === window.HTMLElement;
+	    } else {
+	      return (/HTMLUnknownElement/.test(el.toString()) &&
+	        // Chrome returns unknown for several HTML5 elements.
+	        // https://code.google.com/p/chromium/issues/detail?id=540526
+	        !/^(data|time|rtc|rb)$/.test(tag)
+	      );
+	    }
+	  };
+	}
 
 	/**
 	 * Check if an element is a component, if yes return its
@@ -1494,7 +1618,7 @@
 	function checkComponentAttr(el, options) {
 	  var tag = el.tagName.toLowerCase();
 	  var hasAttrs = el.hasAttributes();
-	  if (!commonTagRE.test(tag) && tag !== 'component') {
+	  if (!commonTagRE.test(tag) && !reservedTagRE.test(tag)) {
 	    if (resolveAsset(options, 'components', tag)) {
 	      return { id: tag };
 	    } else {
@@ -1502,11 +1626,11 @@
 	      if (is) {
 	        return is;
 	      } else if (process.env.NODE_ENV !== 'production') {
-	        if (tag.indexOf('-') > -1 || /HTMLUnknownElement/.test(el.toString()) &&
-	        // Chrome returns unknown for several HTML5 elements.
-	        // https://code.google.com/p/chromium/issues/detail?id=540526
-	        !/^(data|time|rtc|rb)$/.test(tag)) {
-	          warn('Unknown custom element: <' + tag + '> - did you ' + 'register the component correctly?');
+	        var expectedTag = options._componentNameMap && options._componentNameMap[tag];
+	        if (expectedTag) {
+	          warn('Unknown custom element: <' + tag + '> - ' + 'did you mean <' + expectedTag + '>? ' + 'HTML is case-insensitive, remember to use kebab-case in templates.');
+	        } else if (isUnknownElement(el, tag)) {
+	          warn('Unknown custom element: <' + tag + '> - did you ' + 'register the component correctly? For recursive components, ' + 'make sure to provide the "name" option.');
 	        }
 	      }
 	    }
@@ -1533,81 +1657,6 @@
 	      return { id: exp, dynamic: true };
 	    }
 	  }
-	}
-
-	/**
-	 * Set a prop's initial value on a vm and its data object.
-	 *
-	 * @param {Vue} vm
-	 * @param {Object} prop
-	 * @param {*} value
-	 */
-
-	function initProp(vm, prop, value) {
-	  var key = prop.path;
-	  vm[key] = vm._data[key] = assertProp(prop, value) ? value : undefined;
-	}
-
-	/**
-	 * Assert whether a prop is valid.
-	 *
-	 * @param {Object} prop
-	 * @param {*} value
-	 */
-
-	function assertProp(prop, value) {
-	  // if a prop is not provided and is not required,
-	  // skip the check.
-	  if (prop.raw === null && !prop.required) {
-	    return true;
-	  }
-	  var options = prop.options;
-	  var type = options.type;
-	  var valid = true;
-	  var expectedType;
-	  if (type) {
-	    if (type === String) {
-	      expectedType = 'string';
-	      valid = typeof value === expectedType;
-	    } else if (type === Number) {
-	      expectedType = 'number';
-	      valid = typeof value === 'number';
-	    } else if (type === Boolean) {
-	      expectedType = 'boolean';
-	      valid = typeof value === 'boolean';
-	    } else if (type === Function) {
-	      expectedType = 'function';
-	      valid = typeof value === 'function';
-	    } else if (type === Object) {
-	      expectedType = 'object';
-	      valid = isPlainObject(value);
-	    } else if (type === Array) {
-	      expectedType = 'array';
-	      valid = isArray(value);
-	    } else {
-	      valid = value instanceof type;
-	    }
-	  }
-	  if (!valid) {
-	    process.env.NODE_ENV !== 'production' && warn('Invalid prop: type check failed for ' + prop.path + '="' + prop.raw + '".' + ' Expected ' + formatType(expectedType) + ', got ' + formatValue(value) + '.');
-	    return false;
-	  }
-	  var validator = options.validator;
-	  if (validator) {
-	    if (!validator.call(null, value)) {
-	      process.env.NODE_ENV !== 'production' && warn('Invalid prop: custom validator check failed for ' + prop.path + '="' + prop.raw + '"');
-	      return false;
-	    }
-	  }
-	  return true;
-	}
-
-	function formatType(val) {
-	  return val ? val.charAt(0).toUpperCase() + val.slice(1) : 'custom type';
-	}
-
-	function formatValue(val) {
-	  return Object.prototype.toString.call(val).slice(8, -1);
 	}
 
 	/**
@@ -1653,7 +1702,7 @@
 	      return parentVal;
 	    }
 	    if (typeof childVal !== 'function') {
-	      process.env.NODE_ENV !== 'production' && warn('The "data" option should be a function ' + 'that returns a per-instance value in component ' + 'definitions.');
+	      process.env.NODE_ENV !== 'production' && warn('The "data" option should be a function ' + 'that returns a per-instance value in component ' + 'definitions.', vm);
 	      return parentVal;
 	    }
 	    if (!parentVal) {
@@ -1687,7 +1736,7 @@
 
 	strats.el = function (parentVal, childVal, vm) {
 	  if (!vm && childVal && typeof childVal !== 'function') {
-	    process.env.NODE_ENV !== 'production' && warn('The "el" option should be a function ' + 'that returns a per-instance value in component ' + 'definitions.');
+	    process.env.NODE_ENV !== 'production' && warn('The "el" option should be a function ' + 'that returns a per-instance value in component ' + 'definitions.', vm);
 	    return;
 	  }
 	  var ret = childVal || parentVal;
@@ -1699,17 +1748,8 @@
 	 * Hooks and param attributes are merged as arrays.
 	 */
 
-	strats.init = strats.created = strats.ready = strats.attached = strats.detached = strats.beforeCompile = strats.compiled = strats.beforeDestroy = strats.destroyed = function (parentVal, childVal) {
+	strats.init = strats.created = strats.ready = strats.attached = strats.detached = strats.beforeCompile = strats.compiled = strats.beforeDestroy = strats.destroyed = strats.activate = function (parentVal, childVal) {
 	  return childVal ? parentVal ? parentVal.concat(childVal) : isArray(childVal) ? childVal : [childVal] : parentVal;
-	};
-
-	/**
-	 * 0.11 deprecation warning
-	 */
-
-	strats.paramAttributes = function () {
-	  /* istanbul ignore next */
-	  process.env.NODE_ENV !== 'production' && warn('"paramAttributes" option has been deprecated in 0.12. ' + 'Use "props" instead.');
 	};
 
 	/**
@@ -1783,13 +1823,21 @@
 	function guardComponents(options) {
 	  if (options.components) {
 	    var components = options.components = guardArrayAssets(options.components);
-	    var def;
 	    var ids = Object.keys(components);
+	    var def;
+	    if (process.env.NODE_ENV !== 'production') {
+	      var map = options._componentNameMap = {};
+	    }
 	    for (var i = 0, l = ids.length; i < l; i++) {
 	      var key = ids[i];
-	      if (commonTagRE.test(key)) {
-	        process.env.NODE_ENV !== 'production' && warn('Do not use built-in HTML elements as component ' + 'id: ' + key);
+	      if (commonTagRE.test(key) || reservedTagRE.test(key)) {
+	        process.env.NODE_ENV !== 'production' && warn('Do not use built-in or reserved HTML elements as component ' + 'id: ' + key);
 	        continue;
+	      }
+	      // record a all lowercase <-> kebab-case mapping for
+	      // possible custom element case error warning
+	      if (process.env.NODE_ENV !== 'production') {
+	        map[key.replace(/-/g, '').toLowerCase()] = hyphenate(key);
 	      }
 	      def = components[key];
 	      if (isPlainObject(def)) {
@@ -1902,28 +1950,85 @@
 	 * @param {Object} options
 	 * @param {String} type
 	 * @param {String} id
+	 * @param {Boolean} warnMissing
 	 * @return {Object|Function}
 	 */
 
-	function resolveAsset(options, type, id) {
+	function resolveAsset(options, type, id, warnMissing) {
+	  /* istanbul ignore if */
+	  if (typeof id !== 'string') {
+	    return;
+	  }
 	  var assets = options[type];
 	  var camelizedId;
-	  return assets[id] ||
+	  var res = assets[id] ||
 	  // camelCase ID
 	  assets[camelizedId = camelize(id)] ||
 	  // Pascal Case ID
 	  assets[camelizedId.charAt(0).toUpperCase() + camelizedId.slice(1)];
+	  if (process.env.NODE_ENV !== 'production' && warnMissing && !res) {
+	    warn('Failed to resolve ' + type.slice(0, -1) + ': ' + id, options);
+	  }
+	  return res;
 	}
+
+	var uid$1 = 0;
 
 	/**
-	 * Assert asset exists
+	 * A dep is an observable that can have multiple
+	 * directives subscribing to it.
+	 *
+	 * @constructor
+	 */
+	function Dep() {
+	  this.id = uid$1++;
+	  this.subs = [];
+	}
+
+	// the current target watcher being evaluated.
+	// this is globally unique because there could be only one
+	// watcher being evaluated at any time.
+	Dep.target = null;
+
+	/**
+	 * Add a directive subscriber.
+	 *
+	 * @param {Directive} sub
 	 */
 
-	function assertAsset(val, type, id) {
-	  if (!val) {
-	    process.env.NODE_ENV !== 'production' && warn('Failed to resolve ' + type + ': ' + id);
+	Dep.prototype.addSub = function (sub) {
+	  this.subs.push(sub);
+	};
+
+	/**
+	 * Remove a directive subscriber.
+	 *
+	 * @param {Directive} sub
+	 */
+
+	Dep.prototype.removeSub = function (sub) {
+	  this.subs.$remove(sub);
+	};
+
+	/**
+	 * Add self as a dependency to the target watcher.
+	 */
+
+	Dep.prototype.depend = function () {
+	  Dep.target.addDep(this);
+	};
+
+	/**
+	 * Notify all subscribers of a new value.
+	 */
+
+	Dep.prototype.notify = function () {
+	  // stablize the subscriber list first
+	  var subs = toArray(this.subs);
+	  for (var i = 0, l = subs.length; i < l; i++) {
+	    subs[i].update();
 	  }
-	}
+	};
 
 	var arrayProto = Array.prototype;
 	var arrayMethods = Object.create(arrayProto)
@@ -1975,16 +2080,15 @@
 
 	def(arrayProto, '$set', function $set(index, val) {
 	  if (index >= this.length) {
-	    this.length = index + 1;
+	    this.length = Number(index) + 1;
 	  }
 	  return this.splice(index, 1, val)[0];
 	});
 
 	/**
-	 * Convenience method to remove the element at given index.
+	 * Convenience method to remove the element at given index or target element reference.
 	 *
-	 * @param {Number} index
-	 * @param {*} val
+	 * @param {*} item
 	 */
 
 	def(arrayProto, '$remove', function $remove(item) {
@@ -1996,65 +2100,25 @@
 	  }
 	});
 
-	var uid$3 = 0;
-
-	/**
-	 * A dep is an observable that can have multiple
-	 * directives subscribing to it.
-	 *
-	 * @constructor
-	 */
-	function Dep() {
-	  this.id = uid$3++;
-	  this.subs = [];
-	}
-
-	// the current target watcher being evaluated.
-	// this is globally unique because there could be only one
-	// watcher being evaluated at any time.
-	Dep.target = null;
-
-	/**
-	 * Add a directive subscriber.
-	 *
-	 * @param {Directive} sub
-	 */
-
-	Dep.prototype.addSub = function (sub) {
-	  this.subs.push(sub);
-	};
-
-	/**
-	 * Remove a directive subscriber.
-	 *
-	 * @param {Directive} sub
-	 */
-
-	Dep.prototype.removeSub = function (sub) {
-	  this.subs.$remove(sub);
-	};
-
-	/**
-	 * Add self as a dependency to the target watcher.
-	 */
-
-	Dep.prototype.depend = function () {
-	  Dep.target.addDep(this);
-	};
-
-	/**
-	 * Notify all subscribers of a new value.
-	 */
-
-	Dep.prototype.notify = function () {
-	  // stablize the subscriber list first
-	  var subs = toArray(this.subs);
-	  for (var i = 0, l = subs.length; i < l; i++) {
-	    subs[i].update();
-	  }
-	};
-
 	var arrayKeys = Object.getOwnPropertyNames(arrayMethods);
+
+	/**
+	 * By default, when a reactive property is set, the new value is
+	 * also converted to become reactive. However in certain cases, e.g.
+	 * v-for scope alias and props, we don't want to force conversion
+	 * because the value may be a nested value under a frozen data structure.
+	 *
+	 * So whenever we want to set a reactive property without forcing
+	 * conversion on the new value, we wrap that call inside this function.
+	 */
+
+	var shouldConvert = true;
+
+	function withoutConversion(fn) {
+	  shouldConvert = false;
+	  fn();
+	  shouldConvert = true;
+	}
 
 	/**
 	 * Observer class that are attached to each observed
@@ -2091,8 +2155,7 @@
 
 	Observer.prototype.walk = function (obj) {
 	  var keys = Object.keys(obj);
-	  var i = keys.length;
-	  while (i--) {
+	  for (var i = 0, l = keys.length; i < l; i++) {
 	    this.convert(keys[i], obj[keys[i]]);
 	  }
 	};
@@ -2104,8 +2167,7 @@
 	 */
 
 	Observer.prototype.observeArray = function (items) {
-	  var i = items.length;
-	  while (i--) {
+	  for (var i = 0, l = items.length; i < l; i++) {
 	    observe(items[i]);
 	  }
 	};
@@ -2153,11 +2215,13 @@
 	 * the prototype chain using __proto__
 	 *
 	 * @param {Object|Array} target
-	 * @param {Object} proto
+	 * @param {Object} src
 	 */
 
 	function protoAugment(target, src) {
+	  /* eslint-disable no-proto */
 	  target.__proto__ = src;
+	  /* eslint-enable no-proto */
 	}
 
 	/**
@@ -2169,10 +2233,8 @@
 	 */
 
 	function copyAugment(target, src, keys) {
-	  var i = keys.length;
-	  var key;
-	  while (i--) {
-	    key = keys[i];
+	  for (var i = 0, l = keys.length; i < l; i++) {
+	    var key = keys[i];
 	    def(target, key, src[key]);
 	  }
 	}
@@ -2195,7 +2257,7 @@
 	  var ob;
 	  if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
 	    ob = value.__ob__;
-	  } else if ((isArray(value) || isPlainObject(value)) && !Object.isFrozen(value) && !value._isVue) {
+	  } else if (shouldConvert && (isArray(value) || isPlainObject(value)) && Object.isExtensible(value) && !value._isVue) {
 	    ob = new Observer(value);
 	  }
 	  if (ob && vm) {
@@ -2215,16 +2277,14 @@
 	function defineReactive(obj, key, val) {
 	  var dep = new Dep();
 
-	  // cater for pre-defined getter/setters
-	  var getter, setter;
-	  if (config.convertAllProperties) {
-	    var property = Object.getOwnPropertyDescriptor(obj, key);
-	    if (property && property.configurable === false) {
-	      return;
-	    }
-	    getter = property && property.get;
-	    setter = property && property.set;
+	  var property = Object.getOwnPropertyDescriptor(obj, key);
+	  if (property && property.configurable === false) {
+	    return;
 	  }
+
+	  // cater for pre-defined getter/setters
+	  var getter = property && property.get;
+	  var setter = property && property.set;
 
 	  var childOb = observe(val);
 	  Object.defineProperty(obj, key, {
@@ -2262,6 +2322,8 @@
 	  });
 	}
 
+
+
 	var util = Object.freeze({
 		defineReactive: defineReactive,
 		set: set,
@@ -2276,7 +2338,7 @@
 		camelize: camelize,
 		hyphenate: hyphenate,
 		classify: classify,
-		bind: bind$1,
+		bind: bind,
 		toArray: toArray,
 		extend: extend,
 		isObject: isObject,
@@ -2289,6 +2351,7 @@
 		isArray: isArray,
 		hasProto: hasProto,
 		inBrowser: inBrowser,
+		devtools: devtools,
 		isIE9: isIE9,
 		isAndroid: isAndroid,
 		get transitionProp () { return transitionProp; },
@@ -2300,13 +2363,15 @@
 		inDoc: inDoc,
 		getAttr: getAttr,
 		getBindAttr: getBindAttr,
+		hasBindAttr: hasBindAttr,
 		before: before,
 		after: after,
 		remove: remove,
 		prepend: prepend,
 		replace: replace,
-		on: on$1,
+		on: on,
 		off: off,
+		setClass: setClass,
 		addClass: addClass,
 		removeClass: removeClass,
 		extractContent: extractContent,
@@ -2316,20 +2381,19 @@
 		findRef: findRef,
 		mapNodeRange: mapNodeRange,
 		removeNodeRange: removeNodeRange,
+		isFragment: isFragment,
+		getOuterHTML: getOuterHTML,
 		mergeOptions: mergeOptions,
 		resolveAsset: resolveAsset,
-		assertAsset: assertAsset,
 		checkComponentAttr: checkComponentAttr,
-		initProp: initProp,
-		assertProp: assertProp,
 		commonTagRE: commonTagRE,
+		reservedTagRE: reservedTagRE,
 		get warn () { return warn; }
 	});
 
 	var uid = 0;
 
 	function initMixin (Vue) {
-
 	  /**
 	   * The main init sequence. This is called for every
 	   * instance, including ones that are created from extended
@@ -2342,7 +2406,6 @@
 	   */
 
 	  Vue.prototype._init = function (options) {
-
 	    options = options || {};
 
 	    this.$el = null;
@@ -2371,7 +2434,7 @@
 	    this._fragmentEnd = null; // @type {Text|Comment}
 
 	    // lifecycle state
-	    this._isCompiled = this._isDestroyed = this._isReady = this._isAttached = this._isBeingDestroyed = false;
+	    this._isCompiled = this._isDestroyed = this._isReady = this._isAttached = this._isBeingDestroyed = this._vForRemoving = false;
 	    this._unlinkFn = null;
 
 	    // context:
@@ -2410,6 +2473,11 @@
 	    // initialize data as empty object.
 	    // it will be filled up in _initScope().
 	    this._data = {};
+
+	    // save raw constructor data before merge
+	    // so that we know which properties are provided at
+	    // instantiation.
+	    this._runtimeData = options.data;
 
 	    // call init hook
 	    this._callHook('init');
@@ -2703,8 +2771,8 @@
 
 	var warnNonExistent;
 	if (process.env.NODE_ENV !== 'production') {
-	  warnNonExistent = function (path) {
-	    warn('You are setting a non-existent path "' + path.raw + '" ' + 'on a vm instance. Consider pre-initializing the property ' + 'with the "data" option for more reliable reactivity ' + 'and better performance.');
+	  warnNonExistent = function (path, vm) {
+	    warn('You are setting a non-existent path "' + path.raw + '" ' + 'on a vm instance. Consider pre-initializing the property ' + 'with the "data" option for more reliable reactivity ' + 'and better performance.', vm);
 	  };
 	}
 
@@ -2736,7 +2804,7 @@
 	      if (!isObject(obj)) {
 	        obj = {};
 	        if (process.env.NODE_ENV !== 'production' && last._isVue) {
-	          warnNonExistent(path);
+	          warnNonExistent(path, last);
 	        }
 	        set(last, key, obj);
 	      }
@@ -2747,7 +2815,7 @@
 	        obj[key] = val;
 	      } else {
 	        if (process.env.NODE_ENV !== 'production' && obj._isVue) {
-	          warnNonExistent(path);
+	          warnNonExistent(path, obj);
 	        }
 	        set(obj, key, val);
 	      }
@@ -2768,16 +2836,16 @@
 	var allowedKeywordsRE = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)');
 
 	// keywords that don't make sense inside expressions
-	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'proctected,static,interface,private,public';
+	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'protected,static,interface,private,public';
 	var improperKeywordsRE = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)');
 
 	var wsRE = /\s/g;
 	var newlineRE = /\n/g;
-	var saveRE = /[\{,]\s*[\w\$_]+\s*:|('[^']*'|"[^"]*")|new |typeof |void /g;
+	var saveRE = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
 	var restoreRE = /"(\d+)"/g;
-	var pathTestRE = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
-	var pathReplaceRE = /[^\w$\.]([A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\])*)/g;
-	var booleanLiteralRE = /^(true|false)$/;
+	var pathTestRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
+	var identRE = /[^\w$\.](?:[A-Za-z_$][\w$]*)/g;
+	var booleanLiteralRE = /^(?:true|false)$/;
 
 	/**
 	 * Save / Rewrite / Restore
@@ -2860,7 +2928,7 @@
 	  var body = exp.replace(saveRE, save).replace(wsRE, '');
 	  // rewrite all paths
 	  // pad 1 space here becaue the regex matches 1 extra char
-	  body = (' ' + body).replace(pathReplaceRE, rewrite).replace(restoreRE, restore);
+	  body = (' ' + body).replace(identRE, rewrite).replace(restoreRE, restore);
 	  return makeGetterFn(body);
 	}
 
@@ -2876,7 +2944,9 @@
 
 	function makeGetterFn(body) {
 	  try {
+	    /* eslint-disable no-new-func */
 	    return new Function('scope', 'return ' + body + ';');
+	    /* eslint-enable no-new-func */
 	  } catch (e) {
 	    process.env.NODE_ENV !== 'production' && warn('Invalid expression. ' + 'Generated function body: ' + body);
 	  }
@@ -2957,6 +3027,8 @@
 	// before user watchers so that when user watchers are
 	// triggered, the DOM would have already been in updated
 	// state.
+
+	var queueIndex;
 	var queue = [];
 	var userQueue = [];
 	var has = {};
@@ -2986,10 +3058,8 @@
 	  runBatcherQueue(userQueue);
 	  // dev tool hook
 	  /* istanbul ignore if */
-	  if (process.env.NODE_ENV !== 'production') {
-	    if (inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
-	      window.__VUE_DEVTOOLS_GLOBAL_HOOK__.emit('flush');
-	    }
+	  if (devtools && config.devtools) {
+	    devtools.emit('flush');
 	  }
 	  resetBatcherState();
 	}
@@ -3003,8 +3073,8 @@
 	function runBatcherQueue(queue) {
 	  // do not cache length because more watchers might be pushed
 	  // as we run existing watchers
-	  for (var i = 0; i < queue.length; i++) {
-	    var watcher = queue[i];
+	  for (queueIndex = 0; queueIndex < queue.length; queueIndex++) {
+	    var watcher = queue[queueIndex];
 	    var id = watcher.id;
 	    has[id] = null;
 	    watcher.run();
@@ -3012,8 +3082,8 @@
 	    if (process.env.NODE_ENV !== 'production' && has[id] != null) {
 	      circular[id] = (circular[id] || 0) + 1;
 	      if (circular[id] > config._maxUpdateCount) {
-	        queue.splice(has[id], 1);
-	        warn('You may have an infinite update loop for watcher ' + 'with expression: ' + watcher.expression);
+	        warn('You may have an infinite update loop for watcher ' + 'with expression "' + watcher.expression + '"', watcher.vm);
+	        break;
 	      }
 	    }
 	  }
@@ -3033,20 +3103,20 @@
 	function pushWatcher(watcher) {
 	  var id = watcher.id;
 	  if (has[id] == null) {
-	    // if an internal watcher is pushed, but the internal
-	    // queue is already depleted, we run it immediately.
 	    if (internalQueueDepleted && !watcher.user) {
-	      watcher.run();
-	      return;
-	    }
-	    // push watcher into appropriate queue
-	    var q = watcher.user ? userQueue : queue;
-	    has[id] = q.length;
-	    q.push(watcher);
-	    // queue the flush
-	    if (!waiting) {
-	      waiting = true;
-	      nextTick(flushBatcherQueue);
+	      // an internal watcher triggered by a user watcher...
+	      // let's run it immediately after current user watcher is done.
+	      userQueue.splice(queueIndex + 1, 0, watcher);
+	    } else {
+	      // push watcher into appropriate queue
+	      var q = watcher.user ? userQueue : queue;
+	      has[id] = q.length;
+	      q.push(watcher);
+	      // queue the flush
+	      if (!waiting) {
+	        waiting = true;
+	        nextTick(flushBatcherQueue);
+	      }
 	    }
 	  }
 	}
@@ -3059,7 +3129,7 @@
 	 * This is used for both the $watch() api and directives.
 	 *
 	 * @param {Vue} vm
-	 * @param {String} expression
+	 * @param {String|Function} expOrFn
 	 * @param {Function} cb
 	 * @param {Object} options
 	 *                 - {Array} filters
@@ -3080,13 +3150,15 @@
 	  var isFn = typeof expOrFn === 'function';
 	  this.vm = vm;
 	  vm._watchers.push(this);
-	  this.expression = isFn ? expOrFn.toString() : expOrFn;
+	  this.expression = expOrFn;
 	  this.cb = cb;
 	  this.id = ++uid$2; // uid for batching
 	  this.active = true;
 	  this.dirty = this.lazy; // for lazy watchers
-	  this.deps = Object.create(null);
-	  this.newDeps = null;
+	  this.deps = [];
+	  this.newDeps = [];
+	  this.depIds = Object.create(null);
+	  this.newDepIds = null;
 	  this.prevError = null; // for async error stacks
 	  // parse expression for getter/setter
 	  if (isFn) {
@@ -3104,23 +3176,6 @@
 	}
 
 	/**
-	 * Add a dependency to this directive.
-	 *
-	 * @param {Dep} dep
-	 */
-
-	Watcher.prototype.addDep = function (dep) {
-	  var id = dep.id;
-	  if (!this.newDeps[id]) {
-	    this.newDeps[id] = dep;
-	    if (!this.deps[id]) {
-	      this.deps[id] = dep;
-	      dep.addSub(this);
-	    }
-	  }
-	};
-
-	/**
 	 * Evaluate the getter, and re-collect dependencies.
 	 */
 
@@ -3132,7 +3187,7 @@
 	    value = this.getter.call(scope, scope);
 	  } catch (e) {
 	    if (process.env.NODE_ENV !== 'production' && config.warnExpressionErrors) {
-	      warn('Error when evaluating expression "' + this.expression + '". ' + (config.debug ? '' : 'Turn on debug mode to see stack trace.'), e);
+	      warn('Error when evaluating expression ' + '"' + this.expression + '": ' + e.toString(), this.vm);
 	    }
 	  }
 	  // "touch" every property so they are all tracked as
@@ -3168,14 +3223,14 @@
 	    this.setter.call(scope, scope, value);
 	  } catch (e) {
 	    if (process.env.NODE_ENV !== 'production' && config.warnExpressionErrors) {
-	      warn('Error when evaluating setter "' + this.expression + '"', e);
+	      warn('Error when evaluating setter ' + '"' + this.expression + '": ' + e.toString(), this.vm);
 	    }
 	  }
 	  // two-way sync for v-for alias
 	  var forContext = scope.$forContext;
 	  if (forContext && forContext.alias === this.expression) {
 	    if (forContext.filters) {
-	      process.env.NODE_ENV !== 'production' && warn('It seems you are using two-way binding on ' + 'a v-for alias (' + this.expression + '), and the ' + 'v-for has filters. This will not work properly. ' + 'Either remove the filters or use an array of ' + 'objects and bind to object properties instead.');
+	      process.env.NODE_ENV !== 'production' && warn('It seems you are using two-way binding on ' + 'a v-for alias (' + this.expression + '), and the ' + 'v-for has filters. This will not work properly. ' + 'Either remove the filters or use an array of ' + 'objects and bind to object properties instead.', this.vm);
 	      return;
 	    }
 	    forContext._withLock(function () {
@@ -3195,7 +3250,25 @@
 
 	Watcher.prototype.beforeGet = function () {
 	  Dep.target = this;
-	  this.newDeps = Object.create(null);
+	  this.newDepIds = Object.create(null);
+	  this.newDeps.length = 0;
+	};
+
+	/**
+	 * Add a dependency to this directive.
+	 *
+	 * @param {Dep} dep
+	 */
+
+	Watcher.prototype.addDep = function (dep) {
+	  var id = dep.id;
+	  if (!this.newDepIds[id]) {
+	    this.newDepIds[id] = true;
+	    this.newDeps.push(dep);
+	    if (!this.depIds[id]) {
+	      dep.addSub(this);
+	    }
+	  }
 	};
 
 	/**
@@ -3204,15 +3277,17 @@
 
 	Watcher.prototype.afterGet = function () {
 	  Dep.target = null;
-	  var ids = Object.keys(this.deps);
-	  var i = ids.length;
+	  var i = this.deps.length;
 	  while (i--) {
-	    var id = ids[i];
-	    if (!this.newDeps[id]) {
-	      this.deps[id].removeSub(this);
+	    var dep = this.deps[i];
+	    if (!this.newDepIds[dep.id]) {
+	      dep.removeSub(this);
 	    }
 	  }
+	  this.depIds = this.newDepIds;
+	  var tmp = this.deps;
 	  this.deps = this.newDeps;
+	  this.newDeps = tmp;
 	};
 
 	/**
@@ -3250,11 +3325,11 @@
 	  if (this.active) {
 	    var value = this.get();
 	    if (value !== this.value ||
-	    // Deep watchers and Array watchers should fire even
+	    // Deep watchers and watchers on Object/Arrays should fire even
 	    // when the value is the same, because the value may
 	    // have mutated; but only do so if this is a
 	    // non-shallow update (caused by a vm digest).
-	    (isArray(value) || this.deep) && !this.shallow) {
+	    (isObject(value) || this.deep) && !this.shallow) {
 	      // set new value
 	      var oldValue = this.value;
 	      this.value = value;
@@ -3300,10 +3375,9 @@
 	 */
 
 	Watcher.prototype.depend = function () {
-	  var depIds = Object.keys(this.deps);
-	  var i = depIds.length;
+	  var i = this.deps.length;
 	  while (i--) {
-	    this.deps[depIds[i]].depend();
+	    this.deps[i].depend();
 	  }
 	};
 
@@ -3314,15 +3388,15 @@
 	Watcher.prototype.teardown = function () {
 	  if (this.active) {
 	    // remove self from vm's watcher list
-	    // we can skip this if the vm if being destroyed
-	    // which can improve teardown performance.
-	    if (!this.vm._isBeingDestroyed) {
+	    // this is a somewhat expensive operation so we skip it
+	    // if the vm is being destroyed or is performing a v-for
+	    // re-render (the watcher list is then filtered by v-for).
+	    if (!this.vm._isBeingDestroyed && !this.vm._vForRemoving) {
 	      this.vm._watchers.$remove(this);
 	    }
-	    var depIds = Object.keys(this.deps);
-	    var i = depIds.length;
+	    var i = this.deps.length;
 	    while (i--) {
-	      this.deps[depIds[i]].removeSub(this);
+	      this.deps[i].removeSub(this);
 	    }
 	    this.active = false;
 	    this.vm = this.cb = this.value = null;
@@ -3349,427 +3423,1399 @@
 	  }
 	}
 
-	var cloak = {
-	  bind: function bind() {
-	    var el = this.el;
-	    this.vm.$once('hook:compiled', function () {
-	      el.removeAttribute('v-cloak');
-	    });
-	  }
-	};
-
-	var ref = {
-	  bind: function bind() {
-	    process.env.NODE_ENV !== 'production' && warn('v-ref:' + this.arg + ' must be used on a child ' + 'component. Found on <' + this.el.tagName.toLowerCase() + '>.');
-	  }
-	};
-
-	var el = {
-
-	  priority: 1500,
+	var text$1 = {
 
 	  bind: function bind() {
-	    /* istanbul ignore if */
-	    if (!this.arg) {
-	      return;
-	    }
-	    var id = this.id = camelize(this.arg);
-	    var refs = (this._scope || this.vm).$els;
-	    if (hasOwn(refs, id)) {
-	      refs[id] = this.el;
-	    } else {
-	      defineReactive(refs, id, this.el);
-	    }
+	    this.attr = this.el.nodeType === 3 ? 'data' : 'textContent';
 	  },
-
-	  unbind: function unbind() {
-	    var refs = (this._scope || this.vm).$els;
-	    if (refs[this.id] === this.el) {
-	      refs[this.id] = null;
-	    }
-	  }
-	};
-
-	var prefixes = ['-webkit-', '-moz-', '-ms-'];
-	var camelPrefixes = ['Webkit', 'Moz', 'ms'];
-	var importantRE = /!important;?$/;
-	var propCache = Object.create(null);
-
-	var testEl = null;
-
-	var style = {
-
-	  deep: true,
 
 	  update: function update(value) {
-	    if (typeof value === 'string') {
-	      this.el.style.cssText = value;
-	    } else if (isArray(value)) {
-	      this.handleObject(value.reduce(extend, {}));
-	    } else {
-	      this.handleObject(value || {});
-	    }
-	  },
-
-	  handleObject: function handleObject(value) {
-	    // cache object styles so that only changed props
-	    // are actually updated.
-	    var cache = this.cache || (this.cache = {});
-	    var name, val;
-	    for (name in cache) {
-	      if (!(name in value)) {
-	        this.handleSingle(name, null);
-	        delete cache[name];
-	      }
-	    }
-	    for (name in value) {
-	      val = value[name];
-	      if (val !== cache[name]) {
-	        cache[name] = val;
-	        this.handleSingle(name, val);
-	      }
-	    }
-	  },
-
-	  handleSingle: function handleSingle(prop, value) {
-	    prop = normalize(prop);
-	    if (!prop) return; // unsupported prop
-	    // cast possible numbers/booleans into strings
-	    if (value != null) value += '';
-	    if (value) {
-	      var isImportant = importantRE.test(value) ? 'important' : '';
-	      if (isImportant) {
-	        value = value.replace(importantRE, '').trim();
-	      }
-	      this.el.style.setProperty(prop, value, isImportant);
-	    } else {
-	      this.el.style.removeProperty(prop);
-	    }
+	    this.el[this.attr] = _toString(value);
 	  }
-
 	};
 
+	var templateCache = new Cache(1000);
+	var idSelectorCache = new Cache(1000);
+
+	var map = {
+	  efault: [0, '', ''],
+	  legend: [1, '<fieldset>', '</fieldset>'],
+	  tr: [2, '<table><tbody>', '</tbody></table>'],
+	  col: [2, '<table><tbody></tbody><colgroup>', '</colgroup></table>']
+	};
+
+	map.td = map.th = [3, '<table><tbody><tr>', '</tr></tbody></table>'];
+
+	map.option = map.optgroup = [1, '<select multiple="multiple">', '</select>'];
+
+	map.thead = map.tbody = map.colgroup = map.caption = map.tfoot = [1, '<table>', '</table>'];
+
+	map.g = map.defs = map.symbol = map.use = map.image = map.text = map.circle = map.ellipse = map.line = map.path = map.polygon = map.polyline = map.rect = [1, '<svg ' + 'xmlns="http://www.w3.org/2000/svg" ' + 'xmlns:xlink="http://www.w3.org/1999/xlink" ' + 'xmlns:ev="http://www.w3.org/2001/xml-events"' + 'version="1.1">', '</svg>'];
+
 	/**
-	 * Normalize a CSS property name.
-	 * - cache result
-	 * - auto prefix
-	 * - camelCase -> dash-case
+	 * Check if a node is a supported template node with a
+	 * DocumentFragment content.
 	 *
-	 * @param {String} prop
-	 * @return {String}
+	 * @param {Node} node
+	 * @return {Boolean}
 	 */
 
-	function normalize(prop) {
-	  if (propCache[prop]) {
-	    return propCache[prop];
+	function isRealTemplate(node) {
+	  return isTemplate(node) && isFragment(node.content);
+	}
+
+	var tagRE$1 = /<([\w:-]+)/;
+	var entityRE = /&#?\w+?;/;
+
+	/**
+	 * Convert a string template to a DocumentFragment.
+	 * Determines correct wrapping by tag types. Wrapping
+	 * strategy found in jQuery & component/domify.
+	 *
+	 * @param {String} templateString
+	 * @param {Boolean} raw
+	 * @return {DocumentFragment}
+	 */
+
+	function stringToFragment(templateString, raw) {
+	  // try a cache hit first
+	  var cacheKey = raw ? templateString : templateString.trim();
+	  var hit = templateCache.get(cacheKey);
+	  if (hit) {
+	    return hit;
 	  }
-	  var res = prefix(prop);
-	  propCache[prop] = propCache[res] = res;
+
+	  var frag = document.createDocumentFragment();
+	  var tagMatch = templateString.match(tagRE$1);
+	  var entityMatch = entityRE.test(templateString);
+
+	  if (!tagMatch && !entityMatch) {
+	    // text only, return a single text node.
+	    frag.appendChild(document.createTextNode(templateString));
+	  } else {
+	    var tag = tagMatch && tagMatch[1];
+	    var wrap = map[tag] || map.efault;
+	    var depth = wrap[0];
+	    var prefix = wrap[1];
+	    var suffix = wrap[2];
+	    var node = document.createElement('div');
+
+	    node.innerHTML = prefix + templateString + suffix;
+	    while (depth--) {
+	      node = node.lastChild;
+	    }
+
+	    var child;
+	    /* eslint-disable no-cond-assign */
+	    while (child = node.firstChild) {
+	      /* eslint-enable no-cond-assign */
+	      frag.appendChild(child);
+	    }
+	  }
+	  if (!raw) {
+	    trimNode(frag);
+	  }
+	  templateCache.put(cacheKey, frag);
+	  return frag;
+	}
+
+	/**
+	 * Convert a template node to a DocumentFragment.
+	 *
+	 * @param {Node} node
+	 * @return {DocumentFragment}
+	 */
+
+	function nodeToFragment(node) {
+	  // if its a template tag and the browser supports it,
+	  // its content is already a document fragment.
+	  if (isRealTemplate(node)) {
+	    trimNode(node.content);
+	    return node.content;
+	  }
+	  // script template
+	  if (node.tagName === 'SCRIPT') {
+	    return stringToFragment(node.textContent);
+	  }
+	  // normal node, clone it to avoid mutating the original
+	  var clonedNode = cloneNode(node);
+	  var frag = document.createDocumentFragment();
+	  var child;
+	  /* eslint-disable no-cond-assign */
+	  while (child = clonedNode.firstChild) {
+	    /* eslint-enable no-cond-assign */
+	    frag.appendChild(child);
+	  }
+	  trimNode(frag);
+	  return frag;
+	}
+
+	// Test for the presence of the Safari template cloning bug
+	// https://bugs.webkit.org/showug.cgi?id=137755
+	var hasBrokenTemplate = (function () {
+	  /* istanbul ignore else */
+	  if (inBrowser) {
+	    var a = document.createElement('div');
+	    a.innerHTML = '<template>1</template>';
+	    return !a.cloneNode(true).firstChild.innerHTML;
+	  } else {
+	    return false;
+	  }
+	})();
+
+	// Test for IE10/11 textarea placeholder clone bug
+	var hasTextareaCloneBug = (function () {
+	  /* istanbul ignore else */
+	  if (inBrowser) {
+	    var t = document.createElement('textarea');
+	    t.placeholder = 't';
+	    return t.cloneNode(true).value === 't';
+	  } else {
+	    return false;
+	  }
+	})();
+
+	/**
+	 * 1. Deal with Safari cloning nested <template> bug by
+	 *    manually cloning all template instances.
+	 * 2. Deal with IE10/11 textarea placeholder bug by setting
+	 *    the correct value after cloning.
+	 *
+	 * @param {Element|DocumentFragment} node
+	 * @return {Element|DocumentFragment}
+	 */
+
+	function cloneNode(node) {
+	  /* istanbul ignore if */
+	  if (!node.querySelectorAll) {
+	    return node.cloneNode();
+	  }
+	  var res = node.cloneNode(true);
+	  var i, original, cloned;
+	  /* istanbul ignore if */
+	  if (hasBrokenTemplate) {
+	    var tempClone = res;
+	    if (isRealTemplate(node)) {
+	      node = node.content;
+	      tempClone = res.content;
+	    }
+	    original = node.querySelectorAll('template');
+	    if (original.length) {
+	      cloned = tempClone.querySelectorAll('template');
+	      i = cloned.length;
+	      while (i--) {
+	        cloned[i].parentNode.replaceChild(cloneNode(original[i]), cloned[i]);
+	      }
+	    }
+	  }
+	  /* istanbul ignore if */
+	  if (hasTextareaCloneBug) {
+	    if (node.tagName === 'TEXTAREA') {
+	      res.value = node.value;
+	    } else {
+	      original = node.querySelectorAll('textarea');
+	      if (original.length) {
+	        cloned = res.querySelectorAll('textarea');
+	        i = cloned.length;
+	        while (i--) {
+	          cloned[i].value = original[i].value;
+	        }
+	      }
+	    }
+	  }
 	  return res;
 	}
 
 	/**
-	 * Auto detect the appropriate prefix for a CSS property.
-	 * https://gist.github.com/paulirish/523692
+	 * Process the template option and normalizes it into a
+	 * a DocumentFragment that can be used as a partial or a
+	 * instance template.
 	 *
-	 * @param {String} prop
-	 * @return {String}
+	 * @param {*} template
+	 *        Possible values include:
+	 *        - DocumentFragment object
+	 *        - Node object of type Template
+	 *        - id selector: '#some-template-id'
+	 *        - template string: '<div><span>{{msg}}</span></div>'
+	 * @param {Boolean} shouldClone
+	 * @param {Boolean} raw
+	 *        inline HTML interpolation. Do not check for id
+	 *        selector and keep whitespace in the string.
+	 * @return {DocumentFragment|undefined}
 	 */
 
-	function prefix(prop) {
-	  prop = hyphenate(prop);
-	  var camel = camelize(prop);
-	  var upper = camel.charAt(0).toUpperCase() + camel.slice(1);
-	  if (!testEl) {
-	    testEl = document.createElement('div');
+	function parseTemplate(template, shouldClone, raw) {
+	  var node, frag;
+
+	  // if the template is already a document fragment,
+	  // do nothing
+	  if (isFragment(template)) {
+	    trimNode(template);
+	    return shouldClone ? cloneNode(template) : template;
 	  }
-	  if (camel in testEl.style) {
-	    return prop;
-	  }
-	  var i = prefixes.length;
-	  var prefixed;
-	  while (i--) {
-	    prefixed = camelPrefixes[i] + upper;
-	    if (prefixed in testEl.style) {
-	      return prefixes[i] + prop;
+
+	  if (typeof template === 'string') {
+	    // id selector
+	    if (!raw && template.charAt(0) === '#') {
+	      // id selector can be cached too
+	      frag = idSelectorCache.get(template);
+	      if (!frag) {
+	        node = document.getElementById(template.slice(1));
+	        if (node) {
+	          frag = nodeToFragment(node);
+	          // save selector to cache
+	          idSelectorCache.put(template, frag);
+	        }
+	      }
+	    } else {
+	      // normal string template
+	      frag = stringToFragment(template, raw);
 	    }
+	  } else if (template.nodeType) {
+	    // a direct node
+	    frag = nodeToFragment(template);
 	  }
+
+	  return frag && shouldClone ? cloneNode(frag) : frag;
 	}
 
-	// xlink
-	var xlinkNS = 'http://www.w3.org/1999/xlink';
-	var xlinkRE = /^xlink:/;
+	var template = Object.freeze({
+	  cloneNode: cloneNode,
+	  parseTemplate: parseTemplate
+	});
 
-	// these input element attributes should also set their
-	// corresponding properties
-	var inputProps = {
-	  value: 1,
-	  checked: 1,
-	  selected: 1
-	};
-
-	// these attributes should set a hidden property for
-	// binding v-model to object values
-	var modelProps = {
-	  value: '_value',
-	  'true-value': '_trueValue',
-	  'false-value': '_falseValue'
-	};
-
-	// check for attributes that prohibit interpolations
-	var disallowedInterpAttrRE = /^v-|^:|^@|^(is|transition|transition-mode|debounce|track-by|stagger|enter-stagger|leave-stagger)$/;
-
-	var bind = {
-
-	  priority: 850,
+	var html = {
 
 	  bind: function bind() {
-	    var attr = this.arg;
-	    var tag = this.el.tagName;
-	    // should be deep watch on object mode
-	    if (!attr) {
-	      this.deep = true;
-	    }
-	    // handle interpolation bindings
-	    if (this.descriptor.interp) {
-	      // only allow binding on native attributes
-	      if (disallowedInterpAttrRE.test(attr) || attr === 'name' && (tag === 'PARTIAL' || tag === 'SLOT')) {
-	        process.env.NODE_ENV !== 'production' && warn(attr + '="' + this.descriptor.raw + '": ' + 'attribute interpolation is not allowed in Vue.js ' + 'directives and special attributes.');
-	        this.el.removeAttribute(attr);
-	        this.invalid = true;
-	      }
-
-	      /* istanbul ignore if */
-	      if (process.env.NODE_ENV !== 'production') {
-	        var raw = attr + '="' + this.descriptor.raw + '": ';
-	        // warn src
-	        if (attr === 'src') {
-	          warn(raw + 'interpolation in "src" attribute will cause ' + 'a 404 request. Use v-bind:src instead.');
-	        }
-
-	        // warn style
-	        if (attr === 'style') {
-	          warn(raw + 'interpolation in "style" attribute will cause ' + 'the attribute to be discarded in Internet Explorer. ' + 'Use v-bind:style instead.');
-	        }
-	      }
+	    // a comment node means this is a binding for
+	    // {{{ inline unescaped html }}}
+	    if (this.el.nodeType === 8) {
+	      // hold nodes
+	      this.nodes = [];
+	      // replace the placeholder with proper anchor
+	      this.anchor = createAnchor('v-html');
+	      replace(this.el, this.anchor);
 	    }
 	  },
 
 	  update: function update(value) {
-	    if (this.invalid) {
-	      return;
-	    }
-	    var attr = this.arg;
-	    if (this.arg) {
-	      this.handleSingle(attr, value);
+	    value = _toString(value);
+	    if (this.nodes) {
+	      this.swap(value);
 	    } else {
-	      this.handleObject(value || {});
+	      this.el.innerHTML = value;
 	    }
 	  },
 
-	  // share object handler with v-bind:class
-	  handleObject: style.handleObject,
-
-	  handleSingle: function handleSingle(attr, value) {
-	    if (inputProps[attr] && attr in this.el) {
-	      this.el[attr] = attr === 'value' ? value || '' : // IE9 will set input.value to "null" for null...
-	      value;
+	  swap: function swap(value) {
+	    // remove old nodes
+	    var i = this.nodes.length;
+	    while (i--) {
+	      remove(this.nodes[i]);
 	    }
-	    // set model props
-	    var modelProp = modelProps[attr];
-	    if (modelProp) {
-	      this.el[modelProp] = value;
-	      // update v-model if present
-	      var model = this.el.__v_model;
-	      if (model) {
-	        model.listener();
-	      }
-	    }
-	    // do not set value attribute for textarea
-	    if (attr === 'value' && this.el.tagName === 'TEXTAREA') {
-	      this.el.removeAttribute(attr);
-	      return;
-	    }
-	    // update attribute
-	    if (value != null && value !== false) {
-	      if (xlinkRE.test(attr)) {
-	        this.el.setAttributeNS(xlinkNS, attr, value);
-	      } else {
-	        this.el.setAttribute(attr, value);
-	      }
-	    } else {
-	      this.el.removeAttribute(attr);
-	    }
+	    // convert new value to a fragment
+	    // do not attempt to retrieve from id selector
+	    var frag = parseTemplate(value, true, true);
+	    // save a reference to these nodes so we can remove later
+	    this.nodes = toArray(frag.childNodes);
+	    before(frag, this.anchor);
 	  }
 	};
 
-	// keyCode aliases
-	var keyCodes = {
-	  esc: 27,
-	  tab: 9,
-	  enter: 13,
-	  space: 32,
-	  'delete': 46,
-	  up: 38,
-	  left: 37,
-	  right: 39,
-	  down: 40
+	/**
+	 * Abstraction for a partially-compiled fragment.
+	 * Can optionally compile content with a child scope.
+	 *
+	 * @param {Function} linker
+	 * @param {Vue} vm
+	 * @param {DocumentFragment} frag
+	 * @param {Vue} [host]
+	 * @param {Object} [scope]
+	 * @param {Fragment} [parentFrag]
+	 */
+	function Fragment(linker, vm, frag, host, scope, parentFrag) {
+	  this.children = [];
+	  this.childFrags = [];
+	  this.vm = vm;
+	  this.scope = scope;
+	  this.inserted = false;
+	  this.parentFrag = parentFrag;
+	  if (parentFrag) {
+	    parentFrag.childFrags.push(this);
+	  }
+	  this.unlink = linker(vm, frag, host, scope, this);
+	  var single = this.single = frag.childNodes.length === 1 &&
+	  // do not go single mode if the only node is an anchor
+	  !frag.childNodes[0].__v_anchor;
+	  if (single) {
+	    this.node = frag.childNodes[0];
+	    this.before = singleBefore;
+	    this.remove = singleRemove;
+	  } else {
+	    this.node = createAnchor('fragment-start');
+	    this.end = createAnchor('fragment-end');
+	    this.frag = frag;
+	    prepend(this.node, frag);
+	    frag.appendChild(this.end);
+	    this.before = multiBefore;
+	    this.remove = multiRemove;
+	  }
+	  this.node.__v_frag = this;
+	}
+
+	/**
+	 * Call attach/detach for all components contained within
+	 * this fragment. Also do so recursively for all child
+	 * fragments.
+	 *
+	 * @param {Function} hook
+	 */
+
+	Fragment.prototype.callHook = function (hook) {
+	  var i, l;
+	  for (i = 0, l = this.childFrags.length; i < l; i++) {
+	    this.childFrags[i].callHook(hook);
+	  }
+	  for (i = 0, l = this.children.length; i < l; i++) {
+	    hook(this.children[i]);
+	  }
 	};
 
-	function keyFilter(handler, keys) {
-	  var codes = keys.map(function (key) {
-	    var charCode = key.charCodeAt(0);
-	    if (charCode > 47 && charCode < 58) {
-	      return parseInt(key, 10);
+	/**
+	 * Insert fragment before target, single node version
+	 *
+	 * @param {Node} target
+	 * @param {Boolean} withTransition
+	 */
+
+	function singleBefore(target, withTransition) {
+	  this.inserted = true;
+	  var method = withTransition !== false ? beforeWithTransition : before;
+	  method(this.node, target, this.vm);
+	  if (inDoc(this.node)) {
+	    this.callHook(attach);
+	  }
+	}
+
+	/**
+	 * Remove fragment, single node version
+	 */
+
+	function singleRemove() {
+	  this.inserted = false;
+	  var shouldCallRemove = inDoc(this.node);
+	  var self = this;
+	  this.beforeRemove();
+	  removeWithTransition(this.node, this.vm, function () {
+	    if (shouldCallRemove) {
+	      self.callHook(detach);
 	    }
-	    if (key.length === 1) {
-	      charCode = key.toUpperCase().charCodeAt(0);
-	      if (charCode > 64 && charCode < 91) {
-	        return charCode;
-	      }
-	    }
-	    return keyCodes[key];
+	    self.destroy();
 	  });
-	  return function keyHandler(e) {
-	    if (codes.indexOf(e.keyCode) > -1) {
-	      return handler.call(this, e);
+	}
+
+	/**
+	 * Insert fragment before target, multi-nodes version
+	 *
+	 * @param {Node} target
+	 * @param {Boolean} withTransition
+	 */
+
+	function multiBefore(target, withTransition) {
+	  this.inserted = true;
+	  var vm = this.vm;
+	  var method = withTransition !== false ? beforeWithTransition : before;
+	  mapNodeRange(this.node, this.end, function (node) {
+	    method(node, target, vm);
+	  });
+	  if (inDoc(this.node)) {
+	    this.callHook(attach);
+	  }
+	}
+
+	/**
+	 * Remove fragment, multi-nodes version
+	 */
+
+	function multiRemove() {
+	  this.inserted = false;
+	  var self = this;
+	  var shouldCallRemove = inDoc(this.node);
+	  this.beforeRemove();
+	  removeNodeRange(this.node, this.end, this.vm, this.frag, function () {
+	    if (shouldCallRemove) {
+	      self.callHook(detach);
 	    }
-	  };
+	    self.destroy();
+	  });
 	}
 
-	function stopFilter(handler) {
-	  return function stopHandler(e) {
-	    e.stopPropagation();
-	    return handler.call(this, e);
-	  };
+	/**
+	 * Prepare the fragment for removal.
+	 */
+
+	Fragment.prototype.beforeRemove = function () {
+	  var i, l;
+	  for (i = 0, l = this.childFrags.length; i < l; i++) {
+	    // call the same method recursively on child
+	    // fragments, depth-first
+	    this.childFrags[i].beforeRemove(false);
+	  }
+	  for (i = 0, l = this.children.length; i < l; i++) {
+	    // Call destroy for all contained instances,
+	    // with remove:false and defer:true.
+	    // Defer is necessary because we need to
+	    // keep the children to call detach hooks
+	    // on them.
+	    this.children[i].$destroy(false, true);
+	  }
+	  var dirs = this.unlink.dirs;
+	  for (i = 0, l = dirs.length; i < l; i++) {
+	    // disable the watchers on all the directives
+	    // so that the rendered content stays the same
+	    // during removal.
+	    dirs[i]._watcher && dirs[i]._watcher.teardown();
+	  }
+	};
+
+	/**
+	 * Destroy the fragment.
+	 */
+
+	Fragment.prototype.destroy = function () {
+	  if (this.parentFrag) {
+	    this.parentFrag.childFrags.$remove(this);
+	  }
+	  this.node.__v_frag = null;
+	  this.unlink();
+	};
+
+	/**
+	 * Call attach hook for a Vue instance.
+	 *
+	 * @param {Vue} child
+	 */
+
+	function attach(child) {
+	  if (!child._isAttached && inDoc(child.$el)) {
+	    child._callHook('attached');
+	  }
 	}
 
-	function preventFilter(handler) {
-	  return function preventHandler(e) {
-	    e.preventDefault();
-	    return handler.call(this, e);
-	  };
+	/**
+	 * Call detach hook for a Vue instance.
+	 *
+	 * @param {Vue} child
+	 */
+
+	function detach(child) {
+	  if (child._isAttached && !inDoc(child.$el)) {
+	    child._callHook('detached');
+	  }
 	}
 
-	var on = {
+	var linkerCache = new Cache(5000);
 
-	  acceptStatement: true,
-	  priority: 700,
+	/**
+	 * A factory that can be used to create instances of a
+	 * fragment. Caches the compiled linker if possible.
+	 *
+	 * @param {Vue} vm
+	 * @param {Element|String} el
+	 */
+	function FragmentFactory(vm, el) {
+	  this.vm = vm;
+	  var template;
+	  var isString = typeof el === 'string';
+	  if (isString || isTemplate(el)) {
+	    template = parseTemplate(el, true);
+	  } else {
+	    template = document.createDocumentFragment();
+	    template.appendChild(el);
+	  }
+	  this.template = template;
+	  // linker can be cached, but only for components
+	  var linker;
+	  var cid = vm.constructor.cid;
+	  if (cid > 0) {
+	    var cacheId = cid + (isString ? el : getOuterHTML(el));
+	    linker = linkerCache.get(cacheId);
+	    if (!linker) {
+	      linker = compile(template, vm.$options, true);
+	      linkerCache.put(cacheId, linker);
+	    }
+	  } else {
+	    linker = compile(template, vm.$options, true);
+	  }
+	  this.linker = linker;
+	}
+
+	/**
+	 * Create a fragment instance with given host and scope.
+	 *
+	 * @param {Vue} host
+	 * @param {Object} scope
+	 * @param {Fragment} parentFrag
+	 */
+
+	FragmentFactory.prototype.create = function (host, scope, parentFrag) {
+	  var frag = cloneNode(this.template);
+	  return new Fragment(this.linker, this.vm, frag, host, scope, parentFrag);
+	};
+
+	var ON = 700;
+	var MODEL = 800;
+	var BIND = 850;
+	var TRANSITION = 1100;
+	var EL = 1500;
+	var COMPONENT = 1500;
+	var PARTIAL = 1750;
+	var IF = 2100;
+	var FOR = 2200;
+	var SLOT = 2300;
+
+	var uid$3 = 0;
+
+	var vFor = {
+
+	  priority: FOR,
+	  terminal: true,
+
+	  params: ['track-by', 'stagger', 'enter-stagger', 'leave-stagger'],
 
 	  bind: function bind() {
-	    // deal with iframes
-	    if (this.el.tagName === 'IFRAME' && this.arg !== 'load') {
-	      var self = this;
-	      this.iframeBind = function () {
-	        on$1(self.el.contentWindow, self.arg, self.handler);
-	      };
-	      this.on('load', this.iframeBind);
-	    }
-	  },
-
-	  update: function update(handler) {
-	    // stub a noop for v-on with no value,
-	    // e.g. @mousedown.prevent
-	    if (!this.descriptor.raw) {
-	      handler = function () {};
+	    // support "item in/of items" syntax
+	    var inMatch = this.expression.match(/(.*) (?:in|of) (.*)/);
+	    if (inMatch) {
+	      var itMatch = inMatch[1].match(/\((.*),(.*)\)/);
+	      if (itMatch) {
+	        this.iterator = itMatch[1].trim();
+	        this.alias = itMatch[2].trim();
+	      } else {
+	        this.alias = inMatch[1].trim();
+	      }
+	      this.expression = inMatch[2];
 	    }
 
-	    if (typeof handler !== 'function') {
-	      process.env.NODE_ENV !== 'production' && warn('v-on:' + this.arg + '="' + this.expression + '" expects a function value, ' + 'got ' + handler);
+	    if (!this.alias) {
+	      process.env.NODE_ENV !== 'production' && warn('Invalid v-for expression "' + this.descriptor.raw + '": ' + 'alias is required.', this.vm);
 	      return;
 	    }
 
-	    // apply modifiers
-	    if (this.modifiers.stop) {
-	      handler = stopFilter(handler);
-	    }
-	    if (this.modifiers.prevent) {
-	      handler = preventFilter(handler);
-	    }
-	    // key filter
-	    var keys = Object.keys(this.modifiers).filter(function (key) {
-	      return key !== 'stop' && key !== 'prevent';
-	    });
-	    if (keys.length) {
-	      handler = keyFilter(handler, keys);
+	    // uid as a cache identifier
+	    this.id = '__v-for__' + ++uid$3;
+
+	    // check if this is an option list,
+	    // so that we know if we need to update the <select>'s
+	    // v-model when the option list has changed.
+	    // because v-model has a lower priority than v-for,
+	    // the v-model is not bound here yet, so we have to
+	    // retrive it in the actual updateModel() function.
+	    var tag = this.el.tagName;
+	    this.isOption = (tag === 'OPTION' || tag === 'OPTGROUP') && this.el.parentNode.tagName === 'SELECT';
+
+	    // setup anchor nodes
+	    this.start = createAnchor('v-for-start');
+	    this.end = createAnchor('v-for-end');
+	    replace(this.el, this.end);
+	    before(this.start, this.end);
+
+	    // cache
+	    this.cache = Object.create(null);
+
+	    // fragment factory
+	    this.factory = new FragmentFactory(this.vm, this.el);
+	  },
+
+	  update: function update(data) {
+	    this.diff(data);
+	    this.updateRef();
+	    this.updateModel();
+	  },
+
+	  /**
+	   * Diff, based on new data and old data, determine the
+	   * minimum amount of DOM manipulations needed to make the
+	   * DOM reflect the new data Array.
+	   *
+	   * The algorithm diffs the new data Array by storing a
+	   * hidden reference to an owner vm instance on previously
+	   * seen data. This allows us to achieve O(n) which is
+	   * better than a levenshtein distance based algorithm,
+	   * which is O(m * n).
+	   *
+	   * @param {Array} data
+	   */
+
+	  diff: function diff(data) {
+	    // check if the Array was converted from an Object
+	    var item = data[0];
+	    var convertedFromObject = this.fromObject = isObject(item) && hasOwn(item, '$key') && hasOwn(item, '$value');
+
+	    var trackByKey = this.params.trackBy;
+	    var oldFrags = this.frags;
+	    var frags = this.frags = new Array(data.length);
+	    var alias = this.alias;
+	    var iterator = this.iterator;
+	    var start = this.start;
+	    var end = this.end;
+	    var inDocument = inDoc(start);
+	    var init = !oldFrags;
+	    var i, l, frag, key, value, primitive;
+
+	    // First pass, go through the new Array and fill up
+	    // the new frags array. If a piece of data has a cached
+	    // instance for it, we reuse it. Otherwise build a new
+	    // instance.
+	    for (i = 0, l = data.length; i < l; i++) {
+	      item = data[i];
+	      key = convertedFromObject ? item.$key : null;
+	      value = convertedFromObject ? item.$value : item;
+	      primitive = !isObject(value);
+	      frag = !init && this.getCachedFrag(value, i, key);
+	      if (frag) {
+	        // reusable fragment
+	        frag.reused = true;
+	        // update $index
+	        frag.scope.$index = i;
+	        // update $key
+	        if (key) {
+	          frag.scope.$key = key;
+	        }
+	        // update iterator
+	        if (iterator) {
+	          frag.scope[iterator] = key !== null ? key : i;
+	        }
+	        // update data for track-by, object repeat &
+	        // primitive values.
+	        if (trackByKey || convertedFromObject || primitive) {
+	          withoutConversion(function () {
+	            frag.scope[alias] = value;
+	          });
+	        }
+	      } else {
+	        // new isntance
+	        frag = this.create(value, alias, i, key);
+	        frag.fresh = !init;
+	      }
+	      frags[i] = frag;
+	      if (init) {
+	        frag.before(end);
+	      }
 	    }
 
-	    this.reset();
-	    this.handler = handler;
+	    // we're done for the initial render.
+	    if (init) {
+	      return;
+	    }
 
-	    if (this.iframeBind) {
-	      this.iframeBind();
-	    } else {
-	      on$1(this.el, this.arg, this.handler);
+	    // Second pass, go through the old fragments and
+	    // destroy those who are not reused (and remove them
+	    // from cache)
+	    var removalIndex = 0;
+	    var totalRemoved = oldFrags.length - frags.length;
+	    // when removing a large number of fragments, watcher removal
+	    // turns out to be a perf bottleneck, so we batch the watcher
+	    // removals into a single filter call!
+	    this.vm._vForRemoving = true;
+	    for (i = 0, l = oldFrags.length; i < l; i++) {
+	      frag = oldFrags[i];
+	      if (!frag.reused) {
+	        this.deleteCachedFrag(frag);
+	        this.remove(frag, removalIndex++, totalRemoved, inDocument);
+	      }
+	    }
+	    this.vm._vForRemoving = false;
+	    if (removalIndex) {
+	      this.vm._watchers = this.vm._watchers.filter(function (w) {
+	        return w.active;
+	      });
+	    }
+
+	    // Final pass, move/insert new fragments into the
+	    // right place.
+	    var targetPrev, prevEl, currentPrev;
+	    var insertionIndex = 0;
+	    for (i = 0, l = frags.length; i < l; i++) {
+	      frag = frags[i];
+	      // this is the frag that we should be after
+	      targetPrev = frags[i - 1];
+	      prevEl = targetPrev ? targetPrev.staggerCb ? targetPrev.staggerAnchor : targetPrev.end || targetPrev.node : start;
+	      if (frag.reused && !frag.staggerCb) {
+	        currentPrev = findPrevFrag(frag, start, this.id);
+	        if (currentPrev !== targetPrev && (!currentPrev ||
+	        // optimization for moving a single item.
+	        // thanks to suggestions by @livoras in #1807
+	        findPrevFrag(currentPrev, start, this.id) !== targetPrev)) {
+	          this.move(frag, prevEl);
+	        }
+	      } else {
+	        // new instance, or still in stagger.
+	        // insert with updated stagger index.
+	        this.insert(frag, insertionIndex++, prevEl, inDocument);
+	      }
+	      frag.reused = frag.fresh = false;
 	    }
 	  },
 
-	  reset: function reset() {
-	    var el = this.iframeBind ? this.el.contentWindow : this.el;
-	    if (this.handler) {
-	      off(el, this.arg, this.handler);
+	  /**
+	   * Create a new fragment instance.
+	   *
+	   * @param {*} value
+	   * @param {String} alias
+	   * @param {Number} index
+	   * @param {String} [key]
+	   * @return {Fragment}
+	   */
+
+	  create: function create(value, alias, index, key) {
+	    var host = this._host;
+	    // create iteration scope
+	    var parentScope = this._scope || this.vm;
+	    var scope = Object.create(parentScope);
+	    // ref holder for the scope
+	    scope.$refs = Object.create(parentScope.$refs);
+	    scope.$els = Object.create(parentScope.$els);
+	    // make sure point $parent to parent scope
+	    scope.$parent = parentScope;
+	    // for two-way binding on alias
+	    scope.$forContext = this;
+	    // define scope properties
+	    // important: define the scope alias without forced conversion
+	    // so that frozen data structures remain non-reactive.
+	    withoutConversion(function () {
+	      defineReactive(scope, alias, value);
+	    });
+	    defineReactive(scope, '$index', index);
+	    if (key) {
+	      defineReactive(scope, '$key', key);
+	    } else if (scope.$key) {
+	      // avoid accidental fallback
+	      def(scope, '$key', null);
+	    }
+	    if (this.iterator) {
+	      defineReactive(scope, this.iterator, key !== null ? key : index);
+	    }
+	    var frag = this.factory.create(host, scope, this._frag);
+	    frag.forId = this.id;
+	    this.cacheFrag(value, frag, index, key);
+	    return frag;
+	  },
+
+	  /**
+	   * Update the v-ref on owner vm.
+	   */
+
+	  updateRef: function updateRef() {
+	    var ref = this.descriptor.ref;
+	    if (!ref) return;
+	    var hash = (this._scope || this.vm).$refs;
+	    var refs;
+	    if (!this.fromObject) {
+	      refs = this.frags.map(findVmFromFrag);
+	    } else {
+	      refs = {};
+	      this.frags.forEach(function (frag) {
+	        refs[frag.scope.$key] = findVmFromFrag(frag);
+	      });
+	    }
+	    hash[ref] = refs;
+	  },
+
+	  /**
+	   * For option lists, update the containing v-model on
+	   * parent <select>.
+	   */
+
+	  updateModel: function updateModel() {
+	    if (this.isOption) {
+	      var parent = this.start.parentNode;
+	      var model = parent && parent.__v_model;
+	      if (model) {
+	        model.forceUpdate();
+	      }
+	    }
+	  },
+
+	  /**
+	   * Insert a fragment. Handles staggering.
+	   *
+	   * @param {Fragment} frag
+	   * @param {Number} index
+	   * @param {Node} prevEl
+	   * @param {Boolean} inDocument
+	   */
+
+	  insert: function insert(frag, index, prevEl, inDocument) {
+	    if (frag.staggerCb) {
+	      frag.staggerCb.cancel();
+	      frag.staggerCb = null;
+	    }
+	    var staggerAmount = this.getStagger(frag, index, null, 'enter');
+	    if (inDocument && staggerAmount) {
+	      // create an anchor and insert it synchronously,
+	      // so that we can resolve the correct order without
+	      // worrying about some elements not inserted yet
+	      var anchor = frag.staggerAnchor;
+	      if (!anchor) {
+	        anchor = frag.staggerAnchor = createAnchor('stagger-anchor');
+	        anchor.__v_frag = frag;
+	      }
+	      after(anchor, prevEl);
+	      var op = frag.staggerCb = cancellable(function () {
+	        frag.staggerCb = null;
+	        frag.before(anchor);
+	        remove(anchor);
+	      });
+	      setTimeout(op, staggerAmount);
+	    } else {
+	      frag.before(prevEl.nextSibling);
+	    }
+	  },
+
+	  /**
+	   * Remove a fragment. Handles staggering.
+	   *
+	   * @param {Fragment} frag
+	   * @param {Number} index
+	   * @param {Number} total
+	   * @param {Boolean} inDocument
+	   */
+
+	  remove: function remove(frag, index, total, inDocument) {
+	    if (frag.staggerCb) {
+	      frag.staggerCb.cancel();
+	      frag.staggerCb = null;
+	      // it's not possible for the same frag to be removed
+	      // twice, so if we have a pending stagger callback,
+	      // it means this frag is queued for enter but removed
+	      // before its transition started. Since it is already
+	      // destroyed, we can just leave it in detached state.
+	      return;
+	    }
+	    var staggerAmount = this.getStagger(frag, index, total, 'leave');
+	    if (inDocument && staggerAmount) {
+	      var op = frag.staggerCb = cancellable(function () {
+	        frag.staggerCb = null;
+	        frag.remove();
+	      });
+	      setTimeout(op, staggerAmount);
+	    } else {
+	      frag.remove();
+	    }
+	  },
+
+	  /**
+	   * Move a fragment to a new position.
+	   * Force no transition.
+	   *
+	   * @param {Fragment} frag
+	   * @param {Node} prevEl
+	   */
+
+	  move: function move(frag, prevEl) {
+	    // fix a common issue with Sortable:
+	    // if prevEl doesn't have nextSibling, this means it's
+	    // been dragged after the end anchor. Just re-position
+	    // the end anchor to the end of the container.
+	    /* istanbul ignore if */
+	    if (!prevEl.nextSibling) {
+	      this.end.parentNode.appendChild(this.end);
+	    }
+	    frag.before(prevEl.nextSibling, false);
+	  },
+
+	  /**
+	   * Cache a fragment using track-by or the object key.
+	   *
+	   * @param {*} value
+	   * @param {Fragment} frag
+	   * @param {Number} index
+	   * @param {String} [key]
+	   */
+
+	  cacheFrag: function cacheFrag(value, frag, index, key) {
+	    var trackByKey = this.params.trackBy;
+	    var cache = this.cache;
+	    var primitive = !isObject(value);
+	    var id;
+	    if (key || trackByKey || primitive) {
+	      id = trackByKey ? trackByKey === '$index' ? index : getPath(value, trackByKey) : key || value;
+	      if (!cache[id]) {
+	        cache[id] = frag;
+	      } else if (trackByKey !== '$index') {
+	        process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
+	      }
+	    } else {
+	      id = this.id;
+	      if (hasOwn(value, id)) {
+	        if (value[id] === null) {
+	          value[id] = frag;
+	        } else {
+	          process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
+	        }
+	      } else {
+	        def(value, id, frag);
+	      }
+	    }
+	    frag.raw = value;
+	  },
+
+	  /**
+	   * Get a cached fragment from the value/index/key
+	   *
+	   * @param {*} value
+	   * @param {Number} index
+	   * @param {String} key
+	   * @return {Fragment}
+	   */
+
+	  getCachedFrag: function getCachedFrag(value, index, key) {
+	    var trackByKey = this.params.trackBy;
+	    var primitive = !isObject(value);
+	    var frag;
+	    if (key || trackByKey || primitive) {
+	      var id = trackByKey ? trackByKey === '$index' ? index : getPath(value, trackByKey) : key || value;
+	      frag = this.cache[id];
+	    } else {
+	      frag = value[this.id];
+	    }
+	    if (frag && (frag.reused || frag.fresh)) {
+	      process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
+	    }
+	    return frag;
+	  },
+
+	  /**
+	   * Delete a fragment from cache.
+	   *
+	   * @param {Fragment} frag
+	   */
+
+	  deleteCachedFrag: function deleteCachedFrag(frag) {
+	    var value = frag.raw;
+	    var trackByKey = this.params.trackBy;
+	    var scope = frag.scope;
+	    var index = scope.$index;
+	    // fix #948: avoid accidentally fall through to
+	    // a parent repeater which happens to have $key.
+	    var key = hasOwn(scope, '$key') && scope.$key;
+	    var primitive = !isObject(value);
+	    if (trackByKey || key || primitive) {
+	      var id = trackByKey ? trackByKey === '$index' ? index : getPath(value, trackByKey) : key || value;
+	      this.cache[id] = null;
+	    } else {
+	      value[this.id] = null;
+	      frag.raw = null;
+	    }
+	  },
+
+	  /**
+	   * Get the stagger amount for an insertion/removal.
+	   *
+	   * @param {Fragment} frag
+	   * @param {Number} index
+	   * @param {Number} total
+	   * @param {String} type
+	   */
+
+	  getStagger: function getStagger(frag, index, total, type) {
+	    type = type + 'Stagger';
+	    var trans = frag.node.__v_trans;
+	    var hooks = trans && trans.hooks;
+	    var hook = hooks && (hooks[type] || hooks.stagger);
+	    return hook ? hook.call(frag, index, total) : index * parseInt(this.params[type] || this.params.stagger, 10);
+	  },
+
+	  /**
+	   * Pre-process the value before piping it through the
+	   * filters. This is passed to and called by the watcher.
+	   */
+
+	  _preProcess: function _preProcess(value) {
+	    // regardless of type, store the un-filtered raw value.
+	    this.rawValue = value;
+	    return value;
+	  },
+
+	  /**
+	   * Post-process the value after it has been piped through
+	   * the filters. This is passed to and called by the watcher.
+	   *
+	   * It is necessary for this to be called during the
+	   * wathcer's dependency collection phase because we want
+	   * the v-for to update when the source Object is mutated.
+	   */
+
+	  _postProcess: function _postProcess(value) {
+	    if (isArray(value)) {
+	      return value;
+	    } else if (isPlainObject(value)) {
+	      // convert plain object to array.
+	      var keys = Object.keys(value);
+	      var i = keys.length;
+	      var res = new Array(i);
+	      var key;
+	      while (i--) {
+	        key = keys[i];
+	        res[i] = {
+	          $key: key,
+	          $value: value[key]
+	        };
+	      }
+	      return res;
+	    } else {
+	      if (typeof value === 'number' && !isNaN(value)) {
+	        value = range(value);
+	      }
+	      return value || [];
 	    }
 	  },
 
 	  unbind: function unbind() {
-	    this.reset();
+	    if (this.descriptor.ref) {
+	      (this._scope || this.vm).$refs[this.descriptor.ref] = null;
+	    }
+	    if (this.frags) {
+	      var i = this.frags.length;
+	      var frag;
+	      while (i--) {
+	        frag = this.frags[i];
+	        this.deleteCachedFrag(frag);
+	        frag.destroy();
+	      }
+	    }
 	  }
 	};
 
-	var checkbox = {
+	/**
+	 * Helper to find the previous element that is a fragment
+	 * anchor. This is necessary because a destroyed frag's
+	 * element could still be lingering in the DOM before its
+	 * leaving transition finishes, but its inserted flag
+	 * should have been set to false so we can skip them.
+	 *
+	 * If this is a block repeat, we want to make sure we only
+	 * return frag that is bound to this v-for. (see #929)
+	 *
+	 * @param {Fragment} frag
+	 * @param {Comment|Text} anchor
+	 * @param {String} id
+	 * @return {Fragment}
+	 */
+
+	function findPrevFrag(frag, anchor, id) {
+	  var el = frag.node.previousSibling;
+	  /* istanbul ignore if */
+	  if (!el) return;
+	  frag = el.__v_frag;
+	  while ((!frag || frag.forId !== id || !frag.inserted) && el !== anchor) {
+	    el = el.previousSibling;
+	    /* istanbul ignore if */
+	    if (!el) return;
+	    frag = el.__v_frag;
+	  }
+	  return frag;
+	}
+
+	/**
+	 * Find a vm from a fragment.
+	 *
+	 * @param {Fragment} frag
+	 * @return {Vue|undefined}
+	 */
+
+	function findVmFromFrag(frag) {
+	  var node = frag.node;
+	  // handle multi-node frag
+	  if (frag.end) {
+	    while (!node.__vue__ && node !== frag.end && node.nextSibling) {
+	      node = node.nextSibling;
+	    }
+	  }
+	  return node.__vue__;
+	}
+
+	/**
+	 * Create a range array from given number.
+	 *
+	 * @param {Number} n
+	 * @return {Array}
+	 */
+
+	function range(n) {
+	  var i = -1;
+	  var ret = new Array(Math.floor(n));
+	  while (++i < n) {
+	    ret[i] = i;
+	  }
+	  return ret;
+	}
+
+	if (process.env.NODE_ENV !== 'production') {
+	  vFor.warnDuplicate = function (value) {
+	    warn('Duplicate value found in v-for="' + this.descriptor.raw + '": ' + JSON.stringify(value) + '. Use track-by="$index" if ' + 'you are expecting duplicate values.', this.vm);
+	  };
+	}
+
+	var vIf = {
+
+	  priority: IF,
+	  terminal: true,
+
+	  bind: function bind() {
+	    var el = this.el;
+	    if (!el.__vue__) {
+	      // check else block
+	      var next = el.nextElementSibling;
+	      if (next && getAttr(next, 'v-else') !== null) {
+	        remove(next);
+	        this.elseEl = next;
+	      }
+	      // check main block
+	      this.anchor = createAnchor('v-if');
+	      replace(el, this.anchor);
+	    } else {
+	      process.env.NODE_ENV !== 'production' && warn('v-if="' + this.expression + '" cannot be ' + 'used on an instance root element.', this.vm);
+	      this.invalid = true;
+	    }
+	  },
+
+	  update: function update(value) {
+	    if (this.invalid) return;
+	    if (value) {
+	      if (!this.frag) {
+	        this.insert();
+	      }
+	    } else {
+	      this.remove();
+	    }
+	  },
+
+	  insert: function insert() {
+	    if (this.elseFrag) {
+	      this.elseFrag.remove();
+	      this.elseFrag = null;
+	    }
+	    // lazy init factory
+	    if (!this.factory) {
+	      this.factory = new FragmentFactory(this.vm, this.el);
+	    }
+	    this.frag = this.factory.create(this._host, this._scope, this._frag);
+	    this.frag.before(this.anchor);
+	  },
+
+	  remove: function remove() {
+	    if (this.frag) {
+	      this.frag.remove();
+	      this.frag = null;
+	    }
+	    if (this.elseEl && !this.elseFrag) {
+	      if (!this.elseFactory) {
+	        this.elseFactory = new FragmentFactory(this.elseEl._context || this.vm, this.elseEl);
+	      }
+	      this.elseFrag = this.elseFactory.create(this._host, this._scope, this._frag);
+	      this.elseFrag.before(this.anchor);
+	    }
+	  },
+
+	  unbind: function unbind() {
+	    if (this.frag) {
+	      this.frag.destroy();
+	    }
+	    if (this.elseFrag) {
+	      this.elseFrag.destroy();
+	    }
+	  }
+	};
+
+	var show = {
+
+	  bind: function bind() {
+	    // check else block
+	    var next = this.el.nextElementSibling;
+	    if (next && getAttr(next, 'v-else') !== null) {
+	      this.elseEl = next;
+	    }
+	  },
+
+	  update: function update(value) {
+	    this.apply(this.el, value);
+	    if (this.elseEl) {
+	      this.apply(this.elseEl, !value);
+	    }
+	  },
+
+	  apply: function apply(el, value) {
+	    if (inDoc(el)) {
+	      applyTransition(el, value ? 1 : -1, toggle, this.vm);
+	    } else {
+	      toggle();
+	    }
+	    function toggle() {
+	      el.style.display = value ? '' : 'none';
+	    }
+	  }
+	};
+
+	var text$2 = {
+
+	  bind: function bind() {
+	    var self = this;
+	    var el = this.el;
+	    var isRange = el.type === 'range';
+	    var lazy = this.params.lazy;
+	    var number = this.params.number;
+	    var debounce = this.params.debounce;
+
+	    // handle composition events.
+	    //   http://blog.evanyou.me/2014/01/03/composition-event/
+	    // skip this for Android because it handles composition
+	    // events quite differently. Android doesn't trigger
+	    // composition events for language input methods e.g.
+	    // Chinese, but instead triggers them for spelling
+	    // suggestions... (see Discussion/#162)
+	    var composing = false;
+	    if (!isAndroid && !isRange) {
+	      this.on('compositionstart', function () {
+	        composing = true;
+	      });
+	      this.on('compositionend', function () {
+	        composing = false;
+	        // in IE11 the "compositionend" event fires AFTER
+	        // the "input" event, so the input handler is blocked
+	        // at the end... have to call it here.
+	        //
+	        // #1327: in lazy mode this is unecessary.
+	        if (!lazy) {
+	          self.listener();
+	        }
+	      });
+	    }
+
+	    // prevent messing with the input when user is typing,
+	    // and force update on blur.
+	    this.focused = false;
+	    if (!isRange && !lazy) {
+	      this.on('focus', function () {
+	        self.focused = true;
+	      });
+	      this.on('blur', function () {
+	        self.focused = false;
+	        // do not sync value after fragment removal (#2017)
+	        if (!self._frag || self._frag.inserted) {
+	          self.rawListener();
+	        }
+	      });
+	    }
+
+	    // Now attach the main listener
+	    this.listener = this.rawListener = function () {
+	      if (composing || !self._bound) {
+	        return;
+	      }
+	      var val = number || isRange ? toNumber(el.value) : el.value;
+	      self.set(val);
+	      // force update on next tick to avoid lock & same value
+	      // also only update when user is not typing
+	      nextTick(function () {
+	        if (self._bound && !self.focused) {
+	          self.update(self._watcher.value);
+	        }
+	      });
+	    };
+
+	    // apply debounce
+	    if (debounce) {
+	      this.listener = _debounce(this.listener, debounce);
+	    }
+
+	    // Support jQuery events, since jQuery.trigger() doesn't
+	    // trigger native events in some cases and some plugins
+	    // rely on $.trigger()
+	    //
+	    // We want to make sure if a listener is attached using
+	    // jQuery, it is also removed with jQuery, that's why
+	    // we do the check for each directive instance and
+	    // store that check result on itself. This also allows
+	    // easier test coverage control by unsetting the global
+	    // jQuery variable in tests.
+	    this.hasjQuery = typeof jQuery === 'function';
+	    if (this.hasjQuery) {
+	      var method = jQuery.fn.on ? 'on' : 'bind';
+	      jQuery(el)[method]('change', this.rawListener);
+	      if (!lazy) {
+	        jQuery(el)[method]('input', this.listener);
+	      }
+	    } else {
+	      this.on('change', this.rawListener);
+	      if (!lazy) {
+	        this.on('input', this.listener);
+	      }
+	    }
+
+	    // IE9 doesn't fire input event on backspace/del/cut
+	    if (!lazy && isIE9) {
+	      this.on('cut', function () {
+	        nextTick(self.listener);
+	      });
+	      this.on('keyup', function (e) {
+	        if (e.keyCode === 46 || e.keyCode === 8) {
+	          self.listener();
+	        }
+	      });
+	    }
+
+	    // set initial value if present
+	    if (el.hasAttribute('value') || el.tagName === 'TEXTAREA' && el.value.trim()) {
+	      this.afterBind = this.listener;
+	    }
+	  },
+
+	  update: function update(value) {
+	    this.el.value = _toString(value);
+	  },
+
+	  unbind: function unbind() {
+	    var el = this.el;
+	    if (this.hasjQuery) {
+	      var method = jQuery.fn.off ? 'off' : 'unbind';
+	      jQuery(el)[method]('change', this.listener);
+	      jQuery(el)[method]('input', this.listener);
+	    }
+	  }
+	};
+
+	var radio = {
 
 	  bind: function bind() {
 	    var self = this;
 	    var el = this.el;
 
 	    this.getValue = function () {
-	      return el.hasOwnProperty('_value') ? el._value : self.params.number ? toNumber(el.value) : el.value;
-	    };
-
-	    function getBooleanValue() {
-	      var val = el.checked;
-	      if (val && el.hasOwnProperty('_trueValue')) {
-	        return el._trueValue;
+	      // value overwrite via v-bind:value
+	      if (el.hasOwnProperty('_value')) {
+	        return el._value;
 	      }
-	      if (!val && el.hasOwnProperty('_falseValue')) {
-	        return el._falseValue;
+	      var val = el.value;
+	      if (self.params.number) {
+	        val = toNumber(val);
 	      }
 	      return val;
-	    }
-
-	    this.listener = function () {
-	      var model = self._watcher.value;
-	      if (isArray(model)) {
-	        var val = self.getValue();
-	        if (el.checked) {
-	          if (indexOf(model, val) < 0) {
-	            model.push(val);
-	          }
-	        } else {
-	          model.$remove(val);
-	        }
-	      } else {
-	        self.set(getBooleanValue());
-	      }
 	    };
 
+	    this.listener = function () {
+	      self.set(self.getValue());
+	    };
 	    this.on('change', this.listener);
-	    if (el.checked) {
+
+	    if (el.hasAttribute('checked')) {
 	      this.afterBind = this.listener;
 	    }
 	  },
 
 	  update: function update(value) {
-	    var el = this.el;
-	    if (isArray(value)) {
-	      el.checked = indexOf(value, this.getValue()) > -1;
-	    } else {
-	      if (el.hasOwnProperty('_trueValue')) {
-	        el.checked = looseEqual(value, el._trueValue);
-	      } else {
-	        el.checked = !!value;
-	      }
-	    }
+	    this.el.checked = looseEqual(value, this.getValue());
 	  }
 	};
 
@@ -3877,156 +4923,59 @@
 	  return -1;
 	}
 
-	var radio = {
+	var checkbox = {
 
 	  bind: function bind() {
 	    var self = this;
 	    var el = this.el;
 
 	    this.getValue = function () {
-	      // value overwrite via v-bind:value
-	      if (el.hasOwnProperty('_value')) {
-	        return el._value;
+	      return el.hasOwnProperty('_value') ? el._value : self.params.number ? toNumber(el.value) : el.value;
+	    };
+
+	    function getBooleanValue() {
+	      var val = el.checked;
+	      if (val && el.hasOwnProperty('_trueValue')) {
+	        return el._trueValue;
 	      }
-	      var val = el.value;
-	      if (self.params.number) {
-	        val = toNumber(val);
+	      if (!val && el.hasOwnProperty('_falseValue')) {
+	        return el._falseValue;
 	      }
 	      return val;
-	    };
+	    }
 
 	    this.listener = function () {
-	      self.set(self.getValue());
+	      var model = self._watcher.value;
+	      if (isArray(model)) {
+	        var val = self.getValue();
+	        if (el.checked) {
+	          if (indexOf(model, val) < 0) {
+	            model.push(val);
+	          }
+	        } else {
+	          model.$remove(val);
+	        }
+	      } else {
+	        self.set(getBooleanValue());
+	      }
 	    };
+
 	    this.on('change', this.listener);
-
-	    if (el.checked) {
+	    if (el.hasAttribute('checked')) {
 	      this.afterBind = this.listener;
 	    }
 	  },
 
 	  update: function update(value) {
-	    this.el.checked = looseEqual(value, this.getValue());
-	  }
-	};
-
-	var text$2 = {
-
-	  bind: function bind() {
-	    var self = this;
 	    var el = this.el;
-	    var isRange = el.type === 'range';
-	    var lazy = this.params.lazy;
-	    var number = this.params.number;
-	    var debounce = this.params.debounce;
-
-	    // handle composition events.
-	    //   http://blog.evanyou.me/2014/01/03/composition-event/
-	    // skip this for Android because it handles composition
-	    // events quite differently. Android doesn't trigger
-	    // composition events for language input methods e.g.
-	    // Chinese, but instead triggers them for spelling
-	    // suggestions... (see Discussion/#162)
-	    var composing = false;
-	    if (!isAndroid && !isRange) {
-	      this.on('compositionstart', function () {
-	        composing = true;
-	      });
-	      this.on('compositionend', function () {
-	        composing = false;
-	        // in IE11 the "compositionend" event fires AFTER
-	        // the "input" event, so the input handler is blocked
-	        // at the end... have to call it here.
-	        //
-	        // #1327: in lazy mode this is unecessary.
-	        if (!lazy) {
-	          self.listener();
-	        }
-	      });
-	    }
-
-	    // prevent messing with the input when user is typing,
-	    // and force update on blur.
-	    this.focused = false;
-	    if (!isRange) {
-	      this.on('focus', function () {
-	        self.focused = true;
-	      });
-	      this.on('blur', function () {
-	        self.focused = false;
-	        self.listener();
-	      });
-	    }
-
-	    // Now attach the main listener
-	    this.listener = function () {
-	      if (composing) return;
-	      var val = number || isRange ? toNumber(el.value) : el.value;
-	      self.set(val);
-	      // force update on next tick to avoid lock & same value
-	      // also only update when user is not typing
-	      nextTick(function () {
-	        if (self._bound && !self.focused) {
-	          self.update(self._watcher.value);
-	        }
-	      });
-	    };
-
-	    // apply debounce
-	    if (debounce) {
-	      this.listener = _debounce(this.listener, debounce);
-	    }
-
-	    // Support jQuery events, since jQuery.trigger() doesn't
-	    // trigger native events in some cases and some plugins
-	    // rely on $.trigger()
-	    //
-	    // We want to make sure if a listener is attached using
-	    // jQuery, it is also removed with jQuery, that's why
-	    // we do the check for each directive instance and
-	    // store that check result on itself. This also allows
-	    // easier test coverage control by unsetting the global
-	    // jQuery variable in tests.
-	    this.hasjQuery = typeof jQuery === 'function';
-	    if (this.hasjQuery) {
-	      jQuery(el).on('change', this.listener);
-	      if (!lazy) {
-	        jQuery(el).on('input', this.listener);
-	      }
+	    if (isArray(value)) {
+	      el.checked = indexOf(value, this.getValue()) > -1;
 	    } else {
-	      this.on('change', this.listener);
-	      if (!lazy) {
-	        this.on('input', this.listener);
+	      if (el.hasOwnProperty('_trueValue')) {
+	        el.checked = looseEqual(value, el._trueValue);
+	      } else {
+	        el.checked = !!value;
 	      }
-	    }
-
-	    // IE9 doesn't fire input event on backspace/del/cut
-	    if (!lazy && isIE9) {
-	      this.on('cut', function () {
-	        nextTick(self.listener);
-	      });
-	      this.on('keyup', function (e) {
-	        if (e.keyCode === 46 || e.keyCode === 8) {
-	          self.listener();
-	        }
-	      });
-	    }
-
-	    // set initial value if present
-	    if (el.hasAttribute('value') || el.tagName === 'TEXTAREA' && el.value.trim()) {
-	      this.afterBind = this.listener;
-	    }
-	  },
-
-	  update: function update(value) {
-	    this.el.value = _toString(value);
-	  },
-
-	  unbind: function unbind() {
-	    var el = this.el;
-	    if (this.hasjQuery) {
-	      jQuery(el).off('change', this.listener);
-	      jQuery(el).off('input', this.listener);
 	    }
 	  }
 	};
@@ -4040,7 +4989,7 @@
 
 	var model = {
 
-	  priority: 800,
+	  priority: MODEL,
 	  twoWay: true,
 	  handlers: handlers,
 	  params: ['lazy', 'number', 'debounce'],
@@ -4060,7 +5009,7 @@
 	    // friendly warning...
 	    this.checkFilters();
 	    if (this.hasRead && !this.hasWrite) {
-	      process.env.NODE_ENV !== 'production' && warn('It seems you are using a read-only filter with ' + 'v-model. You might want to use a two-way filter ' + 'to ensure correct behavior.');
+	      process.env.NODE_ENV !== 'production' && warn('It seems you are using a read-only filter with ' + 'v-model="' + this.descriptor.raw + '". ' + 'You might want to use a two-way filter to ensure correct behavior.', this.vm);
 	    }
 	    var el = this.el;
 	    var tag = el.tagName;
@@ -4072,7 +5021,7 @@
 	    } else if (tag === 'TEXTAREA') {
 	      handler = handlers.text;
 	    } else {
-	      process.env.NODE_ENV !== 'production' && warn('v-model does not support element type: ' + tag);
+	      process.env.NODE_ENV !== 'production' && warn('v-model does not support element type: ' + tag, this.vm);
 	      return;
 	    }
 	    el.__v_model = this;
@@ -4106,1187 +5055,1306 @@
 	  }
 	};
 
-	var show = {
+	// keyCode aliases
+	var keyCodes = {
+	  esc: 27,
+	  tab: 9,
+	  enter: 13,
+	  space: 32,
+	  'delete': [8, 46],
+	  up: 38,
+	  left: 37,
+	  right: 39,
+	  down: 40
+	};
+
+	function keyFilter(handler, keys) {
+	  var codes = keys.map(function (key) {
+	    var charCode = key.charCodeAt(0);
+	    if (charCode > 47 && charCode < 58) {
+	      return parseInt(key, 10);
+	    }
+	    if (key.length === 1) {
+	      charCode = key.toUpperCase().charCodeAt(0);
+	      if (charCode > 64 && charCode < 91) {
+	        return charCode;
+	      }
+	    }
+	    return keyCodes[key];
+	  });
+	  codes = [].concat.apply([], codes);
+	  return function keyHandler(e) {
+	    if (codes.indexOf(e.keyCode) > -1) {
+	      return handler.call(this, e);
+	    }
+	  };
+	}
+
+	function stopFilter(handler) {
+	  return function stopHandler(e) {
+	    e.stopPropagation();
+	    return handler.call(this, e);
+	  };
+	}
+
+	function preventFilter(handler) {
+	  return function preventHandler(e) {
+	    e.preventDefault();
+	    return handler.call(this, e);
+	  };
+	}
+
+	function selfFilter(handler) {
+	  return function selfHandler(e) {
+	    if (e.target === e.currentTarget) {
+	      return handler.call(this, e);
+	    }
+	  };
+	}
+
+	var on$1 = {
+
+	  priority: ON,
+	  acceptStatement: true,
+	  keyCodes: keyCodes,
 
 	  bind: function bind() {
-	    // check else block
-	    var next = this.el.nextElementSibling;
-	    if (next && getAttr(next, 'v-else') !== null) {
-	      this.elseEl = next;
+	    // deal with iframes
+	    if (this.el.tagName === 'IFRAME' && this.arg !== 'load') {
+	      var self = this;
+	      this.iframeBind = function () {
+	        on(self.el.contentWindow, self.arg, self.handler, self.modifiers.capture);
+	      };
+	      this.on('load', this.iframeBind);
 	    }
 	  },
+
+	  update: function update(handler) {
+	    // stub a noop for v-on with no value,
+	    // e.g. @mousedown.prevent
+	    if (!this.descriptor.raw) {
+	      handler = function () {};
+	    }
+
+	    if (typeof handler !== 'function') {
+	      process.env.NODE_ENV !== 'production' && warn('v-on:' + this.arg + '="' + this.expression + '" expects a function value, ' + 'got ' + handler, this.vm);
+	      return;
+	    }
+
+	    // apply modifiers
+	    if (this.modifiers.stop) {
+	      handler = stopFilter(handler);
+	    }
+	    if (this.modifiers.prevent) {
+	      handler = preventFilter(handler);
+	    }
+	    if (this.modifiers.self) {
+	      handler = selfFilter(handler);
+	    }
+	    // key filter
+	    var keys = Object.keys(this.modifiers).filter(function (key) {
+	      return key !== 'stop' && key !== 'prevent' && key !== 'self';
+	    });
+	    if (keys.length) {
+	      handler = keyFilter(handler, keys);
+	    }
+
+	    this.reset();
+	    this.handler = handler;
+
+	    if (this.iframeBind) {
+	      this.iframeBind();
+	    } else {
+	      on(this.el, this.arg, this.handler, this.modifiers.capture);
+	    }
+	  },
+
+	  reset: function reset() {
+	    var el = this.iframeBind ? this.el.contentWindow : this.el;
+	    if (this.handler) {
+	      off(el, this.arg, this.handler);
+	    }
+	  },
+
+	  unbind: function unbind() {
+	    this.reset();
+	  }
+	};
+
+	var prefixes = ['-webkit-', '-moz-', '-ms-'];
+	var camelPrefixes = ['Webkit', 'Moz', 'ms'];
+	var importantRE = /!important;?$/;
+	var propCache = Object.create(null);
+
+	var testEl = null;
+
+	var style = {
+
+	  deep: true,
 
 	  update: function update(value) {
-	    this.apply(this.el, value);
-	    if (this.elseEl) {
-	      this.apply(this.elseEl, !value);
+	    if (typeof value === 'string') {
+	      this.el.style.cssText = value;
+	    } else if (isArray(value)) {
+	      this.handleObject(value.reduce(extend, {}));
+	    } else {
+	      this.handleObject(value || {});
 	    }
 	  },
 
-	  apply: function apply(el, value) {
-	    applyTransition(el, value ? 1 : -1, function () {
-	      el.style.display = value ? '' : 'none';
-	    }, this.vm);
-	  }
-	};
-
-	var templateCache = new Cache(1000);
-	var idSelectorCache = new Cache(1000);
-
-	var map = {
-	  efault: [0, '', ''],
-	  legend: [1, '<fieldset>', '</fieldset>'],
-	  tr: [2, '<table><tbody>', '</tbody></table>'],
-	  col: [2, '<table><tbody></tbody><colgroup>', '</colgroup></table>']
-	};
-
-	map.td = map.th = [3, '<table><tbody><tr>', '</tr></tbody></table>'];
-
-	map.option = map.optgroup = [1, '<select multiple="multiple">', '</select>'];
-
-	map.thead = map.tbody = map.colgroup = map.caption = map.tfoot = [1, '<table>', '</table>'];
-
-	map.g = map.defs = map.symbol = map.use = map.image = map.text = map.circle = map.ellipse = map.line = map.path = map.polygon = map.polyline = map.rect = [1, '<svg ' + 'xmlns="http://www.w3.org/2000/svg" ' + 'xmlns:xlink="http://www.w3.org/1999/xlink" ' + 'xmlns:ev="http://www.w3.org/2001/xml-events"' + 'version="1.1">', '</svg>'];
-
-	/**
-	 * Check if a node is a supported template node with a
-	 * DocumentFragment content.
-	 *
-	 * @param {Node} node
-	 * @return {Boolean}
-	 */
-
-	function isRealTemplate(node) {
-	  return isTemplate(node) && node.content instanceof DocumentFragment;
-	}
-
-	var tagRE$1 = /<([\w:]+)/;
-	var entityRE = /&\w+;|&#\d+;|&#x[\dA-F]+;/;
-
-	/**
-	 * Convert a string template to a DocumentFragment.
-	 * Determines correct wrapping by tag types. Wrapping
-	 * strategy found in jQuery & component/domify.
-	 *
-	 * @param {String} templateString
-	 * @param {Boolean} raw
-	 * @return {DocumentFragment}
-	 */
-
-	function stringToFragment(templateString, raw) {
-	  // try a cache hit first
-	  var hit = templateCache.get(templateString);
-	  if (hit) {
-	    return hit;
-	  }
-
-	  var frag = document.createDocumentFragment();
-	  var tagMatch = templateString.match(tagRE$1);
-	  var entityMatch = entityRE.test(templateString);
-
-	  if (!tagMatch && !entityMatch) {
-	    // text only, return a single text node.
-	    frag.appendChild(document.createTextNode(templateString));
-	  } else {
-
-	    var tag = tagMatch && tagMatch[1];
-	    var wrap = map[tag] || map.efault;
-	    var depth = wrap[0];
-	    var prefix = wrap[1];
-	    var suffix = wrap[2];
-	    var node = document.createElement('div');
-
-	    if (!raw) {
-	      templateString = templateString.trim();
-	    }
-	    node.innerHTML = prefix + templateString + suffix;
-	    while (depth--) {
-	      node = node.lastChild;
-	    }
-
-	    var child;
-	    /* eslint-disable no-cond-assign */
-	    while (child = node.firstChild) {
-	      /* eslint-enable no-cond-assign */
-	      frag.appendChild(child);
-	    }
-	  }
-
-	  templateCache.put(templateString, frag);
-	  return frag;
-	}
-
-	/**
-	 * Convert a template node to a DocumentFragment.
-	 *
-	 * @param {Node} node
-	 * @return {DocumentFragment}
-	 */
-
-	function nodeToFragment(node) {
-	  // if its a template tag and the browser supports it,
-	  // its content is already a document fragment.
-	  if (isRealTemplate(node)) {
-	    trimNode(node.content);
-	    return node.content;
-	  }
-	  // script template
-	  if (node.tagName === 'SCRIPT') {
-	    return stringToFragment(node.textContent);
-	  }
-	  // normal node, clone it to avoid mutating the original
-	  var clonedNode = cloneNode(node);
-	  var frag = document.createDocumentFragment();
-	  var child;
-	  /* eslint-disable no-cond-assign */
-	  while (child = clonedNode.firstChild) {
-	    /* eslint-enable no-cond-assign */
-	    frag.appendChild(child);
-	  }
-	  trimNode(frag);
-	  return frag;
-	}
-
-	// Test for the presence of the Safari template cloning bug
-	// https://bugs.webkit.org/showug.cgi?id=137755
-	var hasBrokenTemplate = (function () {
-	  /* istanbul ignore else */
-	  if (inBrowser) {
-	    var a = document.createElement('div');
-	    a.innerHTML = '<template>1</template>';
-	    return !a.cloneNode(true).firstChild.innerHTML;
-	  } else {
-	    return false;
-	  }
-	})();
-
-	// Test for IE10/11 textarea placeholder clone bug
-	var hasTextareaCloneBug = (function () {
-	  /* istanbul ignore else */
-	  if (inBrowser) {
-	    var t = document.createElement('textarea');
-	    t.placeholder = 't';
-	    return t.cloneNode(true).value === 't';
-	  } else {
-	    return false;
-	  }
-	})();
-
-	/**
-	 * 1. Deal with Safari cloning nested <template> bug by
-	 *    manually cloning all template instances.
-	 * 2. Deal with IE10/11 textarea placeholder bug by setting
-	 *    the correct value after cloning.
-	 *
-	 * @param {Element|DocumentFragment} node
-	 * @return {Element|DocumentFragment}
-	 */
-
-	function cloneNode(node) {
-	  if (!node.querySelectorAll) {
-	    return node.cloneNode();
-	  }
-	  var res = node.cloneNode(true);
-	  var i, original, cloned;
-	  /* istanbul ignore if */
-	  if (hasBrokenTemplate) {
-	    var tempClone = res;
-	    if (isRealTemplate(node)) {
-	      node = node.content;
-	      tempClone = res.content;
-	    }
-	    original = node.querySelectorAll('template');
-	    if (original.length) {
-	      cloned = tempClone.querySelectorAll('template');
-	      i = cloned.length;
-	      while (i--) {
-	        cloned[i].parentNode.replaceChild(cloneNode(original[i]), cloned[i]);
+	  handleObject: function handleObject(value) {
+	    // cache object styles so that only changed props
+	    // are actually updated.
+	    var cache = this.cache || (this.cache = {});
+	    var name, val;
+	    for (name in cache) {
+	      if (!(name in value)) {
+	        this.handleSingle(name, null);
+	        delete cache[name];
 	      }
 	    }
-	  }
-	  /* istanbul ignore if */
-	  if (hasTextareaCloneBug) {
-	    if (node.tagName === 'TEXTAREA') {
-	      res.value = node.value;
-	    } else {
-	      original = node.querySelectorAll('textarea');
-	      if (original.length) {
-	        cloned = res.querySelectorAll('textarea');
-	        i = cloned.length;
-	        while (i--) {
-	          cloned[i].value = original[i].value;
+	    for (name in value) {
+	      val = value[name];
+	      if (val !== cache[name]) {
+	        cache[name] = val;
+	        this.handleSingle(name, val);
+	      }
+	    }
+	  },
+
+	  handleSingle: function handleSingle(prop, value) {
+	    prop = normalize(prop);
+	    if (!prop) return; // unsupported prop
+	    // cast possible numbers/booleans into strings
+	    if (value != null) value += '';
+	    if (value) {
+	      var isImportant = importantRE.test(value) ? 'important' : '';
+	      if (isImportant) {
+	        /* istanbul ignore if */
+	        if (process.env.NODE_ENV !== 'production') {
+	          warn('It\'s probably a bad idea to use !important with inline rules. ' + 'This feature will be deprecated in a future version of Vue.');
 	        }
+	        value = value.replace(importantRE, '').trim();
+	        this.el.style.setProperty(prop.kebab, value, isImportant);
+	      } else {
+	        this.el.style[prop.camel] = value;
 	      }
+	    } else {
+	      this.el.style[prop.camel] = '';
 	    }
 	  }
+
+	};
+
+	/**
+	 * Normalize a CSS property name.
+	 * - cache result
+	 * - auto prefix
+	 * - camelCase -> dash-case
+	 *
+	 * @param {String} prop
+	 * @return {String}
+	 */
+
+	function normalize(prop) {
+	  if (propCache[prop]) {
+	    return propCache[prop];
+	  }
+	  var res = prefix(prop);
+	  propCache[prop] = propCache[res] = res;
 	  return res;
 	}
 
 	/**
-	 * Process the template option and normalizes it into a
-	 * a DocumentFragment that can be used as a partial or a
-	 * instance template.
+	 * Auto detect the appropriate prefix for a CSS property.
+	 * https://gist.github.com/paulirish/523692
 	 *
-	 * @param {*} template
-	 *        Possible values include:
-	 *        - DocumentFragment object
-	 *        - Node object of type Template
-	 *        - id selector: '#some-template-id'
-	 *        - template string: '<div><span>{{msg}}</span></div>'
-	 * @param {Boolean} shouldClone
-	 * @param {Boolean} raw
-	 *        inline HTML interpolation. Do not check for id
-	 *        selector and keep whitespace in the string.
-	 * @return {DocumentFragment|undefined}
+	 * @param {String} prop
+	 * @return {String}
 	 */
 
-	function parseTemplate(template, shouldClone, raw) {
-	  var node, frag;
-
-	  // if the template is already a document fragment,
-	  // do nothing
-	  if (template instanceof DocumentFragment) {
-	    trimNode(template);
-	    return shouldClone ? cloneNode(template) : template;
+	function prefix(prop) {
+	  prop = hyphenate(prop);
+	  var camel = camelize(prop);
+	  var upper = camel.charAt(0).toUpperCase() + camel.slice(1);
+	  if (!testEl) {
+	    testEl = document.createElement('div');
 	  }
+	  var i = prefixes.length;
+	  var prefixed;
+	  while (i--) {
+	    prefixed = camelPrefixes[i] + upper;
+	    if (prefixed in testEl.style) {
+	      return {
+	        kebab: prefixes[i] + prop,
+	        camel: prefixed
+	      };
+	    }
+	  }
+	  if (camel in testEl.style) {
+	    return {
+	      kebab: prop,
+	      camel: camel
+	    };
+	  }
+	}
 
-	  if (typeof template === 'string') {
-	    // id selector
-	    if (!raw && template.charAt(0) === '#') {
-	      // id selector can be cached too
-	      frag = idSelectorCache.get(template);
-	      if (!frag) {
-	        node = document.getElementById(template.slice(1));
-	        if (node) {
-	          frag = nodeToFragment(node);
-	          // save selector to cache
-	          idSelectorCache.put(template, frag);
+	// xlink
+	var xlinkNS = 'http://www.w3.org/1999/xlink';
+	var xlinkRE = /^xlink:/;
+
+	// check for attributes that prohibit interpolations
+	var disallowedInterpAttrRE = /^v-|^:|^@|^(?:is|transition|transition-mode|debounce|track-by|stagger|enter-stagger|leave-stagger)$/;
+	// these attributes should also set their corresponding properties
+	// because they only affect the initial state of the element
+	var attrWithPropsRE = /^(?:value|checked|selected|muted)$/;
+	// these attributes expect enumrated values of "true" or "false"
+	// but are not boolean attributes
+	var enumeratedAttrRE = /^(?:draggable|contenteditable|spellcheck)$/;
+
+	// these attributes should set a hidden property for
+	// binding v-model to object values
+	var modelProps = {
+	  value: '_value',
+	  'true-value': '_trueValue',
+	  'false-value': '_falseValue'
+	};
+
+	var bind$1 = {
+
+	  priority: BIND,
+
+	  bind: function bind() {
+	    var attr = this.arg;
+	    var tag = this.el.tagName;
+	    // should be deep watch on object mode
+	    if (!attr) {
+	      this.deep = true;
+	    }
+	    // handle interpolation bindings
+	    var descriptor = this.descriptor;
+	    var tokens = descriptor.interp;
+	    if (tokens) {
+	      // handle interpolations with one-time tokens
+	      if (descriptor.hasOneTime) {
+	        this.expression = tokensToExp(tokens, this._scope || this.vm);
+	      }
+
+	      // only allow binding on native attributes
+	      if (disallowedInterpAttrRE.test(attr) || attr === 'name' && (tag === 'PARTIAL' || tag === 'SLOT')) {
+	        process.env.NODE_ENV !== 'production' && warn(attr + '="' + descriptor.raw + '": ' + 'attribute interpolation is not allowed in Vue.js ' + 'directives and special attributes.', this.vm);
+	        this.el.removeAttribute(attr);
+	        this.invalid = true;
+	      }
+
+	      /* istanbul ignore if */
+	      if (process.env.NODE_ENV !== 'production') {
+	        var raw = attr + '="' + descriptor.raw + '": ';
+	        // warn src
+	        if (attr === 'src') {
+	          warn(raw + 'interpolation in "src" attribute will cause ' + 'a 404 request. Use v-bind:src instead.', this.vm);
+	        }
+
+	        // warn style
+	        if (attr === 'style') {
+	          warn(raw + 'interpolation in "style" attribute will cause ' + 'the attribute to be discarded in Internet Explorer. ' + 'Use v-bind:style instead.', this.vm);
 	        }
 	      }
+	    }
+	  },
+
+	  update: function update(value) {
+	    if (this.invalid) {
+	      return;
+	    }
+	    var attr = this.arg;
+	    if (this.arg) {
+	      this.handleSingle(attr, value);
 	    } else {
-	      // normal string template
-	      frag = stringToFragment(template, raw);
+	      this.handleObject(value || {});
 	    }
-	  } else if (template.nodeType) {
-	    // a direct node
-	    frag = nodeToFragment(template);
-	  }
+	  },
 
-	  return frag && shouldClone ? cloneNode(frag) : frag;
-	}
+	  // share object handler with v-bind:class
+	  handleObject: style.handleObject,
 
-	var template = Object.freeze({
-	  cloneNode: cloneNode,
-	  parseTemplate: parseTemplate
-	});
-
-	/**
-	 * Abstraction for a partially-compiled fragment.
-	 * Can optionally compile content with a child scope.
-	 *
-	 * @param {Function} linker
-	 * @param {Vue} vm
-	 * @param {DocumentFragment} frag
-	 * @param {Vue} [host]
-	 * @param {Object} [scope]
-	 */
-	function Fragment(linker, vm, frag, host, scope, parentFrag) {
-	  this.children = [];
-	  this.childFrags = [];
-	  this.vm = vm;
-	  this.scope = scope;
-	  this.inserted = false;
-	  this.parentFrag = parentFrag;
-	  if (parentFrag) {
-	    parentFrag.childFrags.push(this);
-	  }
-	  this.unlink = linker(vm, frag, host, scope, this);
-	  var single = this.single = frag.childNodes.length === 1 &&
-	  // do not go single mode if the only node is an anchor
-	  !frag.childNodes[0].__vue_anchor;
-	  if (single) {
-	    this.node = frag.childNodes[0];
-	    this.before = singleBefore;
-	    this.remove = singleRemove;
-	  } else {
-	    this.node = createAnchor('fragment-start');
-	    this.end = createAnchor('fragment-end');
-	    this.frag = frag;
-	    prepend(this.node, frag);
-	    frag.appendChild(this.end);
-	    this.before = multiBefore;
-	    this.remove = multiRemove;
-	  }
-	  this.node.__vfrag__ = this;
-	}
-
-	/**
-	 * Call attach/detach for all components contained within
-	 * this fragment. Also do so recursively for all child
-	 * fragments.
-	 *
-	 * @param {Function} hook
-	 */
-
-	Fragment.prototype.callHook = function (hook) {
-	  var i, l;
-	  for (i = 0, l = this.children.length; i < l; i++) {
-	    hook(this.children[i]);
-	  }
-	  for (i = 0, l = this.childFrags.length; i < l; i++) {
-	    this.childFrags[i].callHook(hook);
+	  handleSingle: function handleSingle(attr, value) {
+	    var el = this.el;
+	    var interp = this.descriptor.interp;
+	    if (this.modifiers.camel) {
+	      attr = camelize(attr);
+	    }
+	    if (!interp && attrWithPropsRE.test(attr) && attr in el) {
+	      el[attr] = attr === 'value' ? value == null // IE9 will set input.value to "null" for null...
+	      ? '' : value : value;
+	    }
+	    // set model props
+	    var modelProp = modelProps[attr];
+	    if (!interp && modelProp) {
+	      el[modelProp] = value;
+	      // update v-model if present
+	      var model = el.__v_model;
+	      if (model) {
+	        model.listener();
+	      }
+	    }
+	    // do not set value attribute for textarea
+	    if (attr === 'value' && el.tagName === 'TEXTAREA') {
+	      el.removeAttribute(attr);
+	      return;
+	    }
+	    // update attribute
+	    if (enumeratedAttrRE.test(attr)) {
+	      el.setAttribute(attr, value ? 'true' : 'false');
+	    } else if (value != null && value !== false) {
+	      if (attr === 'class') {
+	        // handle edge case #1960:
+	        // class interpolation should not overwrite Vue transition class
+	        if (el.__v_trans) {
+	          value += ' ' + el.__v_trans.id + '-transition';
+	        }
+	        setClass(el, value);
+	      } else if (xlinkRE.test(attr)) {
+	        el.setAttributeNS(xlinkNS, attr, value === true ? '' : value);
+	      } else {
+	        el.setAttribute(attr, value === true ? '' : value);
+	      }
+	    } else {
+	      el.removeAttribute(attr);
+	    }
 	  }
 	};
 
-	/**
-	 * Destroy the fragment.
-	 */
+	var el = {
 
-	Fragment.prototype.destroy = function () {
-	  if (this.parentFrag) {
-	    this.parentFrag.childFrags.$remove(this);
+	  priority: EL,
+
+	  bind: function bind() {
+	    /* istanbul ignore if */
+	    if (!this.arg) {
+	      return;
+	    }
+	    var id = this.id = camelize(this.arg);
+	    var refs = (this._scope || this.vm).$els;
+	    if (hasOwn(refs, id)) {
+	      refs[id] = this.el;
+	    } else {
+	      defineReactive(refs, id, this.el);
+	    }
+	  },
+
+	  unbind: function unbind() {
+	    var refs = (this._scope || this.vm).$els;
+	    if (refs[this.id] === this.el) {
+	      refs[this.id] = null;
+	    }
 	  }
-	  this.unlink();
 	};
 
-	/**
-	 * Insert fragment before target, single node version
-	 *
-	 * @param {Node} target
-	 * @param {Boolean} withTransition
-	 */
-
-	function singleBefore(target, withTransition) {
-	  this.inserted = true;
-	  var method = withTransition !== false ? beforeWithTransition : before;
-	  method(this.node, target, this.vm);
-	  if (inDoc(this.node)) {
-	    this.callHook(attach);
+	var ref = {
+	  bind: function bind() {
+	    process.env.NODE_ENV !== 'production' && warn('v-ref:' + this.arg + ' must be used on a child ' + 'component. Found on <' + this.el.tagName.toLowerCase() + '>.', this.vm);
 	  }
-	}
-
-	/**
-	 * Remove fragment, single node version
-	 */
-
-	function singleRemove() {
-	  this.inserted = false;
-	  var shouldCallRemove = inDoc(this.node);
-	  var self = this;
-	  self.callHook(destroyChild);
-	  removeWithTransition(this.node, this.vm, function () {
-	    if (shouldCallRemove) {
-	      self.callHook(detach);
-	    }
-	    self.destroy();
-	  });
-	}
-
-	/**
-	 * Insert fragment before target, multi-nodes version
-	 *
-	 * @param {Node} target
-	 * @param {Boolean} withTransition
-	 */
-
-	function multiBefore(target, withTransition) {
-	  this.inserted = true;
-	  var vm = this.vm;
-	  var method = withTransition !== false ? beforeWithTransition : before;
-	  mapNodeRange(this.node, this.end, function (node) {
-	    method(node, target, vm);
-	  });
-	  if (inDoc(this.node)) {
-	    this.callHook(attach);
-	  }
-	}
-
-	/**
-	 * Remove fragment, multi-nodes version
-	 */
-
-	function multiRemove() {
-	  this.inserted = false;
-	  var self = this;
-	  var shouldCallRemove = inDoc(this.node);
-	  self.callHook(destroyChild);
-	  removeNodeRange(this.node, this.end, this.vm, this.frag, function () {
-	    if (shouldCallRemove) {
-	      self.callHook(detach);
-	    }
-	    self.destroy();
-	  });
-	}
-
-	/**
-	 * Call attach hook for a Vue instance.
-	 *
-	 * @param {Vue} child
-	 */
-
-	function attach(child) {
-	  if (!child._isAttached) {
-	    child._callHook('attached');
-	  }
-	}
-
-	/**
-	 * Call destroy for all contained instances,
-	 * with remove:false and defer:true.
-	 * Defer is necessary because we need to
-	 * keep the children to call detach hooks
-	 * on them.
-	 *
-	 * @param {Vue} child
-	 */
-
-	function destroyChild(child) {
-	  child.$destroy(false, true);
-	}
-
-	/**
-	 * Call detach hook for a Vue instance.
-	 *
-	 * @param {Vue} child
-	 */
-
-	function detach(child) {
-	  if (child._isAttached) {
-	    child._callHook('detached');
-	  }
-	}
-
-	var linkerCache = new Cache(5000);
-
-	/**
-	 * A factory that can be used to create instances of a
-	 * fragment. Caches the compiled linker if possible.
-	 *
-	 * @param {Vue} vm
-	 * @param {Element|String} el
-	 */
-	function FragmentFactory(vm, el) {
-	  this.vm = vm;
-	  var template;
-	  var isString = typeof el === 'string';
-	  if (isString || isTemplate(el)) {
-	    template = parseTemplate(el, true);
-	  } else {
-	    template = document.createDocumentFragment();
-	    template.appendChild(el);
-	  }
-	  this.template = template;
-	  // linker can be cached, but only for components
-	  var linker;
-	  var cid = vm.constructor.cid;
-	  if (cid > 0) {
-	    var cacheId = cid + (isString ? el : el.outerHTML);
-	    linker = linkerCache.get(cacheId);
-	    if (!linker) {
-	      linker = compile(template, vm.$options, true);
-	      linkerCache.put(cacheId, linker);
-	    }
-	  } else {
-	    linker = compile(template, vm.$options, true);
-	  }
-	  this.linker = linker;
-	}
-
-	/**
-	 * Create a fragment instance with given host and scope.
-	 *
-	 * @param {Vue} host
-	 * @param {Object} scope
-	 * @param {Fragment} parentFrag
-	 */
-
-	FragmentFactory.prototype.create = function (host, scope, parentFrag) {
-	  var frag = cloneNode(this.template);
-	  return new Fragment(this.linker, this.vm, frag, host, scope, parentFrag);
 	};
 
-	var vIf = {
-
-	  priority: 2000,
-
+	var cloak = {
 	  bind: function bind() {
 	    var el = this.el;
-	    if (!el.__vue__) {
-	      // check else block
-	      var next = el.nextElementSibling;
-	      if (next && getAttr(next, 'v-else') !== null) {
-	        remove(next);
-	        this.elseFactory = new FragmentFactory(this.vm, next);
-	      }
-	      // check main block
-	      this.anchor = createAnchor('v-if');
-	      replace(el, this.anchor);
-	      this.factory = new FragmentFactory(this.vm, el);
-	    } else {
-	      process.env.NODE_ENV !== 'production' && warn('v-if="' + this.expression + '" cannot be ' + 'used on an instance root element.');
-	      this.invalid = true;
-	    }
-	  },
-
-	  update: function update(value) {
-	    if (this.invalid) return;
-	    if (value) {
-	      if (!this.frag) {
-	        this.insert();
-	      }
-	    } else {
-	      this.remove();
-	    }
-	  },
-
-	  insert: function insert() {
-	    if (this.elseFrag) {
-	      this.elseFrag.remove();
-	      this.elseFrag = null;
-	    }
-	    this.frag = this.factory.create(this._host, this._scope, this._frag);
-	    this.frag.before(this.anchor);
-	  },
-
-	  remove: function remove() {
-	    if (this.frag) {
-	      this.frag.remove();
-	      this.frag = null;
-	    }
-	    if (this.elseFactory && !this.elseFrag) {
-	      this.elseFrag = this.elseFactory.create(this._host, this._scope, this._frag);
-	      this.elseFrag.before(this.anchor);
-	    }
-	  },
-
-	  unbind: function unbind() {
-	    if (this.frag) {
-	      this.frag.destroy();
-	    }
-	  }
-	};
-
-	var uid$1 = 0;
-
-	var vFor = {
-
-	  priority: 2000,
-
-	  params: ['track-by', 'stagger', 'enter-stagger', 'leave-stagger'],
-
-	  bind: function bind() {
-	    // support "item in items" syntax
-	    var inMatch = this.expression.match(/(.*) in (.*)/);
-	    if (inMatch) {
-	      var itMatch = inMatch[1].match(/\((.*),(.*)\)/);
-	      if (itMatch) {
-	        this.iterator = itMatch[1].trim();
-	        this.alias = itMatch[2].trim();
-	      } else {
-	        this.alias = inMatch[1].trim();
-	      }
-	      this.expression = inMatch[2];
-	    }
-
-	    if (!this.alias) {
-	      process.env.NODE_ENV !== 'production' && warn('Alias is required in v-for.');
-	      return;
-	    }
-
-	    // uid as a cache identifier
-	    this.id = '__v-for__' + ++uid$1;
-
-	    // check if this is an option list,
-	    // so that we know if we need to update the <select>'s
-	    // v-model when the option list has changed.
-	    // because v-model has a lower priority than v-for,
-	    // the v-model is not bound here yet, so we have to
-	    // retrive it in the actual updateModel() function.
-	    var tag = this.el.tagName;
-	    this.isOption = (tag === 'OPTION' || tag === 'OPTGROUP') && this.el.parentNode.tagName === 'SELECT';
-
-	    // setup anchor nodes
-	    this.start = createAnchor('v-for-start');
-	    this.end = createAnchor('v-for-end');
-	    replace(this.el, this.end);
-	    before(this.start, this.end);
-
-	    // cache
-	    this.cache = Object.create(null);
-
-	    // fragment factory
-	    this.factory = new FragmentFactory(this.vm, this.el);
-	  },
-
-	  update: function update(data) {
-	    this.diff(data);
-	    this.updateRef();
-	    this.updateModel();
-	  },
-
-	  /**
-	   * Diff, based on new data and old data, determine the
-	   * minimum amount of DOM manipulations needed to make the
-	   * DOM reflect the new data Array.
-	   *
-	   * The algorithm diffs the new data Array by storing a
-	   * hidden reference to an owner vm instance on previously
-	   * seen data. This allows us to achieve O(n) which is
-	   * better than a levenshtein distance based algorithm,
-	   * which is O(m * n).
-	   *
-	   * @param {Array} data
-	   */
-
-	  diff: function diff(data) {
-	    // check if the Array was converted from an Object
-	    var item = data[0];
-	    var convertedFromObject = this.fromObject = isObject(item) && hasOwn(item, '$key') && hasOwn(item, '$value');
-
-	    var trackByKey = this.params.trackBy;
-	    var oldFrags = this.frags;
-	    var frags = this.frags = new Array(data.length);
-	    var alias = this.alias;
-	    var iterator = this.iterator;
-	    var start = this.start;
-	    var end = this.end;
-	    var inDocument = inDoc(start);
-	    var init = !oldFrags;
-	    var i, l, frag, key, value, primitive;
-
-	    // First pass, go through the new Array and fill up
-	    // the new frags array. If a piece of data has a cached
-	    // instance for it, we reuse it. Otherwise build a new
-	    // instance.
-	    for (i = 0, l = data.length; i < l; i++) {
-	      item = data[i];
-	      key = convertedFromObject ? item.$key : null;
-	      value = convertedFromObject ? item.$value : item;
-	      primitive = !isObject(value);
-	      frag = !init && this.getCachedFrag(value, i, key);
-	      if (frag) {
-	        // reusable fragment
-	        frag.reused = true;
-	        // update $index
-	        frag.scope.$index = i;
-	        // update $key
-	        if (key) {
-	          frag.scope.$key = key;
-	        }
-	        // update iterator
-	        if (iterator) {
-	          frag.scope[iterator] = key !== null ? key : i;
-	        }
-	        // update data for track-by, object repeat &
-	        // primitive values.
-	        if (trackByKey || convertedFromObject || primitive) {
-	          frag.scope[alias] = value;
-	        }
-	      } else {
-	        // new isntance
-	        frag = this.create(value, alias, i, key);
-	        frag.fresh = !init;
-	      }
-	      frags[i] = frag;
-	      if (init) {
-	        frag.before(end);
-	      }
-	    }
-
-	    // we're done for the initial render.
-	    if (init) {
-	      return;
-	    }
-
-	    // Second pass, go through the old fragments and
-	    // destroy those who are not reused (and remove them
-	    // from cache)
-	    var removalIndex = 0;
-	    var totalRemoved = oldFrags.length - frags.length;
-	    for (i = 0, l = oldFrags.length; i < l; i++) {
-	      frag = oldFrags[i];
-	      if (!frag.reused) {
-	        this.deleteCachedFrag(frag);
-	        this.remove(frag, removalIndex++, totalRemoved, inDocument);
-	      }
-	    }
-
-	    // Final pass, move/insert new fragments into the
-	    // right place.
-	    var targetPrev, prevEl, currentPrev;
-	    var insertionIndex = 0;
-	    for (i = 0, l = frags.length; i < l; i++) {
-	      frag = frags[i];
-	      // this is the frag that we should be after
-	      targetPrev = frags[i - 1];
-	      prevEl = targetPrev ? targetPrev.staggerCb ? targetPrev.staggerAnchor : targetPrev.end || targetPrev.node : start;
-	      if (frag.reused && !frag.staggerCb) {
-	        currentPrev = findPrevFrag(frag, start, this.id);
-	        if (currentPrev !== targetPrev && (!currentPrev ||
-	        // optimization for moving a single item.
-	        // thanks to suggestions by @livoras in #1807
-	        findPrevFrag(currentPrev, start, this.id) !== targetPrev)) {
-	          this.move(frag, prevEl);
-	        }
-	      } else {
-	        // new instance, or still in stagger.
-	        // insert with updated stagger index.
-	        this.insert(frag, insertionIndex++, prevEl, inDocument);
-	      }
-	      frag.reused = frag.fresh = false;
-	    }
-	  },
-
-	  /**
-	   * Create a new fragment instance.
-	   *
-	   * @param {*} value
-	   * @param {String} alias
-	   * @param {Number} index
-	   * @param {String} [key]
-	   * @return {Fragment}
-	   */
-
-	  create: function create(value, alias, index, key) {
-	    var host = this._host;
-	    // create iteration scope
-	    var parentScope = this._scope || this.vm;
-	    var scope = Object.create(parentScope);
-	    // ref holder for the scope
-	    scope.$refs = Object.create(parentScope.$refs);
-	    scope.$els = Object.create(parentScope.$els);
-	    // make sure point $parent to parent scope
-	    scope.$parent = parentScope;
-	    // for two-way binding on alias
-	    scope.$forContext = this;
-	    // define scope properties
-	    defineReactive(scope, alias, value);
-	    defineReactive(scope, '$index', index);
-	    if (key) {
-	      defineReactive(scope, '$key', key);
-	    } else if (scope.$key) {
-	      // avoid accidental fallback
-	      def(scope, '$key', null);
-	    }
-	    if (this.iterator) {
-	      defineReactive(scope, this.iterator, key !== null ? key : index);
-	    }
-	    var frag = this.factory.create(host, scope, this._frag);
-	    frag.forId = this.id;
-	    this.cacheFrag(value, frag, index, key);
-	    return frag;
-	  },
-
-	  /**
-	   * Update the v-ref on owner vm.
-	   */
-
-	  updateRef: function updateRef() {
-	    var ref = this.descriptor.ref;
-	    if (!ref) return;
-	    var hash = (this._scope || this.vm).$refs;
-	    var refs;
-	    if (!this.fromObject) {
-	      refs = this.frags.map(findVmFromFrag);
-	    } else {
-	      refs = {};
-	      this.frags.forEach(function (frag) {
-	        refs[frag.scope.$key] = findVmFromFrag(frag);
-	      });
-	    }
-	    hash[ref] = refs;
-	  },
-
-	  /**
-	   * For option lists, update the containing v-model on
-	   * parent <select>.
-	   */
-
-	  updateModel: function updateModel() {
-	    if (this.isOption) {
-	      var parent = this.start.parentNode;
-	      var model = parent && parent.__v_model;
-	      if (model) {
-	        model.forceUpdate();
-	      }
-	    }
-	  },
-
-	  /**
-	   * Insert a fragment. Handles staggering.
-	   *
-	   * @param {Fragment} frag
-	   * @param {Number} index
-	   * @param {Node} prevEl
-	   * @param {Boolean} inDocument
-	   */
-
-	  insert: function insert(frag, index, prevEl, inDocument) {
-	    if (frag.staggerCb) {
-	      frag.staggerCb.cancel();
-	      frag.staggerCb = null;
-	    }
-	    var staggerAmount = this.getStagger(frag, index, null, 'enter');
-	    if (inDocument && staggerAmount) {
-	      // create an anchor and insert it synchronously,
-	      // so that we can resolve the correct order without
-	      // worrying about some elements not inserted yet
-	      var anchor = frag.staggerAnchor;
-	      if (!anchor) {
-	        anchor = frag.staggerAnchor = createAnchor('stagger-anchor');
-	        anchor.__vfrag__ = frag;
-	      }
-	      after(anchor, prevEl);
-	      var op = frag.staggerCb = cancellable(function () {
-	        frag.staggerCb = null;
-	        frag.before(anchor);
-	        remove(anchor);
-	      });
-	      setTimeout(op, staggerAmount);
-	    } else {
-	      frag.before(prevEl.nextSibling);
-	    }
-	  },
-
-	  /**
-	   * Remove a fragment. Handles staggering.
-	   *
-	   * @param {Fragment} frag
-	   * @param {Number} index
-	   * @param {Number} total
-	   * @param {Boolean} inDocument
-	   */
-
-	  remove: function remove(frag, index, total, inDocument) {
-	    if (frag.staggerCb) {
-	      frag.staggerCb.cancel();
-	      frag.staggerCb = null;
-	      // it's not possible for the same frag to be removed
-	      // twice, so if we have a pending stagger callback,
-	      // it means this frag is queued for enter but removed
-	      // before its transition started. Since it is already
-	      // destroyed, we can just leave it in detached state.
-	      return;
-	    }
-	    var staggerAmount = this.getStagger(frag, index, total, 'leave');
-	    if (inDocument && staggerAmount) {
-	      var op = frag.staggerCb = cancellable(function () {
-	        frag.staggerCb = null;
-	        frag.remove();
-	      });
-	      setTimeout(op, staggerAmount);
-	    } else {
-	      frag.remove();
-	    }
-	  },
-
-	  /**
-	   * Move a fragment to a new position.
-	   * Force no transition.
-	   *
-	   * @param {Fragment} frag
-	   * @param {Node} prevEl
-	   */
-
-	  move: function move(frag, prevEl) {
-	    frag.before(prevEl.nextSibling, false);
-	  },
-
-	  /**
-	   * Cache a fragment using track-by or the object key.
-	   *
-	   * @param {*} value
-	   * @param {Fragment} frag
-	   * @param {Number} index
-	   * @param {String} [key]
-	   */
-
-	  cacheFrag: function cacheFrag(value, frag, index, key) {
-	    var trackByKey = this.params.trackBy;
-	    var cache = this.cache;
-	    var primitive = !isObject(value);
-	    var id;
-	    if (key || trackByKey || primitive) {
-	      id = trackByKey ? trackByKey === '$index' ? index : value[trackByKey] : key || value;
-	      if (!cache[id]) {
-	        cache[id] = frag;
-	      } else if (trackByKey !== '$index') {
-	        process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
-	      }
-	    } else {
-	      id = this.id;
-	      if (hasOwn(value, id)) {
-	        if (value[id] === null) {
-	          value[id] = frag;
-	        } else {
-	          process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
-	        }
-	      } else {
-	        def(value, id, frag);
-	      }
-	    }
-	    frag.raw = value;
-	  },
-
-	  /**
-	   * Get a cached fragment from the value/index/key
-	   *
-	   * @param {*} value
-	   * @param {Number} index
-	   * @param {String} key
-	   * @return {Fragment}
-	   */
-
-	  getCachedFrag: function getCachedFrag(value, index, key) {
-	    var trackByKey = this.params.trackBy;
-	    var primitive = !isObject(value);
-	    var frag;
-	    if (key || trackByKey || primitive) {
-	      var id = trackByKey ? trackByKey === '$index' ? index : value[trackByKey] : key || value;
-	      frag = this.cache[id];
-	    } else {
-	      frag = value[this.id];
-	    }
-	    if (frag && (frag.reused || frag.fresh)) {
-	      process.env.NODE_ENV !== 'production' && this.warnDuplicate(value);
-	    }
-	    return frag;
-	  },
-
-	  /**
-	   * Delete a fragment from cache.
-	   *
-	   * @param {Fragment} frag
-	   */
-
-	  deleteCachedFrag: function deleteCachedFrag(frag) {
-	    var value = frag.raw;
-	    var trackByKey = this.params.trackBy;
-	    var scope = frag.scope;
-	    var index = scope.$index;
-	    // fix #948: avoid accidentally fall through to
-	    // a parent repeater which happens to have $key.
-	    var key = hasOwn(scope, '$key') && scope.$key;
-	    var primitive = !isObject(value);
-	    if (trackByKey || key || primitive) {
-	      var id = trackByKey ? trackByKey === '$index' ? index : value[trackByKey] : key || value;
-	      this.cache[id] = null;
-	    } else {
-	      value[this.id] = null;
-	      frag.raw = null;
-	    }
-	  },
-
-	  /**
-	   * Get the stagger amount for an insertion/removal.
-	   *
-	   * @param {Fragment} frag
-	   * @param {Number} index
-	   * @param {Number} total
-	   * @param {String} type
-	   */
-
-	  getStagger: function getStagger(frag, index, total, type) {
-	    type = type + 'Stagger';
-	    var trans = frag.node.__v_trans;
-	    var hooks = trans && trans.hooks;
-	    var hook = hooks && (hooks[type] || hooks.stagger);
-	    return hook ? hook.call(frag, index, total) : index * parseInt(this.params[type] || this.params.stagger, 10);
-	  },
-
-	  /**
-	   * Pre-process the value before piping it through the
-	   * filters. This is passed to and called by the watcher.
-	   */
-
-	  _preProcess: function _preProcess(value) {
-	    // regardless of type, store the un-filtered raw value.
-	    this.rawValue = value;
-	    return value;
-	  },
-
-	  /**
-	   * Post-process the value after it has been piped through
-	   * the filters. This is passed to and called by the watcher.
-	   *
-	   * It is necessary for this to be called during the
-	   * wathcer's dependency collection phase because we want
-	   * the v-for to update when the source Object is mutated.
-	   */
-
-	  _postProcess: function _postProcess(value) {
-	    if (isArray(value)) {
-	      return value;
-	    } else if (isPlainObject(value)) {
-	      // convert plain object to array.
-	      var keys = Object.keys(value);
-	      var i = keys.length;
-	      var res = new Array(i);
-	      var key;
-	      while (i--) {
-	        key = keys[i];
-	        res[i] = {
-	          $key: key,
-	          $value: value[key]
-	        };
-	      }
-	      return res;
-	    } else {
-	      if (typeof value === 'number') {
-	        value = range(value);
-	      }
-	      return value || [];
-	    }
-	  },
-
-	  unbind: function unbind() {
-	    if (this.descriptor.ref) {
-	      (this._scope || this.vm).$refs[this.descriptor.ref] = null;
-	    }
-	    if (this.frags) {
-	      var i = this.frags.length;
-	      var frag;
-	      while (i--) {
-	        frag = this.frags[i];
-	        this.deleteCachedFrag(frag);
-	        frag.destroy();
-	      }
-	    }
-	  }
-	};
-
-	/**
-	 * Helper to find the previous element that is a fragment
-	 * anchor. This is necessary because a destroyed frag's
-	 * element could still be lingering in the DOM before its
-	 * leaving transition finishes, but its inserted flag
-	 * should have been set to false so we can skip them.
-	 *
-	 * If this is a block repeat, we want to make sure we only
-	 * return frag that is bound to this v-for. (see #929)
-	 *
-	 * @param {Fragment} frag
-	 * @param {Comment|Text} anchor
-	 * @param {String} id
-	 * @return {Fragment}
-	 */
-
-	function findPrevFrag(frag, anchor, id) {
-	  var el = frag.node.previousSibling;
-	  /* istanbul ignore if */
-	  if (!el) return;
-	  frag = el.__vfrag__;
-	  while ((!frag || frag.forId !== id || !frag.inserted) && el !== anchor) {
-	    el = el.previousSibling;
-	    /* istanbul ignore if */
-	    if (!el) return;
-	    frag = el.__vfrag__;
-	  }
-	  return frag;
-	}
-
-	/**
-	 * Find a vm from a fragment.
-	 *
-	 * @param {Fragment} frag
-	 * @return {Vue|undefined}
-	 */
-
-	function findVmFromFrag(frag) {
-	  var node = frag.node;
-	  // handle multi-node frag
-	  if (frag.end) {
-	    while (!node.__vue__ && node !== frag.end && node.nextSibling) {
-	      node = node.nextSibling;
-	    }
-	  }
-	  return node.__vue__;
-	}
-
-	/**
-	 * Create a range array from given number.
-	 *
-	 * @param {Number} n
-	 * @return {Array}
-	 */
-
-	function range(n) {
-	  var i = -1;
-	  var ret = new Array(n);
-	  while (++i < n) {
-	    ret[i] = i;
-	  }
-	  return ret;
-	}
-
-	if (process.env.NODE_ENV !== 'production') {
-	  vFor.warnDuplicate = function (value) {
-	    warn('Duplicate value found in v-for="' + this.descriptor.raw + '": ' + JSON.stringify(value) + '. Use track-by="$index" if ' + 'you are expecting duplicate values.');
-	  };
-	}
-
-	var html = {
-
-	  bind: function bind() {
-	    // a comment node means this is a binding for
-	    // {{{ inline unescaped html }}}
-	    if (this.el.nodeType === 8) {
-	      // hold nodes
-	      this.nodes = [];
-	      // replace the placeholder with proper anchor
-	      this.anchor = createAnchor('v-html');
-	      replace(this.el, this.anchor);
-	    }
-	  },
-
-	  update: function update(value) {
-	    value = _toString(value);
-	    if (this.nodes) {
-	      this.swap(value);
-	    } else {
-	      this.el.innerHTML = value;
-	    }
-	  },
-
-	  swap: function swap(value) {
-	    // remove old nodes
-	    var i = this.nodes.length;
-	    while (i--) {
-	      remove(this.nodes[i]);
-	    }
-	    // convert new value to a fragment
-	    // do not attempt to retrieve from id selector
-	    var frag = parseTemplate(value, true, true);
-	    // save a reference to these nodes so we can remove later
-	    this.nodes = toArray(frag.childNodes);
-	    before(frag, this.anchor);
-	  }
-	};
-
-	var text = {
-
-	  bind: function bind() {
-	    this.attr = this.el.nodeType === 3 ? 'data' : 'textContent';
-	  },
-
-	  update: function update(value) {
-	    this.el[this.attr] = _toString(value);
+	    this.vm.$once('pre-hook:compiled', function () {
+	      el.removeAttribute('v-cloak');
+	    });
 	  }
 	};
 
 	// must export plain object
-	var publicDirectives = {
-	  text: text,
+	var directives = {
+	  text: text$1,
 	  html: html,
 	  'for': vFor,
 	  'if': vIf,
 	  show: show,
 	  model: model,
-	  on: on,
-	  bind: bind,
+	  on: on$1,
+	  bind: bind$1,
 	  el: el,
 	  ref: ref,
 	  cloak: cloak
+	};
+
+	var vClass = {
+
+	  deep: true,
+
+	  update: function update(value) {
+	    if (value && typeof value === 'string') {
+	      this.handleObject(stringToObject(value));
+	    } else if (isPlainObject(value)) {
+	      this.handleObject(value);
+	    } else if (isArray(value)) {
+	      this.handleArray(value);
+	    } else {
+	      this.cleanup();
+	    }
+	  },
+
+	  handleObject: function handleObject(value) {
+	    this.cleanup(value);
+	    this.prevKeys = Object.keys(value);
+	    setObjectClasses(this.el, value);
+	  },
+
+	  handleArray: function handleArray(value) {
+	    this.cleanup(value);
+	    for (var i = 0, l = value.length; i < l; i++) {
+	      var val = value[i];
+	      if (val && isPlainObject(val)) {
+	        setObjectClasses(this.el, val);
+	      } else if (val && typeof val === 'string') {
+	        addClass(this.el, val);
+	      }
+	    }
+	    this.prevKeys = value.slice();
+	  },
+
+	  cleanup: function cleanup(value) {
+	    if (!this.prevKeys) return;
+
+	    var i = this.prevKeys.length;
+	    while (i--) {
+	      var key = this.prevKeys[i];
+	      if (!key) continue;
+
+	      var keys = isPlainObject(key) ? Object.keys(key) : [key];
+	      for (var j = 0, l = keys.length; j < l; j++) {
+	        toggleClasses(this.el, keys[j], removeClass);
+	      }
+	    }
+	  }
+	};
+
+	function setObjectClasses(el, obj) {
+	  var keys = Object.keys(obj);
+	  for (var i = 0, l = keys.length; i < l; i++) {
+	    var key = keys[i];
+	    if (!obj[key]) continue;
+	    toggleClasses(el, key, addClass);
+	  }
+	}
+
+	function stringToObject(value) {
+	  var res = {};
+	  var keys = value.trim().split(/\s+/);
+	  for (var i = 0, l = keys.length; i < l; i++) {
+	    res[keys[i]] = true;
+	  }
+	  return res;
+	}
+
+	/**
+	 * Add or remove a class/classes on an element
+	 *
+	 * @param {Element} el
+	 * @param {String} key The class name. This may or may not
+	 *                     contain a space character, in such a
+	 *                     case we'll deal with multiple class
+	 *                     names at once.
+	 * @param {Function} fn
+	 */
+
+	function toggleClasses(el, key, fn) {
+	  key = key.trim();
+
+	  if (key.indexOf(' ') === -1) {
+	    fn(el, key);
+	    return;
+	  }
+
+	  // The key contains one or more space characters.
+	  // Since a class name doesn't accept such characters, we
+	  // treat it as multiple classes.
+	  var keys = key.split(/\s+/);
+	  for (var i = 0, l = keys.length; i < l; i++) {
+	    fn(el, keys[i]);
+	  }
+	}
+
+	var component = {
+
+	  priority: COMPONENT,
+
+	  params: ['keep-alive', 'transition-mode', 'inline-template'],
+
+	  /**
+	   * Setup. Two possible usages:
+	   *
+	   * - static:
+	   *   <comp> or <div v-component="comp">
+	   *
+	   * - dynamic:
+	   *   <component :is="view">
+	   */
+
+	  bind: function bind() {
+	    if (!this.el.__vue__) {
+	      // keep-alive cache
+	      this.keepAlive = this.params.keepAlive;
+	      if (this.keepAlive) {
+	        this.cache = {};
+	      }
+	      // check inline-template
+	      if (this.params.inlineTemplate) {
+	        // extract inline template as a DocumentFragment
+	        this.inlineTemplate = extractContent(this.el, true);
+	      }
+	      // component resolution related state
+	      this.pendingComponentCb = this.Component = null;
+	      // transition related state
+	      this.pendingRemovals = 0;
+	      this.pendingRemovalCb = null;
+	      // create a ref anchor
+	      this.anchor = createAnchor('v-component');
+	      replace(this.el, this.anchor);
+	      // remove is attribute.
+	      // this is removed during compilation, but because compilation is
+	      // cached, when the component is used elsewhere this attribute
+	      // will remain at link time.
+	      this.el.removeAttribute('is');
+	      // remove ref, same as above
+	      if (this.descriptor.ref) {
+	        this.el.removeAttribute('v-ref:' + hyphenate(this.descriptor.ref));
+	      }
+	      // if static, build right now.
+	      if (this.literal) {
+	        this.setComponent(this.expression);
+	      }
+	    } else {
+	      process.env.NODE_ENV !== 'production' && warn('cannot mount component "' + this.expression + '" ' + 'on already mounted element: ' + this.el);
+	    }
+	  },
+
+	  /**
+	   * Public update, called by the watcher in the dynamic
+	   * literal scenario, e.g. <component :is="view">
+	   */
+
+	  update: function update(value) {
+	    if (!this.literal) {
+	      this.setComponent(value);
+	    }
+	  },
+
+	  /**
+	   * Switch dynamic components. May resolve the component
+	   * asynchronously, and perform transition based on
+	   * specified transition mode. Accepts a few additional
+	   * arguments specifically for vue-router.
+	   *
+	   * The callback is called when the full transition is
+	   * finished.
+	   *
+	   * @param {String} value
+	   * @param {Function} [cb]
+	   */
+
+	  setComponent: function setComponent(value, cb) {
+	    this.invalidatePending();
+	    if (!value) {
+	      // just remove current
+	      this.unbuild(true);
+	      this.remove(this.childVM, cb);
+	      this.childVM = null;
+	    } else {
+	      var self = this;
+	      this.resolveComponent(value, function () {
+	        self.mountComponent(cb);
+	      });
+	    }
+	  },
+
+	  /**
+	   * Resolve the component constructor to use when creating
+	   * the child vm.
+	   *
+	   * @param {String|Function} value
+	   * @param {Function} cb
+	   */
+
+	  resolveComponent: function resolveComponent(value, cb) {
+	    var self = this;
+	    this.pendingComponentCb = cancellable(function (Component) {
+	      self.ComponentName = Component.options.name || (typeof value === 'string' ? value : null);
+	      self.Component = Component;
+	      cb();
+	    });
+	    this.vm._resolveComponent(value, this.pendingComponentCb);
+	  },
+
+	  /**
+	   * Create a new instance using the current constructor and
+	   * replace the existing instance. This method doesn't care
+	   * whether the new component and the old one are actually
+	   * the same.
+	   *
+	   * @param {Function} [cb]
+	   */
+
+	  mountComponent: function mountComponent(cb) {
+	    // actual mount
+	    this.unbuild(true);
+	    var self = this;
+	    var activateHooks = this.Component.options.activate;
+	    var cached = this.getCached();
+	    var newComponent = this.build();
+	    if (activateHooks && !cached) {
+	      this.waitingFor = newComponent;
+	      callActivateHooks(activateHooks, newComponent, function () {
+	        if (self.waitingFor !== newComponent) {
+	          return;
+	        }
+	        self.waitingFor = null;
+	        self.transition(newComponent, cb);
+	      });
+	    } else {
+	      // update ref for kept-alive component
+	      if (cached) {
+	        newComponent._updateRef();
+	      }
+	      this.transition(newComponent, cb);
+	    }
+	  },
+
+	  /**
+	   * When the component changes or unbinds before an async
+	   * constructor is resolved, we need to invalidate its
+	   * pending callback.
+	   */
+
+	  invalidatePending: function invalidatePending() {
+	    if (this.pendingComponentCb) {
+	      this.pendingComponentCb.cancel();
+	      this.pendingComponentCb = null;
+	    }
+	  },
+
+	  /**
+	   * Instantiate/insert a new child vm.
+	   * If keep alive and has cached instance, insert that
+	   * instance; otherwise build a new one and cache it.
+	   *
+	   * @param {Object} [extraOptions]
+	   * @return {Vue} - the created instance
+	   */
+
+	  build: function build(extraOptions) {
+	    var cached = this.getCached();
+	    if (cached) {
+	      return cached;
+	    }
+	    if (this.Component) {
+	      // default options
+	      var options = {
+	        name: this.ComponentName,
+	        el: cloneNode(this.el),
+	        template: this.inlineTemplate,
+	        // make sure to add the child with correct parent
+	        // if this is a transcluded component, its parent
+	        // should be the transclusion host.
+	        parent: this._host || this.vm,
+	        // if no inline-template, then the compiled
+	        // linker can be cached for better performance.
+	        _linkerCachable: !this.inlineTemplate,
+	        _ref: this.descriptor.ref,
+	        _asComponent: true,
+	        _isRouterView: this._isRouterView,
+	        // if this is a transcluded component, context
+	        // will be the common parent vm of this instance
+	        // and its host.
+	        _context: this.vm,
+	        // if this is inside an inline v-for, the scope
+	        // will be the intermediate scope created for this
+	        // repeat fragment. this is used for linking props
+	        // and container directives.
+	        _scope: this._scope,
+	        // pass in the owner fragment of this component.
+	        // this is necessary so that the fragment can keep
+	        // track of its contained components in order to
+	        // call attach/detach hooks for them.
+	        _frag: this._frag
+	      };
+	      // extra options
+	      // in 1.0.0 this is used by vue-router only
+	      /* istanbul ignore if */
+	      if (extraOptions) {
+	        extend(options, extraOptions);
+	      }
+	      var child = new this.Component(options);
+	      if (this.keepAlive) {
+	        this.cache[this.Component.cid] = child;
+	      }
+	      /* istanbul ignore if */
+	      if (process.env.NODE_ENV !== 'production' && this.el.hasAttribute('transition') && child._isFragment) {
+	        warn('Transitions will not work on a fragment instance. ' + 'Template: ' + child.$options.template, child);
+	      }
+	      return child;
+	    }
+	  },
+
+	  /**
+	   * Try to get a cached instance of the current component.
+	   *
+	   * @return {Vue|undefined}
+	   */
+
+	  getCached: function getCached() {
+	    return this.keepAlive && this.cache[this.Component.cid];
+	  },
+
+	  /**
+	   * Teardown the current child, but defers cleanup so
+	   * that we can separate the destroy and removal steps.
+	   *
+	   * @param {Boolean} defer
+	   */
+
+	  unbuild: function unbuild(defer) {
+	    if (this.waitingFor) {
+	      if (!this.keepAlive) {
+	        this.waitingFor.$destroy();
+	      }
+	      this.waitingFor = null;
+	    }
+	    var child = this.childVM;
+	    if (!child || this.keepAlive) {
+	      if (child) {
+	        // remove ref
+	        child._inactive = true;
+	        child._updateRef(true);
+	      }
+	      return;
+	    }
+	    // the sole purpose of `deferCleanup` is so that we can
+	    // "deactivate" the vm right now and perform DOM removal
+	    // later.
+	    child.$destroy(false, defer);
+	  },
+
+	  /**
+	   * Remove current destroyed child and manually do
+	   * the cleanup after removal.
+	   *
+	   * @param {Function} cb
+	   */
+
+	  remove: function remove(child, cb) {
+	    var keepAlive = this.keepAlive;
+	    if (child) {
+	      // we may have a component switch when a previous
+	      // component is still being transitioned out.
+	      // we want to trigger only one lastest insertion cb
+	      // when the existing transition finishes. (#1119)
+	      this.pendingRemovals++;
+	      this.pendingRemovalCb = cb;
+	      var self = this;
+	      child.$remove(function () {
+	        self.pendingRemovals--;
+	        if (!keepAlive) child._cleanup();
+	        if (!self.pendingRemovals && self.pendingRemovalCb) {
+	          self.pendingRemovalCb();
+	          self.pendingRemovalCb = null;
+	        }
+	      });
+	    } else if (cb) {
+	      cb();
+	    }
+	  },
+
+	  /**
+	   * Actually swap the components, depending on the
+	   * transition mode. Defaults to simultaneous.
+	   *
+	   * @param {Vue} target
+	   * @param {Function} [cb]
+	   */
+
+	  transition: function transition(target, cb) {
+	    var self = this;
+	    var current = this.childVM;
+	    // for devtool inspection
+	    if (current) current._inactive = true;
+	    target._inactive = false;
+	    this.childVM = target;
+	    switch (self.params.transitionMode) {
+	      case 'in-out':
+	        target.$before(self.anchor, function () {
+	          self.remove(current, cb);
+	        });
+	        break;
+	      case 'out-in':
+	        self.remove(current, function () {
+	          target.$before(self.anchor, cb);
+	        });
+	        break;
+	      default:
+	        self.remove(current);
+	        target.$before(self.anchor, cb);
+	    }
+	  },
+
+	  /**
+	   * Unbind.
+	   */
+
+	  unbind: function unbind() {
+	    this.invalidatePending();
+	    // Do not defer cleanup when unbinding
+	    this.unbuild();
+	    // destroy all keep-alive cached instances
+	    if (this.cache) {
+	      for (var key in this.cache) {
+	        this.cache[key].$destroy();
+	      }
+	      this.cache = null;
+	    }
+	  }
+	};
+
+	/**
+	 * Call activate hooks in order (asynchronous)
+	 *
+	 * @param {Array} hooks
+	 * @param {Vue} vm
+	 * @param {Function} cb
+	 */
+
+	function callActivateHooks(hooks, vm, cb) {
+	  var total = hooks.length;
+	  var called = 0;
+	  hooks[0].call(vm, next);
+	  function next() {
+	    if (++called >= total) {
+	      cb();
+	    } else {
+	      hooks[called].call(vm, next);
+	    }
+	  }
+	}
+
+	var propBindingModes = config._propBindingModes;
+	var empty = {};
+
+	// regexes
+	var identRE$1 = /^[$_a-zA-Z]+[\w$]*$/;
+	var settablePathRE = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*|\[[^\[\]]+\])*$/;
+
+	/**
+	 * Compile props on a root element and return
+	 * a props link function.
+	 *
+	 * @param {Element|DocumentFragment} el
+	 * @param {Array} propOptions
+	 * @param {Vue} vm
+	 * @return {Function} propsLinkFn
+	 */
+
+	function compileProps(el, propOptions, vm) {
+	  var props = [];
+	  var names = Object.keys(propOptions);
+	  var i = names.length;
+	  var options, name, attr, value, path, parsed, prop;
+	  while (i--) {
+	    name = names[i];
+	    options = propOptions[name] || empty;
+
+	    if (process.env.NODE_ENV !== 'production' && name === '$data') {
+	      warn('Do not use $data as prop.', vm);
+	      continue;
+	    }
+
+	    // props could contain dashes, which will be
+	    // interpreted as minus calculations by the parser
+	    // so we need to camelize the path here
+	    path = camelize(name);
+	    if (!identRE$1.test(path)) {
+	      process.env.NODE_ENV !== 'production' && warn('Invalid prop key: "' + name + '". Prop keys ' + 'must be valid identifiers.', vm);
+	      continue;
+	    }
+
+	    prop = {
+	      name: name,
+	      path: path,
+	      options: options,
+	      mode: propBindingModes.ONE_WAY,
+	      raw: null
+	    };
+
+	    attr = hyphenate(name);
+	    // first check dynamic version
+	    if ((value = getBindAttr(el, attr)) === null) {
+	      if ((value = getBindAttr(el, attr + '.sync')) !== null) {
+	        prop.mode = propBindingModes.TWO_WAY;
+	      } else if ((value = getBindAttr(el, attr + '.once')) !== null) {
+	        prop.mode = propBindingModes.ONE_TIME;
+	      }
+	    }
+	    if (value !== null) {
+	      // has dynamic binding!
+	      prop.raw = value;
+	      parsed = parseDirective(value);
+	      value = parsed.expression;
+	      prop.filters = parsed.filters;
+	      // check binding type
+	      if (isLiteral(value) && !parsed.filters) {
+	        // for expressions containing literal numbers and
+	        // booleans, there's no need to setup a prop binding,
+	        // so we can optimize them as a one-time set.
+	        prop.optimizedLiteral = true;
+	      } else {
+	        prop.dynamic = true;
+	        // check non-settable path for two-way bindings
+	        if (process.env.NODE_ENV !== 'production' && prop.mode === propBindingModes.TWO_WAY && !settablePathRE.test(value)) {
+	          prop.mode = propBindingModes.ONE_WAY;
+	          warn('Cannot bind two-way prop with non-settable ' + 'parent path: ' + value, vm);
+	        }
+	      }
+	      prop.parentPath = value;
+
+	      // warn required two-way
+	      if (process.env.NODE_ENV !== 'production' && options.twoWay && prop.mode !== propBindingModes.TWO_WAY) {
+	        warn('Prop "' + name + '" expects a two-way binding type.', vm);
+	      }
+	    } else if ((value = getAttr(el, attr)) !== null) {
+	      // has literal binding!
+	      prop.raw = value;
+	    } else if (process.env.NODE_ENV !== 'production') {
+	      // check possible camelCase prop usage
+	      var lowerCaseName = path.toLowerCase();
+	      value = /[A-Z\-]/.test(name) && (el.getAttribute(lowerCaseName) || el.getAttribute(':' + lowerCaseName) || el.getAttribute('v-bind:' + lowerCaseName) || el.getAttribute(':' + lowerCaseName + '.once') || el.getAttribute('v-bind:' + lowerCaseName + '.once') || el.getAttribute(':' + lowerCaseName + '.sync') || el.getAttribute('v-bind:' + lowerCaseName + '.sync'));
+	      if (value) {
+	        warn('Possible usage error for prop `' + lowerCaseName + '` - ' + 'did you mean `' + attr + '`? HTML is case-insensitive, remember to use ' + 'kebab-case for props in templates.', vm);
+	      } else if (options.required) {
+	        // warn missing required
+	        warn('Missing required prop: ' + name, vm);
+	      }
+	    }
+	    // push prop
+	    props.push(prop);
+	  }
+	  return makePropsLinkFn(props);
+	}
+
+	/**
+	 * Build a function that applies props to a vm.
+	 *
+	 * @param {Array} props
+	 * @return {Function} propsLinkFn
+	 */
+
+	function makePropsLinkFn(props) {
+	  return function propsLinkFn(vm, scope) {
+	    // store resolved props info
+	    vm._props = {};
+	    var i = props.length;
+	    var prop, path, options, value, raw;
+	    while (i--) {
+	      prop = props[i];
+	      raw = prop.raw;
+	      path = prop.path;
+	      options = prop.options;
+	      vm._props[path] = prop;
+	      if (raw === null) {
+	        // initialize absent prop
+	        initProp(vm, prop, undefined);
+	      } else if (prop.dynamic) {
+	        // dynamic prop
+	        if (prop.mode === propBindingModes.ONE_TIME) {
+	          // one time binding
+	          value = (scope || vm._context || vm).$get(prop.parentPath);
+	          initProp(vm, prop, value);
+	        } else {
+	          if (vm._context) {
+	            // dynamic binding
+	            vm._bindDir({
+	              name: 'prop',
+	              def: propDef,
+	              prop: prop
+	            }, null, null, scope); // el, host, scope
+	          } else {
+	              // root instance
+	              initProp(vm, prop, vm.$get(prop.parentPath));
+	            }
+	        }
+	      } else if (prop.optimizedLiteral) {
+	        // optimized literal, cast it and just set once
+	        var stripped = stripQuotes(raw);
+	        value = stripped === raw ? toBoolean(toNumber(raw)) : stripped;
+	        initProp(vm, prop, value);
+	      } else {
+	        // string literal, but we need to cater for
+	        // Boolean props with no value, or with same
+	        // literal value (e.g. disabled="disabled")
+	        // see https://github.com/vuejs/vue-loader/issues/182
+	        value = options.type === Boolean && (raw === '' || raw === hyphenate(prop.name)) ? true : raw;
+	        initProp(vm, prop, value);
+	      }
+	    }
+	  };
+	}
+
+	/**
+	 * Process a prop with a rawValue, applying necessary coersions,
+	 * default values & assertions and call the given callback with
+	 * processed value.
+	 *
+	 * @param {Vue} vm
+	 * @param {Object} prop
+	 * @param {*} rawValue
+	 * @param {Function} fn
+	 */
+
+	function processPropValue(vm, prop, rawValue, fn) {
+	  var isSimple = prop.dynamic && isSimplePath(prop.parentPath);
+	  var value = rawValue;
+	  if (value === undefined) {
+	    value = getPropDefaultValue(vm, prop);
+	  }
+	  value = coerceProp(prop, value);
+	  var coerced = value !== rawValue;
+	  if (!assertProp(prop, value, vm)) {
+	    value = undefined;
+	  }
+	  if (isSimple && !coerced) {
+	    withoutConversion(function () {
+	      fn(value);
+	    });
+	  } else {
+	    fn(value);
+	  }
+	}
+
+	/**
+	 * Set a prop's initial value on a vm and its data object.
+	 *
+	 * @param {Vue} vm
+	 * @param {Object} prop
+	 * @param {*} value
+	 */
+
+	function initProp(vm, prop, value) {
+	  processPropValue(vm, prop, value, function (value) {
+	    defineReactive(vm, prop.path, value);
+	  });
+	}
+
+	/**
+	 * Update a prop's value on a vm.
+	 *
+	 * @param {Vue} vm
+	 * @param {Object} prop
+	 * @param {*} value
+	 */
+
+	function updateProp(vm, prop, value) {
+	  processPropValue(vm, prop, value, function (value) {
+	    vm[prop.path] = value;
+	  });
+	}
+
+	/**
+	 * Get the default value of a prop.
+	 *
+	 * @param {Vue} vm
+	 * @param {Object} prop
+	 * @return {*}
+	 */
+
+	function getPropDefaultValue(vm, prop) {
+	  // no default, return undefined
+	  var options = prop.options;
+	  if (!hasOwn(options, 'default')) {
+	    // absent boolean value defaults to false
+	    return options.type === Boolean ? false : undefined;
+	  }
+	  var def = options['default'];
+	  // warn against non-factory defaults for Object & Array
+	  if (isObject(def)) {
+	    process.env.NODE_ENV !== 'production' && warn('Invalid default value for prop "' + prop.name + '": ' + 'Props with type Object/Array must use a factory function ' + 'to return the default value.', vm);
+	  }
+	  // call factory function for non-Function types
+	  return typeof def === 'function' && options.type !== Function ? def.call(vm) : def;
+	}
+
+	/**
+	 * Assert whether a prop is valid.
+	 *
+	 * @param {Object} prop
+	 * @param {*} value
+	 * @param {Vue} vm
+	 */
+
+	function assertProp(prop, value, vm) {
+	  if (!prop.options.required && ( // non-required
+	  prop.raw === null || // abscent
+	  value == null) // null or undefined
+	  ) {
+	      return true;
+	    }
+	  var options = prop.options;
+	  var type = options.type;
+	  var valid = !type;
+	  var expectedTypes = [];
+	  if (type) {
+	    if (!isArray(type)) {
+	      type = [type];
+	    }
+	    for (var i = 0; i < type.length && !valid; i++) {
+	      var assertedType = assertType(value, type[i]);
+	      expectedTypes.push(assertedType.expectedType);
+	      valid = assertedType.valid;
+	    }
+	  }
+	  if (!valid) {
+	    if (process.env.NODE_ENV !== 'production') {
+	      warn('Invalid prop: type check failed for prop "' + prop.name + '".' + ' Expected ' + expectedTypes.map(formatType).join(', ') + ', got ' + formatValue(value) + '.', vm);
+	    }
+	    return false;
+	  }
+	  var validator = options.validator;
+	  if (validator) {
+	    if (!validator(value)) {
+	      process.env.NODE_ENV !== 'production' && warn('Invalid prop: custom validator check failed for prop "' + prop.name + '".', vm);
+	      return false;
+	    }
+	  }
+	  return true;
+	}
+
+	/**
+	 * Force parsing value with coerce option.
+	 *
+	 * @param {*} value
+	 * @param {Object} options
+	 * @return {*}
+	 */
+
+	function coerceProp(prop, value) {
+	  var coerce = prop.options.coerce;
+	  if (!coerce) {
+	    return value;
+	  }
+	  // coerce is a function
+	  return coerce(value);
+	}
+
+	/**
+	 * Assert the type of a value
+	 *
+	 * @param {*} value
+	 * @param {Function} type
+	 * @return {Object}
+	 */
+
+	function assertType(value, type) {
+	  var valid;
+	  var expectedType;
+	  if (type === String) {
+	    expectedType = 'string';
+	    valid = typeof value === expectedType;
+	  } else if (type === Number) {
+	    expectedType = 'number';
+	    valid = typeof value === expectedType;
+	  } else if (type === Boolean) {
+	    expectedType = 'boolean';
+	    valid = typeof value === expectedType;
+	  } else if (type === Function) {
+	    expectedType = 'function';
+	    valid = typeof value === expectedType;
+	  } else if (type === Object) {
+	    expectedType = 'object';
+	    valid = isPlainObject(value);
+	  } else if (type === Array) {
+	    expectedType = 'array';
+	    valid = isArray(value);
+	  } else {
+	    valid = value instanceof type;
+	  }
+	  return {
+	    valid: valid,
+	    expectedType: expectedType
+	  };
+	}
+
+	/**
+	 * Format type for output
+	 *
+	 * @param {String} type
+	 * @return {String}
+	 */
+
+	function formatType(type) {
+	  return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'custom type';
+	}
+
+	/**
+	 * Format value
+	 *
+	 * @param {*} value
+	 * @return {String}
+	 */
+
+	function formatValue(val) {
+	  return Object.prototype.toString.call(val).slice(8, -1);
+	}
+
+	var bindingModes = config._propBindingModes;
+
+	var propDef = {
+
+	  bind: function bind() {
+	    var child = this.vm;
+	    var parent = child._context;
+	    // passed in from compiler directly
+	    var prop = this.descriptor.prop;
+	    var childKey = prop.path;
+	    var parentKey = prop.parentPath;
+	    var twoWay = prop.mode === bindingModes.TWO_WAY;
+
+	    var parentWatcher = this.parentWatcher = new Watcher(parent, parentKey, function (val) {
+	      updateProp(child, prop, val);
+	    }, {
+	      twoWay: twoWay,
+	      filters: prop.filters,
+	      // important: props need to be observed on the
+	      // v-for scope if present
+	      scope: this._scope
+	    });
+
+	    // set the child initial value.
+	    initProp(child, prop, parentWatcher.value);
+
+	    // setup two-way binding
+	    if (twoWay) {
+	      // important: defer the child watcher creation until
+	      // the created hook (after data observation)
+	      var self = this;
+	      child.$once('pre-hook:created', function () {
+	        self.childWatcher = new Watcher(child, childKey, function (val) {
+	          parentWatcher.set(val);
+	        }, {
+	          // ensure sync upward before parent sync down.
+	          // this is necessary in cases e.g. the child
+	          // mutates a prop array, then replaces it. (#1683)
+	          sync: true
+	        });
+	      });
+	    }
+	  },
+
+	  unbind: function unbind() {
+	    this.parentWatcher.teardown();
+	    if (this.childWatcher) {
+	      this.childWatcher.teardown();
+	    }
+	  }
 	};
 
 	var queue$1 = [];
@@ -5324,10 +6392,36 @@
 	  return f;
 	}
 
-	var TYPE_TRANSITION = 1;
-	var TYPE_ANIMATION = 2;
+	var TYPE_TRANSITION = 'transition';
+	var TYPE_ANIMATION = 'animation';
 	var transDurationProp = transitionProp + 'Duration';
 	var animDurationProp = animationProp + 'Duration';
+
+	/**
+	 * If a just-entered element is applied the
+	 * leave class while its enter transition hasn't started yet,
+	 * and the transitioned property has the same value for both
+	 * enter/leave, then the leave transition will be skipped and
+	 * the transitionend event never fires. This function ensures
+	 * its callback to be called after a transition has started
+	 * by waiting for double raf.
+	 *
+	 * It falls back to setTimeout on devices that support CSS
+	 * transitions but not raf (e.g. Android 4.2 browser) - since
+	 * these environments are usually slow, we are giving it a
+	 * relatively large timeout.
+	 */
+
+	var raf = inBrowser && window.requestAnimationFrame;
+	var waitForTransitionStart = raf
+	/* istanbul ignore next */
+	? function (fn) {
+	  raf(function () {
+	    raf(fn);
+	  });
+	} : function (fn) {
+	  setTimeout(fn, 50);
+	};
 
 	/**
 	 * A Transition object that encapsulates the state and logic
@@ -5341,8 +6435,8 @@
 	function Transition(el, id, hooks, vm) {
 	  this.id = id;
 	  this.el = el;
-	  this.enterClass = id + '-enter';
-	  this.leaveClass = id + '-leave';
+	  this.enterClass = hooks && hooks.enterClass || id + '-enter';
+	  this.leaveClass = hooks && hooks.leaveClass || id + '-leave';
 	  this.hooks = hooks;
 	  this.vm = vm;
 	  // async state
@@ -5350,9 +6444,17 @@
 	  this.justEntered = false;
 	  this.entered = this.left = false;
 	  this.typeCache = {};
+	  // check css transition type
+	  this.type = hooks && hooks.type;
+	  /* istanbul ignore if */
+	  if (process.env.NODE_ENV !== 'production') {
+	    if (this.type && this.type !== TYPE_TRANSITION && this.type !== TYPE_ANIMATION) {
+	      warn('invalid CSS transition type for transition="' + this.id + '": ' + this.type, vm);
+	    }
+	  }
 	  // bind
 	  var self = this;['enterNextTick', 'enterDone', 'leaveNextTick', 'leaveDone'].forEach(function (m) {
-	    self[m] = bind$1(self[m], self);
+	    self[m] = bind(self[m], self);
 	  });
 	}
 
@@ -5405,20 +6507,13 @@
 	 */
 
 	p$1.enterNextTick = function () {
+	  var _this = this;
 
-	  // Important hack:
-	  // in Chrome, if a just-entered element is applied the
-	  // leave class while its interpolated property still has
-	  // a very small value (within one frame), Chrome will
-	  // skip the leave transition entirely and not firing the
-	  // transtionend event. Therefore we need to protected
-	  // against such cases using a one-frame timeout.
+	  // prevent transition skipping
 	  this.justEntered = true;
-	  var self = this;
-	  setTimeout(function () {
-	    self.justEntered = false;
-	  }, 17);
-
+	  waitForTransitionStart(function () {
+	    _this.justEntered = false;
+	  });
 	  var enterDone = this.enterDone;
 	  var type = this.getCssTransitionType(this.enterClass);
 	  if (!this.pendingJsCb) {
@@ -5609,7 +6704,7 @@
 	  isHidden(this.el)) {
 	    return;
 	  }
-	  var type = this.typeCache[className];
+	  var type = this.type || this.typeCache[className];
 	  if (type) return type;
 	  var inlineStyles = this.el.style;
 	  var computedStyles = window.getComputedStyle(this.el);
@@ -5648,7 +6743,7 @@
 	      }
 	    }
 	  };
-	  on$1(el, event, onEnd);
+	  on(el, event, onEnd);
 	};
 
 	/**
@@ -5660,20 +6755,26 @@
 	 */
 
 	function isHidden(el) {
-	  return !(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+	  if (/svg$/.test(el.namespaceURI)) {
+	    // SVG elements do not have offset(Width|Height)
+	    // so we need to check the client rect
+	    var rect = el.getBoundingClientRect();
+	    return !(rect.width || rect.height);
+	  } else {
+	    return !(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+	  }
 	}
 
-	var transition = {
+	var transition$1 = {
 
-	  priority: 1100,
+	  priority: TRANSITION,
 
 	  update: function update(id, oldId) {
 	    var el = this.el;
 	    // resolve on owner vm
 	    var hooks = resolveAsset(this.vm.$options, 'transitions', id);
 	    id = id || 'v';
-	    // apply on closest vm
-	    el.__v_trans = new Transition(el, id, hooks, this.el.__vue__ || this.vm);
+	    el.__v_trans = new Transition(el, id, hooks, this.vm);
 	    if (oldId) {
 	      removeClass(el, oldId + '-transition');
 	    }
@@ -5681,653 +6782,24 @@
 	  }
 	};
 
-	var bindingModes = config._propBindingModes;
-
-	var propDef = {
-
-	  bind: function bind() {
-
-	    var child = this.vm;
-	    var parent = child._context;
-	    // passed in from compiler directly
-	    var prop = this.descriptor.prop;
-	    var childKey = prop.path;
-	    var parentKey = prop.parentPath;
-	    var twoWay = prop.mode === bindingModes.TWO_WAY;
-
-	    var parentWatcher = this.parentWatcher = new Watcher(parent, parentKey, function (val) {
-	      if (assertProp(prop, val)) {
-	        child[childKey] = val;
-	      }
-	    }, {
-	      twoWay: twoWay,
-	      filters: prop.filters,
-	      // important: props need to be observed on the
-	      // v-for scope if present
-	      scope: this._scope
-	    });
-
-	    // set the child initial value.
-	    initProp(child, prop, parentWatcher.value);
-
-	    // setup two-way binding
-	    if (twoWay) {
-	      // important: defer the child watcher creation until
-	      // the created hook (after data observation)
-	      var self = this;
-	      child.$once('hook:created', function () {
-	        self.childWatcher = new Watcher(child, childKey, function (val) {
-	          parentWatcher.set(val);
-	        }, {
-	          // ensure sync upward before parent sync down.
-	          // this is necessary in cases e.g. the child
-	          // mutates a prop array, then replaces it. (#1683)
-	          sync: true
-	        });
-	      });
-	    }
-	  },
-
-	  unbind: function unbind() {
-	    this.parentWatcher.teardown();
-	    if (this.childWatcher) {
-	      this.childWatcher.teardown();
-	    }
-	  }
-	};
-
-	var component = {
-
-	  priority: 1500,
-
-	  params: ['keep-alive', 'transition-mode', 'inline-template'],
-
-	  /**
-	   * Setup. Two possible usages:
-	   *
-	   * - static:
-	   *   <comp> or <div v-component="comp">
-	   *
-	   * - dynamic:
-	   *   <component :is="view">
-	   */
-
-	  bind: function bind() {
-	    if (!this.el.__vue__) {
-	      // keep-alive cache
-	      this.keepAlive = this.params.keepAlive;
-	      if (this.keepAlive) {
-	        this.cache = {};
-	      }
-	      // check inline-template
-	      if (this.params.inlineTemplate) {
-	        // extract inline template as a DocumentFragment
-	        this.inlineTemplate = extractContent(this.el, true);
-	      }
-	      // component resolution related state
-	      this.pendingComponentCb = this.Component = null;
-	      // transition related state
-	      this.pendingRemovals = 0;
-	      this.pendingRemovalCb = null;
-	      // create a ref anchor
-	      this.anchor = createAnchor('v-component');
-	      replace(this.el, this.anchor);
-	      // remove is attribute.
-	      // this is removed during compilation, but because compilation is
-	      // cached, when the component is used elsewhere this attribute
-	      // will remain at link time.
-	      this.el.removeAttribute('is');
-	      // remove ref, same as above
-	      if (this.descriptor.ref) {
-	        this.el.removeAttribute('v-ref:' + hyphenate(this.descriptor.ref));
-	      }
-	      // if static, build right now.
-	      if (this.literal) {
-	        this.setComponent(this.expression);
-	      }
-	    } else {
-	      process.env.NODE_ENV !== 'production' && warn('cannot mount component "' + this.expression + '" ' + 'on already mounted element: ' + this.el);
-	    }
-	  },
-
-	  /**
-	   * Public update, called by the watcher in the dynamic
-	   * literal scenario, e.g. <component :is="view">
-	   */
-
-	  update: function update(value) {
-	    if (!this.literal) {
-	      this.setComponent(value);
-	    }
-	  },
-
-	  /**
-	   * Switch dynamic components. May resolve the component
-	   * asynchronously, and perform transition based on
-	   * specified transition mode. Accepts a few additional
-	   * arguments specifically for vue-router.
-	   *
-	   * The callback is called when the full transition is
-	   * finished.
-	   *
-	   * @param {String} value
-	   * @param {Function} [cb]
-	   */
-
-	  setComponent: function setComponent(value, cb) {
-	    this.invalidatePending();
-	    if (!value) {
-	      // just remove current
-	      this.unbuild(true);
-	      this.remove(this.childVM, cb);
-	      this.childVM = null;
-	    } else {
-	      var self = this;
-	      this.resolveComponent(value, function () {
-	        self.mountComponent(cb);
-	      });
-	    }
-	  },
-
-	  /**
-	   * Resolve the component constructor to use when creating
-	   * the child vm.
-	   */
-
-	  resolveComponent: function resolveComponent(id, cb) {
-	    var self = this;
-	    this.pendingComponentCb = cancellable(function (Component) {
-	      self.ComponentName = Component.options.name || id;
-	      self.Component = Component;
-	      cb();
-	    });
-	    this.vm._resolveComponent(id, this.pendingComponentCb);
-	  },
-
-	  /**
-	   * Create a new instance using the current constructor and
-	   * replace the existing instance. This method doesn't care
-	   * whether the new component and the old one are actually
-	   * the same.
-	   *
-	   * @param {Function} [cb]
-	   */
-
-	  mountComponent: function mountComponent(cb) {
-	    // actual mount
-	    this.unbuild(true);
-	    var self = this;
-	    var activateHook = this.Component.options.activate;
-	    var cached = this.getCached();
-	    var newComponent = this.build();
-	    if (activateHook && !cached) {
-	      this.waitingFor = newComponent;
-	      activateHook.call(newComponent, function () {
-	        self.waitingFor = null;
-	        self.transition(newComponent, cb);
-	      });
-	    } else {
-	      // update ref for kept-alive component
-	      if (cached) {
-	        newComponent._updateRef();
-	      }
-	      this.transition(newComponent, cb);
-	    }
-	  },
-
-	  /**
-	   * When the component changes or unbinds before an async
-	   * constructor is resolved, we need to invalidate its
-	   * pending callback.
-	   */
-
-	  invalidatePending: function invalidatePending() {
-	    if (this.pendingComponentCb) {
-	      this.pendingComponentCb.cancel();
-	      this.pendingComponentCb = null;
-	    }
-	  },
-
-	  /**
-	   * Instantiate/insert a new child vm.
-	   * If keep alive and has cached instance, insert that
-	   * instance; otherwise build a new one and cache it.
-	   *
-	   * @param {Object} [extraOptions]
-	   * @return {Vue} - the created instance
-	   */
-
-	  build: function build(extraOptions) {
-	    var cached = this.getCached();
-	    if (cached) {
-	      return cached;
-	    }
-	    if (this.Component) {
-	      // default options
-	      var options = {
-	        name: this.ComponentName,
-	        el: cloneNode(this.el),
-	        template: this.inlineTemplate,
-	        // make sure to add the child with correct parent
-	        // if this is a transcluded component, its parent
-	        // should be the transclusion host.
-	        parent: this._host || this.vm,
-	        // if no inline-template, then the compiled
-	        // linker can be cached for better performance.
-	        _linkerCachable: !this.inlineTemplate,
-	        _ref: this.descriptor.ref,
-	        _asComponent: true,
-	        _isRouterView: this._isRouterView,
-	        // if this is a transcluded component, context
-	        // will be the common parent vm of this instance
-	        // and its host.
-	        _context: this.vm,
-	        // if this is inside an inline v-for, the scope
-	        // will be the intermediate scope created for this
-	        // repeat fragment. this is used for linking props
-	        // and container directives.
-	        _scope: this._scope,
-	        // pass in the owner fragment of this component.
-	        // this is necessary so that the fragment can keep
-	        // track of its contained components in order to
-	        // call attach/detach hooks for them.
-	        _frag: this._frag
-	      };
-	      // extra options
-	      // in 1.0.0 this is used by vue-router only
-	      /* istanbul ignore if */
-	      if (extraOptions) {
-	        extend(options, extraOptions);
-	      }
-	      var child = new this.Component(options);
-	      if (this.keepAlive) {
-	        this.cache[this.Component.cid] = child;
-	      }
-	      /* istanbul ignore if */
-	      if (process.env.NODE_ENV !== 'production' && this.el.hasAttribute('transition') && child._isFragment) {
-	        warn('Transitions will not work on a fragment instance. ' + 'Template: ' + child.$options.template);
-	      }
-	      return child;
-	    }
-	  },
-
-	  /**
-	   * Try to get a cached instance of the current component.
-	   *
-	   * @return {Vue|undefined}
-	   */
-
-	  getCached: function getCached() {
-	    return this.keepAlive && this.cache[this.Component.cid];
-	  },
-
-	  /**
-	   * Teardown the current child, but defers cleanup so
-	   * that we can separate the destroy and removal steps.
-	   *
-	   * @param {Boolean} defer
-	   */
-
-	  unbuild: function unbuild(defer) {
-	    if (this.waitingFor) {
-	      this.waitingFor.$destroy();
-	      this.waitingFor = null;
-	    }
-	    var child = this.childVM;
-	    if (!child || this.keepAlive) {
-	      if (child) {
-	        // remove ref
-	        child._updateRef(true);
-	      }
-	      return;
-	    }
-	    // the sole purpose of `deferCleanup` is so that we can
-	    // "deactivate" the vm right now and perform DOM removal
-	    // later.
-	    child.$destroy(false, defer);
-	  },
-
-	  /**
-	   * Remove current destroyed child and manually do
-	   * the cleanup after removal.
-	   *
-	   * @param {Function} cb
-	   */
-
-	  remove: function remove(child, cb) {
-	    var keepAlive = this.keepAlive;
-	    if (child) {
-	      // we may have a component switch when a previous
-	      // component is still being transitioned out.
-	      // we want to trigger only one lastest insertion cb
-	      // when the existing transition finishes. (#1119)
-	      this.pendingRemovals++;
-	      this.pendingRemovalCb = cb;
-	      var self = this;
-	      child.$remove(function () {
-	        self.pendingRemovals--;
-	        if (!keepAlive) child._cleanup();
-	        if (!self.pendingRemovals && self.pendingRemovalCb) {
-	          self.pendingRemovalCb();
-	          self.pendingRemovalCb = null;
-	        }
-	      });
-	    } else if (cb) {
-	      cb();
-	    }
-	  },
-
-	  /**
-	   * Actually swap the components, depending on the
-	   * transition mode. Defaults to simultaneous.
-	   *
-	   * @param {Vue} target
-	   * @param {Function} [cb]
-	   */
-
-	  transition: function transition(target, cb) {
-	    var self = this;
-	    var current = this.childVM;
-	    // for devtool inspection
-	    if (process.env.NODE_ENV !== 'production') {
-	      if (current) current._inactive = true;
-	      target._inactive = false;
-	    }
-	    this.childVM = target;
-	    switch (self.params.transitionMode) {
-	      case 'in-out':
-	        target.$before(self.anchor, function () {
-	          self.remove(current, cb);
-	        });
-	        break;
-	      case 'out-in':
-	        self.remove(current, function () {
-	          target.$before(self.anchor, cb);
-	        });
-	        break;
-	      default:
-	        self.remove(current);
-	        target.$before(self.anchor, cb);
-	    }
-	  },
-
-	  /**
-	   * Unbind.
-	   */
-
-	  unbind: function unbind() {
-	    this.invalidatePending();
-	    // Do not defer cleanup when unbinding
-	    this.unbuild();
-	    // destroy all keep-alive cached instances
-	    if (this.cache) {
-	      for (var key in this.cache) {
-	        this.cache[key].$destroy();
-	      }
-	      this.cache = null;
-	    }
-	  }
-	};
-
-	var vClass = {
-
-	  deep: true,
-
-	  update: function update(value) {
-	    if (value && typeof value === 'string') {
-	      this.handleObject(stringToObject(value));
-	    } else if (isPlainObject(value)) {
-	      this.handleObject(value);
-	    } else if (isArray(value)) {
-	      this.handleArray(value);
-	    } else {
-	      this.cleanup();
-	    }
-	  },
-
-	  handleObject: function handleObject(value) {
-	    this.cleanup(value);
-	    var keys = this.prevKeys = Object.keys(value);
-	    for (var i = 0, l = keys.length; i < l; i++) {
-	      var key = keys[i];
-	      if (value[key]) {
-	        addClass(this.el, key);
-	      } else {
-	        removeClass(this.el, key);
-	      }
-	    }
-	  },
-
-	  handleArray: function handleArray(value) {
-	    this.cleanup(value);
-	    for (var i = 0, l = value.length; i < l; i++) {
-	      if (value[i]) {
-	        addClass(this.el, value[i]);
-	      }
-	    }
-	    this.prevKeys = value.slice();
-	  },
-
-	  cleanup: function cleanup(value) {
-	    if (this.prevKeys) {
-	      var i = this.prevKeys.length;
-	      while (i--) {
-	        var key = this.prevKeys[i];
-	        if (key && (!value || !contains$1(value, key))) {
-	          removeClass(this.el, key);
-	        }
-	      }
-	    }
-	  }
-	};
-
-	function stringToObject(value) {
-	  var res = {};
-	  var keys = value.trim().split(/\s+/);
-	  var i = keys.length;
-	  while (i--) {
-	    res[keys[i]] = true;
-	  }
-	  return res;
-	}
-
-	function contains$1(value, key) {
-	  return isArray(value) ? value.indexOf(key) > -1 : hasOwn(value, key);
-	}
-
 	var internalDirectives = {
 	  style: style,
 	  'class': vClass,
 	  component: component,
 	  prop: propDef,
-	  transition: transition
+	  transition: transition$1
 	};
-
-	var propBindingModes = config._propBindingModes;
-	var empty = {};
-
-	// regexes
-	var identRE = /^[$_a-zA-Z]+[\w$]*$/;
-	var settablePathRE = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*|\[[^\[\]]+\])*$/;
-
-	/**
-	 * Compile props on a root element and return
-	 * a props link function.
-	 *
-	 * @param {Element|DocumentFragment} el
-	 * @param {Array} propOptions
-	 * @return {Function} propsLinkFn
-	 */
-
-	function compileProps(el, propOptions) {
-	  var props = [];
-	  var names = Object.keys(propOptions);
-	  var i = names.length;
-	  var options, name, attr, value, path, parsed, prop;
-	  while (i--) {
-	    name = names[i];
-	    options = propOptions[name] || empty;
-
-	    if (process.env.NODE_ENV !== 'production' && name === '$data') {
-	      warn('Do not use $data as prop.');
-	      continue;
-	    }
-
-	    // props could contain dashes, which will be
-	    // interpreted as minus calculations by the parser
-	    // so we need to camelize the path here
-	    path = camelize(name);
-	    if (!identRE.test(path)) {
-	      process.env.NODE_ENV !== 'production' && warn('Invalid prop key: "' + name + '". Prop keys ' + 'must be valid identifiers.');
-	      continue;
-	    }
-
-	    prop = {
-	      name: name,
-	      path: path,
-	      options: options,
-	      mode: propBindingModes.ONE_WAY,
-	      raw: null
-	    };
-
-	    attr = hyphenate(name);
-	    // first check dynamic version
-	    if ((value = getBindAttr(el, attr)) === null) {
-	      if ((value = getBindAttr(el, attr + '.sync')) !== null) {
-	        prop.mode = propBindingModes.TWO_WAY;
-	      } else if ((value = getBindAttr(el, attr + '.once')) !== null) {
-	        prop.mode = propBindingModes.ONE_TIME;
-	      }
-	    }
-	    if (value !== null) {
-	      // has dynamic binding!
-	      prop.raw = value;
-	      parsed = parseDirective(value);
-	      value = parsed.expression;
-	      prop.filters = parsed.filters;
-	      // check binding type
-	      if (isLiteral(value)) {
-	        // for expressions containing literal numbers and
-	        // booleans, there's no need to setup a prop binding,
-	        // so we can optimize them as a one-time set.
-	        prop.optimizedLiteral = true;
-	      } else {
-	        prop.dynamic = true;
-	        // check non-settable path for two-way bindings
-	        if (process.env.NODE_ENV !== 'production' && prop.mode === propBindingModes.TWO_WAY && !settablePathRE.test(value)) {
-	          prop.mode = propBindingModes.ONE_WAY;
-	          warn('Cannot bind two-way prop with non-settable ' + 'parent path: ' + value);
-	        }
-	      }
-	      prop.parentPath = value;
-
-	      // warn required two-way
-	      if (process.env.NODE_ENV !== 'production' && options.twoWay && prop.mode !== propBindingModes.TWO_WAY) {
-	        warn('Prop "' + name + '" expects a two-way binding type.');
-	      }
-	    } else if ((value = getAttr(el, attr)) !== null) {
-	      // has literal binding!
-	      prop.raw = value;
-	    } else if (options.required) {
-	      // warn missing required
-	      process.env.NODE_ENV !== 'production' && warn('Missing required prop: ' + name);
-	    }
-	    // push prop
-	    props.push(prop);
-	  }
-	  return makePropsLinkFn(props);
-	}
-
-	/**
-	 * Build a function that applies props to a vm.
-	 *
-	 * @param {Array} props
-	 * @return {Function} propsLinkFn
-	 */
-
-	function makePropsLinkFn(props) {
-	  return function propsLinkFn(vm, scope) {
-	    // store resolved props info
-	    vm._props = {};
-	    var i = props.length;
-	    var prop, path, options, value, raw;
-	    while (i--) {
-	      prop = props[i];
-	      raw = prop.raw;
-	      path = prop.path;
-	      options = prop.options;
-	      vm._props[path] = prop;
-	      if (raw === null) {
-	        // initialize absent prop
-	        initProp(vm, prop, getDefault(vm, options));
-	      } else if (prop.dynamic) {
-	        // dynamic prop
-	        if (vm._context) {
-	          if (prop.mode === propBindingModes.ONE_TIME) {
-	            // one time binding
-	            value = (scope || vm._context).$get(prop.parentPath);
-	            initProp(vm, prop, value);
-	          } else {
-	            // dynamic binding
-	            vm._bindDir({
-	              name: 'prop',
-	              def: propDef,
-	              prop: prop
-	            }, null, null, scope); // el, host, scope
-	          }
-	        } else {
-	            process.env.NODE_ENV !== 'production' && warn('Cannot bind dynamic prop on a root instance' + ' with no parent: ' + prop.name + '="' + raw + '"');
-	          }
-	      } else if (prop.optimizedLiteral) {
-	        // optimized literal, cast it and just set once
-	        var stripped = stripQuotes(raw);
-	        value = stripped === raw ? toBoolean(toNumber(raw)) : stripped;
-	        initProp(vm, prop, value);
-	      } else {
-	        // string literal, but we need to cater for
-	        // Boolean props with no value
-	        value = options.type === Boolean && raw === '' ? true : raw;
-	        initProp(vm, prop, value);
-	      }
-	    }
-	  };
-	}
-
-	/**
-	 * Get the default value of a prop.
-	 *
-	 * @param {Vue} vm
-	 * @param {Object} options
-	 * @return {*}
-	 */
-
-	function getDefault(vm, options) {
-	  // no default, return undefined
-	  if (!hasOwn(options, 'default')) {
-	    // absent boolean value defaults to false
-	    return options.type === Boolean ? false : undefined;
-	  }
-	  var def = options['default'];
-	  // warn against non-factory defaults for Object & Array
-	  if (isObject(def)) {
-	    process.env.NODE_ENV !== 'production' && warn('Object/Array as default prop values will be shared ' + 'across multiple instances. Use a factory function ' + 'to return the default value instead.');
-	  }
-	  // call factory function for non-Function types
-	  return typeof def === 'function' && options.type !== Function ? def.call(vm) : def;
-	}
 
 	// special binding prefixes
 	var bindRE = /^v-bind:|^:/;
 	var onRE = /^v-on:|^@/;
-	var argRE = /:(.*)$/;
+	var dirAttrRE = /^v-([^:]+)(?:$|:(.*)$)/;
 	var modifierRE = /\.[^\.]+/g;
 	var transitionRE = /^(v-bind:|:)?transition$/;
 
-	// terminal directives
-	var terminalDirectives = ['for', 'if'];
-
 	// default directive priority
 	var DEFAULT_PRIORITY = 1000;
+	var DEFAULT_TERMINAL_PRIORITY = 2000;
 
 	/**
 	 * Compile a template and return a reusable composite link
@@ -6386,6 +6858,15 @@
 	 */
 
 	function linkAndCapture(linker, vm) {
+	  /* istanbul ignore if */
+	  if (process.env.NODE_ENV === 'production') {
+	    // reset directives before every capture in production
+	    // mode, so that when unlinking we don't need to splice
+	    // them out (which turns out to be a perf hit).
+	    // they are kept in development mode because they are
+	    // useful for Vue's own tests.
+	    vm._directives = [];
+	  }
 	  var originalDirCount = vm._directives.length;
 	  linker();
 	  var dirs = vm._directives.slice(originalDirCount);
@@ -6425,12 +6906,15 @@
 	 */
 
 	function makeUnlinkFn(vm, dirs, context, contextDirs) {
-	  return function unlink(destroying) {
+	  function unlink(destroying) {
 	    teardownDirs(vm, dirs, destroying);
 	    if (context && contextDirs) {
 	      teardownDirs(context, contextDirs);
 	    }
-	  };
+	  }
+	  // expose linked directives
+	  unlink.dirs = dirs;
+	  return unlink;
 	}
 
 	/**
@@ -6445,7 +6929,7 @@
 	  var i = dirs.length;
 	  while (i--) {
 	    dirs[i]._teardown();
-	    if (!destroying) {
+	    if (process.env.NODE_ENV !== 'production' && !destroying) {
 	      vm._directives.$remove(dirs[i]);
 	    }
 	  }
@@ -6462,7 +6946,7 @@
 	 */
 
 	function compileAndLinkProps(vm, el, props, scope) {
-	  var propsLinkFn = compileProps(el, props);
+	  var propsLinkFn = compileProps(el, props, vm);
 	  var propDirs = linkAndCapture(function () {
 	    propsLinkFn(vm, scope);
 	  }, vm);
@@ -6478,7 +6962,6 @@
 	 *
 	 * If this is a fragment instance, we only need to compile 1.
 	 *
-	 * @param {Vue} vm
 	 * @param {Element} el
 	 * @param {Object} options
 	 * @param {Object} contextOptions
@@ -6526,6 +7009,7 @@
 	    }
 	  }
 
+	  options._containerAttrs = options._replacerAttrs = null;
 	  return function rootLinkFn(vm, el, scope) {
 	    // link context scope dirs
 	    var context = vm._context;
@@ -6588,9 +7072,10 @@
 	  }
 	  var linkFn;
 	  var hasAttrs = el.hasAttributes();
+	  var attrs = hasAttrs && toArray(el.attributes);
 	  // check terminal directives (for & if)
 	  if (hasAttrs) {
-	    linkFn = checkTerminalDirectives(el, options);
+	    linkFn = checkTerminalDirectives(el, attrs, options);
 	  }
 	  // check element directives
 	  if (!linkFn) {
@@ -6602,7 +7087,7 @@
 	  }
 	  // normal directives
 	  if (!linkFn && hasAttrs) {
-	    linkFn = compileDirectives(el.attributes, options);
+	    linkFn = compileDirectives(attrs, options);
 	  }
 	  return linkFn;
 	}
@@ -6687,7 +7172,7 @@
 	    var parsed = parseDirective(token.value);
 	    token.descriptor = {
 	      name: type,
-	      def: publicDirectives[type],
+	      def: directives[type],
 	      expression: parsed.expression,
 	      filters: parsed.filters
 	    };
@@ -6784,7 +7269,9 @@
 
 	function checkElementDirectives(el, options) {
 	  var tag = el.tagName.toLowerCase();
-	  if (commonTagRE.test(tag)) return;
+	  if (commonTagRE.test(tag)) {
+	    return;
+	  }
 	  var def = resolveAsset(options, 'elementDirectives', tag);
 	  if (def) {
 	    return makeTerminalNodeLinkFn(el, tag, '', options, def);
@@ -6829,11 +7316,12 @@
 	 * If it finds one, return a terminal link function.
 	 *
 	 * @param {Element} el
+	 * @param {Array} attrs
 	 * @param {Object} options
 	 * @return {Function} terminalLinkFn
 	 */
 
-	function checkTerminalDirectives(el, options) {
+	function checkTerminalDirectives(el, attrs, options) {
 	  // skip v-pre
 	  if (getAttr(el, 'v-pre') !== null) {
 	    return skip;
@@ -6845,14 +7333,28 @@
 	      return skip;
 	    }
 	  }
-	  var value, dirName;
-	  for (var i = 0, l = terminalDirectives.length; i < l; i++) {
-	    dirName = terminalDirectives[i];
-	    /* eslint-disable no-cond-assign */
-	    if (value = el.getAttribute('v-' + dirName)) {
-	      return makeTerminalNodeLinkFn(el, dirName, value, options);
+
+	  var attr, name, value, modifiers, matched, dirName, rawName, arg, def, termDef;
+	  for (var i = 0, j = attrs.length; i < j; i++) {
+	    attr = attrs[i];
+	    modifiers = parseModifiers(attr.name);
+	    name = attr.name.replace(modifierRE, '');
+	    if (matched = name.match(dirAttrRE)) {
+	      def = resolveAsset(options, 'directives', matched[1]);
+	      if (def && def.terminal) {
+	        if (!termDef || (def.priority || DEFAULT_TERMINAL_PRIORITY) > termDef.priority) {
+	          termDef = def;
+	          rawName = attr.name;
+	          value = attr.value;
+	          dirName = matched[1];
+	          arg = matched[2];
+	        }
+	      }
 	    }
-	    /* eslint-enable no-cond-assign */
+	  }
+
+	  if (termDef) {
+	    return makeTerminalNodeLinkFn(el, dirName, value, options, termDef, rawName, arg, modifiers);
 	  }
 	}
 
@@ -6869,19 +7371,24 @@
 	 * @param {String} dirName
 	 * @param {String} value
 	 * @param {Object} options
-	 * @param {Object} [def]
+	 * @param {Object} def
+	 * @param {String} [rawName]
+	 * @param {String} [arg]
+	 * @param {Object} [modifiers]
 	 * @return {Function} terminalLinkFn
 	 */
 
-	function makeTerminalNodeLinkFn(el, dirName, value, options, def) {
+	function makeTerminalNodeLinkFn(el, dirName, value, options, def, rawName, arg, modifiers) {
 	  var parsed = parseDirective(value);
 	  var descriptor = {
 	    name: dirName,
+	    arg: arg,
 	    expression: parsed.expression,
 	    filters: parsed.filters,
 	    raw: value,
-	    // either an element directive, or if/for
-	    def: def || publicDirectives[dirName]
+	    attr: rawName,
+	    modifiers: modifiers,
+	    def: def
 	  };
 	  // check ref for v-for and router-view
 	  if (dirName === 'for' || dirName === 'router-view') {
@@ -6908,7 +7415,7 @@
 	function compileDirectives(attrs, options) {
 	  var i = attrs.length;
 	  var dirs = [];
-	  var attr, name, value, rawName, rawValue, dirName, arg, modifiers, dirDef, tokens;
+	  var attr, name, value, rawName, rawValue, dirName, arg, modifiers, dirDef, tokens, matched;
 	  while (i--) {
 	    attr = attrs[i];
 	    name = rawName = attr.name;
@@ -6924,13 +7431,13 @@
 	    if (tokens) {
 	      value = tokensToExp(tokens);
 	      arg = name;
-	      pushDir('bind', publicDirectives.bind, true);
+	      pushDir('bind', directives.bind, tokens);
 	      // warn against mixing mustaches with v-bind
 	      if (process.env.NODE_ENV !== 'production') {
 	        if (name === 'class' && Array.prototype.some.call(attrs, function (attr) {
 	          return attr.name === ':class' || attr.name === 'v-bind:class';
 	        })) {
-	          warn('class="' + rawValue + '": Do not mix mustache interpolation ' + 'and v-bind for "class" on the same element. Use one or the other.');
+	          warn('class="' + rawValue + '": Do not mix mustache interpolation ' + 'and v-bind for "class" on the same element. Use one or the other.', options);
 	        }
 	      }
 	    } else
@@ -6944,7 +7451,7 @@
 	        // event handlers
 	        if (onRE.test(name)) {
 	          arg = name.replace(onRE, '');
-	          pushDir('on', publicDirectives.on);
+	          pushDir('on', directives.on);
 	        } else
 
 	          // attribute bindings
@@ -6954,31 +7461,21 @@
 	              pushDir(dirName, internalDirectives[dirName]);
 	            } else {
 	              arg = dirName;
-	              pushDir('bind', publicDirectives.bind);
+	              pushDir('bind', directives.bind);
 	            }
 	          } else
 
 	            // normal directives
-	            if (name.indexOf('v-') === 0) {
-	              // check arg
-	              arg = (arg = name.match(argRE)) && arg[1];
-	              if (arg) {
-	                name = name.replace(argRE, '');
-	              }
-	              // extract directive name
-	              dirName = name.slice(2);
+	            if (matched = name.match(dirAttrRE)) {
+	              dirName = matched[1];
+	              arg = matched[2];
 
 	              // skip v-else (when used with v-show)
 	              if (dirName === 'else') {
 	                continue;
 	              }
 
-	              dirDef = resolveAsset(options, 'directives', dirName);
-
-	              if (process.env.NODE_ENV !== 'production') {
-	                assertAsset(dirDef, 'directive', dirName);
-	              }
-
+	              dirDef = resolveAsset(options, 'directives', dirName, true);
 	              if (dirDef) {
 	                pushDir(dirName, dirDef);
 	              }
@@ -6990,11 +7487,12 @@
 	   *
 	   * @param {String} dirName
 	   * @param {Object|Function} def
-	   * @param {Boolean} [interp]
+	   * @param {Array} [interpTokens]
 	   */
 
-	  function pushDir(dirName, def, interp) {
-	    var parsed = parseDirective(value);
+	  function pushDir(dirName, def, interpTokens) {
+	    var hasOneTimeToken = interpTokens && hasOneTime(interpTokens);
+	    var parsed = !hasOneTimeToken && parseDirective(value);
 	    dirs.push({
 	      name: dirName,
 	      attr: rawName,
@@ -7002,9 +7500,13 @@
 	      def: def,
 	      arg: arg,
 	      modifiers: modifiers,
-	      expression: parsed.expression,
-	      filters: parsed.filters,
-	      interp: interp
+	      // conversion from interpolation strings with one-time token
+	      // to expression is differed until directive bind time so that we
+	      // have access to the actual vm context for one-time bindings.
+	      expression: parsed && parsed.expression,
+	      filters: parsed && parsed.filters,
+	      interp: interpTokens,
+	      hasOneTime: hasOneTimeToken
 	    });
 	  }
 
@@ -7049,6 +7551,20 @@
 	  };
 	}
 
+	/**
+	 * Check if an interpolation string contains one-time tokens.
+	 *
+	 * @param {Array} tokens
+	 * @return {Boolean}
+	 */
+
+	function hasOneTime(tokens) {
+	  var i = tokens.length;
+	  while (i--) {
+	    if (tokens[i].oneTime) return true;
+	  }
+	}
+
 	var specialCharRE = /[^\w\-:\.]/;
 
 	/**
@@ -7086,7 +7602,7 @@
 	      el = transcludeTemplate(el, options);
 	    }
 	  }
-	  if (el instanceof DocumentFragment) {
+	  if (isFragment(el)) {
 	    // anchors for fragment instance
 	    // passing in `persist: true` to avoid them being
 	    // discarded by IE during template cloning
@@ -7125,7 +7641,7 @@
 	      // non-element template
 	      replacer.nodeType !== 1 ||
 	      // single nested component
-	      tag === 'component' || resolveAsset(options, 'components', tag) || replacer.hasAttribute('is') || replacer.hasAttribute(':is') || replacer.hasAttribute('v-bind:is') ||
+	      tag === 'component' || resolveAsset(options, 'components', tag) || hasBindAttr(replacer, 'is') ||
 	      // element directive
 	      resolveAsset(options, 'elementDirectives', tag) ||
 	      // for block
@@ -7178,23 +7694,82 @@
 	    value = attrs[i].value;
 	    if (!to.hasAttribute(name) && !specialCharRE.test(name)) {
 	      to.setAttribute(name, value);
-	    } else if (name === 'class') {
-	      value.split(/\s+/).forEach(function (cls) {
+	    } else if (name === 'class' && !parseText(value)) {
+	      value.trim().split(/\s+/).forEach(function (cls) {
 	        addClass(to, cls);
 	      });
 	    }
 	  }
 	}
 
+	/**
+	 * Scan and determine slot content distribution.
+	 * We do this during transclusion instead at compile time so that
+	 * the distribution is decoupled from the compilation order of
+	 * the slots.
+	 *
+	 * @param {Element|DocumentFragment} template
+	 * @param {Element} content
+	 * @param {Vue} vm
+	 */
+
+	function resolveSlots(vm, content) {
+	  if (!content) {
+	    return;
+	  }
+	  var contents = vm._slotContents = Object.create(null);
+	  var el, name;
+	  for (var i = 0, l = content.children.length; i < l; i++) {
+	    el = content.children[i];
+	    /* eslint-disable no-cond-assign */
+	    if (name = el.getAttribute('slot')) {
+	      (contents[name] || (contents[name] = [])).push(el);
+	    }
+	    /* eslint-enable no-cond-assign */
+	    if (process.env.NODE_ENV !== 'production' && getBindAttr(el, 'slot')) {
+	      warn('The "slot" attribute must be static.', vm.$parent);
+	    }
+	  }
+	  for (name in contents) {
+	    contents[name] = extractFragment(contents[name], content);
+	  }
+	  if (content.hasChildNodes()) {
+	    contents['default'] = extractFragment(content.childNodes, content);
+	  }
+	}
+
+	/**
+	 * Extract qualified content nodes from a node list.
+	 *
+	 * @param {NodeList} nodes
+	 * @return {DocumentFragment}
+	 */
+
+	function extractFragment(nodes, parent) {
+	  var frag = document.createDocumentFragment();
+	  nodes = toArray(nodes);
+	  for (var i = 0, l = nodes.length; i < l; i++) {
+	    var node = nodes[i];
+	    if (isTemplate(node) && !node.hasAttribute('v-if') && !node.hasAttribute('v-for')) {
+	      parent.removeChild(node);
+	      node = parseTemplate(node);
+	    }
+	    frag.appendChild(node);
+	  }
+	  return frag;
+	}
+
+
+
 	var compiler = Object.freeze({
 		compile: compile,
 		compileAndLinkProps: compileAndLinkProps,
 		compileRoot: compileRoot,
-		transclude: transclude
+		transclude: transclude,
+		resolveSlots: resolveSlots
 	});
 
 	function stateMixin (Vue) {
-
 	  /**
 	   * Accessor for `$data` property, since setting $data
 	   * requires observing the new object and updating
@@ -7237,7 +7812,7 @@
 	    var el = options.el;
 	    var props = options.props;
 	    if (props && !el) {
-	      process.env.NODE_ENV !== 'production' && warn('Props will not be compiled if no `el` option is ' + 'provided at instantiation.');
+	      process.env.NODE_ENV !== 'production' && warn('Props will not be compiled if no `el` option is ' + 'provided at instantiation.', this);
 	    }
 	    // make sure to convert string selectors into element now
 	    el = options.el = query(el);
@@ -7251,28 +7826,29 @@
 	   */
 
 	  Vue.prototype._initData = function () {
-	    var propsData = this._data;
-	    var optionsDataFn = this.$options.data;
-	    var optionsData = optionsDataFn && optionsDataFn();
-	    if (optionsData) {
-	      this._data = optionsData;
-	      for (var prop in propsData) {
-	        if (process.env.NODE_ENV !== 'production' && hasOwn(optionsData, prop)) {
-	          warn('Data field "' + prop + '" is already defined ' + 'as a prop. Use prop default value instead.');
-	        }
-	        if (this._props[prop].raw !== null || !hasOwn(optionsData, prop)) {
-	          set(optionsData, prop, propsData[prop]);
-	        }
-	      }
+	    var dataFn = this.$options.data;
+	    var data = this._data = dataFn ? dataFn() : {};
+	    if (!isPlainObject(data)) {
+	      data = {};
+	      process.env.NODE_ENV !== 'production' && warn('data functions should return an object.', this);
 	    }
-	    var data = this._data;
+	    var props = this._props;
+	    var runtimeData = this._runtimeData ? typeof this._runtimeData === 'function' ? this._runtimeData() : this._runtimeData : null;
 	    // proxy data on instance
 	    var keys = Object.keys(data);
 	    var i, key;
 	    i = keys.length;
 	    while (i--) {
 	      key = keys[i];
-	      this._proxy(key);
+	      // there are two scenarios where we can proxy a data key:
+	      // 1. it's not already defined as a prop
+	      // 2. it's provided via a instantiation option AND there are no
+	      //    template prop present
+	      if (!props || !hasOwn(props, key) || runtimeData && hasOwn(runtimeData, key) && props[key].raw === null) {
+	        this._proxy(key);
+	      } else if (process.env.NODE_ENV !== 'production') {
+	        warn('Data field "' + key + '" is already defined ' + 'as a prop. Use prop default value instead.', this);
+	      }
 	    }
 	    // observe data
 	    observe(data, this);
@@ -7382,8 +7958,8 @@
 	          def.get = makeComputedGetter(userDef, this);
 	          def.set = noop;
 	        } else {
-	          def.get = userDef.get ? userDef.cache !== false ? makeComputedGetter(userDef.get, this) : bind$1(userDef.get, this) : noop;
-	          def.set = userDef.set ? bind$1(userDef.set, this) : noop;
+	          def.get = userDef.get ? userDef.cache !== false ? makeComputedGetter(userDef.get, this) : bind(userDef.get, this) : noop;
+	          def.set = userDef.set ? bind(userDef.set, this) : noop;
 	        }
 	        Object.defineProperty(this, key, def);
 	      }
@@ -7415,7 +7991,7 @@
 	    var methods = this.$options.methods;
 	    if (methods) {
 	      for (var key in methods) {
-	        this[key] = bind$1(methods[key], this);
+	        this[key] = bind(methods[key], this);
 	      }
 	    }
 	  };
@@ -7437,7 +8013,6 @@
 	var eventRE = /^v-on:|^@/;
 
 	function eventsMixin (Vue) {
-
 	  /**
 	   * Setup the instance's option events & watchers.
 	   * If the value is a string, we pull it from the
@@ -7468,7 +8043,12 @@
 	      if (eventRE.test(name)) {
 	        name = name.replace(eventRE, '');
 	        handler = (vm._scope || vm._context).$eval(attrs[i].value, true);
-	        vm.$on(name.replace(eventRE), handler);
+	        if (typeof handler === 'function') {
+	          handler._fromParent = true;
+	          vm.$on(name.replace(eventRE), handler);
+	        } else if (process.env.NODE_ENV !== 'production') {
+	          warn('v-on:' + name + '="' + attrs[i].value + '" ' + 'expects a function value, got ' + handler, vm);
+	        }
 	      }
 	    }
 	  }
@@ -7516,7 +8096,7 @@
 	      if (method) {
 	        vm[action](key, method, options);
 	      } else {
-	        process.env.NODE_ENV !== 'production' && warn('Unknown method: "' + handler + '" when ' + 'registering callback for ' + action + ': "' + key + '".');
+	        process.env.NODE_ENV !== 'production' && warn('Unknown method: "' + handler + '" when ' + 'registering callback for ' + action + ': "' + key + '".', vm);
 	      }
 	    } else if (handler && type === 'object') {
 	      register(vm, action, key, handler.handler, handler);
@@ -7585,6 +8165,7 @@
 	   */
 
 	  Vue.prototype._callHook = function (hook) {
+	    this.$emit('pre-hook:' + hook);
 	    var handlers = this.$options[hook];
 	    if (handlers) {
 	      for (var i = 0, j = handlers.length; i < j; i++) {
@@ -7603,18 +8184,21 @@
 	 * It registers a watcher with the expression and calls
 	 * the DOM update function when a change is triggered.
 	 *
-	 * @param {String} name
-	 * @param {Node} el
-	 * @param {Vue} vm
 	 * @param {Object} descriptor
 	 *                 - {String} name
 	 *                 - {Object} def
 	 *                 - {String} expression
 	 *                 - {Array<Object>} [filters]
+	 *                 - {Object} [modifiers]
 	 *                 - {Boolean} literal
 	 *                 - {String} attr
+	 *                 - {String} arg
 	 *                 - {String} raw
-	 * @param {Object} def - directive definition object
+	 *                 - {String} [ref]
+	 *                 - {Array<Object>} [interp]
+	 *                 - {Boolean} [hasOneTime]
+	 * @param {Vue} vm
+	 * @param {Node} el
 	 * @param {Vue} [host] - transclusion host component
 	 * @param {Object} [scope] - v-for scope
 	 * @param {Fragment} [frag] - owner fragment
@@ -7650,8 +8234,6 @@
 	 * Initialize the directive, mixin definition properties,
 	 * setup the watcher, call definition bind() and update()
 	 * if present.
-	 *
-	 * @param {Object} def
 	 */
 
 	Directive.prototype._bind = function () {
@@ -7679,6 +8261,7 @@
 	  if (this.bind) {
 	    this.bind();
 	  }
+	  this._bound = true;
 
 	  if (this.literal) {
 	    this.update && this.update(descriptor.raw);
@@ -7694,8 +8277,8 @@
 	    } else {
 	      this._update = noop;
 	    }
-	    var preProcess = this._preProcess ? bind$1(this._preProcess, this) : null;
-	    var postProcess = this._postProcess ? bind$1(this._postProcess, this) : null;
+	    var preProcess = this._preProcess ? bind(this._preProcess, this) : null;
+	    var postProcess = this._postProcess ? bind(this._postProcess, this) : null;
 	    var watcher = this._watcher = new Watcher(this.vm, this.expression, this._update, // callback
 	    {
 	      filters: this.filters,
@@ -7714,7 +8297,6 @@
 	      this.update(watcher.value);
 	    }
 	  }
-	  this._bound = true;
 	};
 
 	/**
@@ -7732,7 +8314,7 @@
 	  var i = params.length;
 	  var key, val, mappedKey;
 	  while (i--) {
-	    key = params[i];
+	    key = hyphenate(params[i]);
 	    mappedKey = camelize(key);
 	    val = getBindAttr(this.el, key);
 	    if (val != null) {
@@ -7771,7 +8353,8 @@
 	      called = true;
 	    }
 	  }, {
-	    immediate: true
+	    immediate: true,
+	    user: false
 	  });(this._paramUnwatchFns || (this._paramUnwatchFns = [])).push(unwatch);
 	};
 
@@ -7847,10 +8430,11 @@
 	 *
 	 * @param {String} event
 	 * @param {Function} handler
+	 * @param {Boolean} [useCapture]
 	 */
 
-	Directive.prototype.on = function (event, handler) {
-	  on$1(this.el, event, handler);(this._listeners || (this._listeners = [])).push([event, handler]);
+	Directive.prototype.on = function (event, handler, useCapture) {
+	  on(this.el, event, handler, useCapture);(this._listeners || (this._listeners = [])).push([event, handler]);
 	};
 
 	/**
@@ -7889,7 +8473,6 @@
 	};
 
 	function lifecycleMixin (Vue) {
-
 	  /**
 	   * Update v-ref for component.
 	   *
@@ -7920,7 +8503,6 @@
 	   * Otherwise we need to call transclude/compile/link here.
 	   *
 	   * @param {Element} el
-	   * @return {Element}
 	   */
 
 	  Vue.prototype._compile = function (el) {
@@ -7935,10 +8517,18 @@
 	    el = transclude(el, options);
 	    this._initElement(el);
 
+	    // handle v-pre on root node (#2026)
+	    if (el.nodeType === 1 && getAttr(el, 'v-pre') !== null) {
+	      return;
+	    }
+
 	    // root is always compiled per-instance, because
 	    // container attrs and props can be different every time.
 	    var contextOptions = this._context && this._context.$options;
 	    var rootLinker = compileRoot(el, options, contextOptions);
+
+	    // resolve slot distribution
+	    resolveSlots(this, options._content);
 
 	    // compile and link the rest
 	    var contentLinkFn;
@@ -7973,7 +8563,6 @@
 
 	    this._isCompiled = true;
 	    this._callHook('compiled');
-	    return el;
 	  };
 
 	  /**
@@ -7984,7 +8573,7 @@
 	   */
 
 	  Vue.prototype._initElement = function (el) {
-	    if (el instanceof DocumentFragment) {
+	    if (isFragment(el)) {
 	      this._isFragment = true;
 	      this.$el = this._fragmentStart = el.firstChild;
 	      this._fragmentEnd = el.lastChild;
@@ -8003,10 +8592,8 @@
 	  /**
 	   * Create and bind a directive to an element.
 	   *
-	   * @param {String} name - directive name
+	   * @param {Object} descriptor - parsed directive descriptor
 	   * @param {Node} node   - target node
-	   * @param {Object} desc - parsed directive descriptor
-	   * @param {Object} def  - directive definition object
 	   * @param {Vue} [host] - transclusion host component
 	   * @param {Object} [scope] - v-for scope
 	   * @param {Fragment} [frag] - owner fragment
@@ -8032,6 +8619,30 @@
 	      }
 	      return;
 	    }
+
+	    var destroyReady;
+	    var pendingRemoval;
+
+	    var self = this;
+	    // Cleanup should be called either synchronously or asynchronoysly as
+	    // callback of this.$remove(), or if remove and deferCleanup are false.
+	    // In any case it should be called after all other removing, unbinding and
+	    // turning of is done
+	    var cleanupIfPossible = function cleanupIfPossible() {
+	      if (destroyReady && !pendingRemoval && !deferCleanup) {
+	        self._cleanup();
+	      }
+	    };
+
+	    // remove DOM element
+	    if (remove && this.$el) {
+	      pendingRemoval = true;
+	      this.$remove(function () {
+	        pendingRemoval = false;
+	        cleanupIfPossible();
+	      });
+	    }
+
 	    this._callHook('beforeDestroy');
 	    this._isBeingDestroyed = true;
 	    var i;
@@ -8065,15 +8676,9 @@
 	    if (this.$el) {
 	      this.$el.__vue__ = null;
 	    }
-	    // remove DOM element
-	    var self = this;
-	    if (remove && this.$el) {
-	      this.$remove(function () {
-	        self._cleanup();
-	      });
-	    } else if (!deferCleanup) {
-	      this._cleanup();
-	    }
+
+	    destroyReady = true;
+	    cleanupIfPossible();
 	  };
 
 	  /**
@@ -8115,7 +8720,6 @@
 	}
 
 	function miscMixin (Vue) {
-
 	  /**
 	   * Apply a list of filter (descriptors) to a value.
 	   * Using plain for loops here because this will be called in
@@ -8132,11 +8736,8 @@
 	  Vue.prototype._applyFilters = function (value, oldValue, filters, write) {
 	    var filter, fn, args, arg, offset, i, l, j, k;
 	    for (i = 0, l = filters.length; i < l; i++) {
-	      filter = filters[i];
-	      fn = resolveAsset(this.$options, 'filters', filter.name);
-	      if (process.env.NODE_ENV !== 'production') {
-	        assertAsset(fn, 'filter', filter.name);
-	      }
+	      filter = filters[write ? l - i - 1 : i];
+	      fn = resolveAsset(this.$options, 'filters', filter.name, true);
 	      if (!fn) continue;
 	      fn = write ? fn.write : fn.read || fn;
 	      if (typeof fn !== 'function') continue;
@@ -8160,14 +8761,16 @@
 	   * resolves asynchronously and caches the resolved
 	   * constructor on the factory.
 	   *
-	   * @param {String} id
+	   * @param {String|Function} value
 	   * @param {Function} cb
 	   */
 
-	  Vue.prototype._resolveComponent = function (id, cb) {
-	    var factory = resolveAsset(this.$options, 'components', id);
-	    if (process.env.NODE_ENV !== 'production') {
-	      assertAsset(factory, 'component', id);
+	  Vue.prototype._resolveComponent = function (value, cb) {
+	    var factory;
+	    if (typeof value === 'function') {
+	      factory = value;
+	    } else {
+	      factory = resolveAsset(this.$options, 'components', value, true);
 	    }
 	    if (!factory) {
 	      return;
@@ -8183,7 +8786,7 @@
 	      } else {
 	        factory.requested = true;
 	        var cbs = factory.pendingCallbacks = [cb];
-	        factory(function resolve(res) {
+	        factory.call(this, function resolve(res) {
 	          if (isPlainObject(res)) {
 	            res = Vue.extend(res);
 	          }
@@ -8194,7 +8797,7 @@
 	            cbs[i](res);
 	          }
 	        }, function reject(reason) {
-	          process.env.NODE_ENV !== 'production' && warn('Failed to resolve async component: ' + id + '. ' + (reason ? '\nReason: ' + reason : ''));
+	          process.env.NODE_ENV !== 'production' && warn('Failed to resolve async component' + (typeof value === 'string' ? ': ' + value : '') + '. ' + (reason ? '\nReason: ' + reason : ''));
 	        });
 	      }
 	    } else {
@@ -8204,159 +8807,9 @@
 	  };
 	}
 
-	function globalAPI (Vue) {
-
-	  /**
-	   * Expose useful internals
-	   */
-
-	  Vue.util = util;
-	  Vue.config = config;
-	  Vue.set = set;
-	  Vue['delete'] = del;
-	  Vue.nextTick = nextTick;
-
-	  /**
-	   * The following are exposed for advanced usage / plugins
-	   */
-
-	  Vue.compiler = compiler;
-	  Vue.FragmentFactory = FragmentFactory;
-	  Vue.internalDirectives = internalDirectives;
-	  Vue.parsers = {
-	    path: path,
-	    text: text$1,
-	    template: template,
-	    directive: directive,
-	    expression: expression
-	  };
-
-	  /**
-	   * Each instance constructor, including Vue, has a unique
-	   * cid. This enables us to create wrapped "child
-	   * constructors" for prototypal inheritance and cache them.
-	   */
-
-	  Vue.cid = 0;
-	  var cid = 1;
-
-	  /**
-	   * Class inheritance
-	   *
-	   * @param {Object} extendOptions
-	   */
-
-	  Vue.extend = function (extendOptions) {
-	    extendOptions = extendOptions || {};
-	    var Super = this;
-	    var isFirstExtend = Super.cid === 0;
-	    if (isFirstExtend && extendOptions._Ctor) {
-	      return extendOptions._Ctor;
-	    }
-	    var name = extendOptions.name || Super.options.name;
-	    var Sub = createClass(name || 'VueComponent');
-	    Sub.prototype = Object.create(Super.prototype);
-	    Sub.prototype.constructor = Sub;
-	    Sub.cid = cid++;
-	    Sub.options = mergeOptions(Super.options, extendOptions);
-	    Sub['super'] = Super;
-	    // allow further extension
-	    Sub.extend = Super.extend;
-	    // create asset registers, so extended classes
-	    // can have their private assets too.
-	    config._assetTypes.forEach(function (type) {
-	      Sub[type] = Super[type];
-	    });
-	    // enable recursive self-lookup
-	    if (name) {
-	      Sub.options.components[name] = Sub;
-	    }
-	    // cache constructor
-	    if (isFirstExtend) {
-	      extendOptions._Ctor = Sub;
-	    }
-	    return Sub;
-	  };
-
-	  /**
-	   * A function that returns a sub-class constructor with the
-	   * given name. This gives us much nicer output when
-	   * logging instances in the console.
-	   *
-	   * @param {String} name
-	   * @return {Function}
-	   */
-
-	  function createClass(name) {
-	    return new Function('return function ' + classify(name) + ' (options) { this._init(options) }')();
-	  }
-
-	  /**
-	   * Plugin system
-	   *
-	   * @param {Object} plugin
-	   */
-
-	  Vue.use = function (plugin) {
-	    /* istanbul ignore if */
-	    if (plugin.installed) {
-	      return;
-	    }
-	    // additional parameters
-	    var args = toArray(arguments, 1);
-	    args.unshift(this);
-	    if (typeof plugin.install === 'function') {
-	      plugin.install.apply(plugin, args);
-	    } else {
-	      plugin.apply(null, args);
-	    }
-	    plugin.installed = true;
-	    return this;
-	  };
-
-	  /**
-	   * Apply a global mixin by merging it into the default
-	   * options.
-	   */
-
-	  Vue.mixin = function (mixin) {
-	    Vue.options = mergeOptions(Vue.options, mixin);
-	  };
-
-	  /**
-	   * Create asset registration methods with the following
-	   * signature:
-	   *
-	   * @param {String} id
-	   * @param {*} definition
-	   */
-
-	  config._assetTypes.forEach(function (type) {
-	    Vue[type] = function (id, definition) {
-	      if (!definition) {
-	        return this.options[type + 's'][id];
-	      } else {
-	        /* istanbul ignore if */
-	        if (process.env.NODE_ENV !== 'production') {
-	          if (type === 'component' && commonTagRE.test(id)) {
-	            warn('Do not use built-in HTML elements as component ' + 'id: ' + id);
-	          }
-	        }
-	        if (type === 'component' && isPlainObject(definition)) {
-	          definition.name = id;
-	          definition = Vue.extend(definition);
-	        }
-	        this.options[type + 's'][id] = definition;
-	        return definition;
-	      }
-	    };
-	  });
-	}
-
-	var filterRE = /[^|]\|[^|]/;
+	var filterRE$1 = /[^|]\|[^|]/;
 
 	function dataAPI (Vue) {
-
 	  /**
 	   * Get the value from an expression on this vm.
 	   *
@@ -8371,7 +8824,10 @@
 	      if (asStatement && !isSimplePath(exp)) {
 	        var self = this;
 	        return function statementHandler() {
-	          res.get.call(self, self);
+	          self.$arguments = toArray(arguments);
+	          var result = res.get.call(self, self);
+	          self.$arguments = null;
+	          return result;
 	        };
 	      } else {
 	        try {
@@ -8428,7 +8884,9 @@
 	    }
 	    var watcher = new Watcher(vm, expOrFn, cb, {
 	      deep: options && options.deep,
-	      filters: parsed && parsed.filters
+	      sync: options && options.sync,
+	      filters: parsed && parsed.filters,
+	      user: !options || options.user !== false
 	    });
 	    if (options && options.immediate) {
 	      cb.call(vm, watcher.value);
@@ -8448,7 +8906,7 @@
 
 	  Vue.prototype.$eval = function (text, asStatement) {
 	    // check for filters.
-	    if (filterRE.test(text)) {
+	    if (filterRE$1.test(text)) {
 	      var dir = parseDirective(text);
 	      // the filter regex check might give false positive
 	      // for pipes inside strings, so it's possible that
@@ -8499,8 +8957,14 @@
 	    }
 	    // include computed fields
 	    if (!path) {
-	      for (var key in this.$options.computed) {
+	      var key;
+	      for (key in this.$options.computed) {
 	        data[key] = clean(this[key]);
+	      }
+	      if (this._props) {
+	        for (key in this._props) {
+	          data[key] = clean(this[key]);
+	        }
 	      }
 	    }
 	    console.log(data);
@@ -8520,7 +8984,6 @@
 	}
 
 	function domAPI (Vue) {
-
 	  /**
 	   * Convenience on-instance nextTick. The callback is
 	   * auto-bound to the instance, and this avoids component
@@ -8706,7 +9169,6 @@
 	}
 
 	function eventsAPI (Vue) {
-
 	  /**
 	   * Listen on the given `event` with `fn`.
 	   *
@@ -8789,19 +9251,32 @@
 	  /**
 	   * Trigger an event on self.
 	   *
-	   * @param {String} event
+	   * @param {String|Object} event
 	   * @return {Boolean} shouldPropagate
 	   */
 
 	  Vue.prototype.$emit = function (event) {
+	    var isSource = typeof event === 'string';
+	    event = isSource ? event : event.name;
 	    var cbs = this._events[event];
-	    var shouldPropagate = !cbs;
+	    var shouldPropagate = isSource || !cbs;
 	    if (cbs) {
 	      cbs = cbs.length > 1 ? toArray(cbs) : cbs;
+	      // this is a somewhat hacky solution to the question raised
+	      // in #2102: for an inline component listener like <comp @test="doThis">,
+	      // the propagation handling is somewhat broken. Therefore we
+	      // need to treat these inline callbacks differently.
+	      var hasParentCbs = isSource && cbs.some(function (cb) {
+	        return cb._fromParent;
+	      });
+	      if (hasParentCbs) {
+	        shouldPropagate = false;
+	      }
 	      var args = toArray(arguments, 1);
 	      for (var i = 0, l = cbs.length; i < l; i++) {
-	        var res = cbs[i].apply(this, args);
-	        if (res === true) {
+	        var cb = cbs[i];
+	        var res = cb.apply(this, args);
+	        if (res === true && (!hasParentCbs || cb._fromParent)) {
 	          shouldPropagate = true;
 	        }
 	      }
@@ -8812,20 +9287,28 @@
 	  /**
 	   * Recursively broadcast an event to all children instances.
 	   *
-	   * @param {String} event
+	   * @param {String|Object} event
 	   * @param {...*} additional arguments
 	   */
 
 	  Vue.prototype.$broadcast = function (event) {
+	    var isSource = typeof event === 'string';
+	    event = isSource ? event : event.name;
 	    // if no child has registered for this event,
 	    // then there's no need to broadcast.
 	    if (!this._eventsCount[event]) return;
 	    var children = this.$children;
+	    var args = toArray(arguments);
+	    if (isSource) {
+	      // use object event to indicate non-source emit
+	      // on children
+	      args[0] = { name: event, source: this };
+	    }
 	    for (var i = 0, l = children.length; i < l; i++) {
 	      var child = children[i];
-	      var shouldPropagate = child.$emit.apply(child, arguments);
+	      var shouldPropagate = child.$emit.apply(child, args);
 	      if (shouldPropagate) {
-	        child.$broadcast.apply(child, arguments);
+	        child.$broadcast.apply(child, args);
 	      }
 	    }
 	    return this;
@@ -8838,11 +9321,16 @@
 	   * @param {...*} additional arguments
 	   */
 
-	  Vue.prototype.$dispatch = function () {
-	    this.$emit.apply(this, arguments);
+	  Vue.prototype.$dispatch = function (event) {
+	    var shouldPropagate = this.$emit.apply(this, arguments);
+	    if (!shouldPropagate) return;
 	    var parent = this.$parent;
+	    var args = toArray(arguments);
+	    // use object event to indicate non-source emit
+	    // on parents
+	    args[0] = { name: event, source: this };
 	    while (parent) {
-	      var shouldPropagate = parent.$emit.apply(parent, arguments);
+	      shouldPropagate = parent.$emit.apply(parent, args);
 	      parent = shouldPropagate ? parent.$parent : null;
 	    }
 	    return this;
@@ -8872,7 +9360,6 @@
 	}
 
 	function lifecycleAPI (Vue) {
-
 	  /**
 	   * Set instance target element and kick off the compilation
 	   * process. The passed in `el` can be a selector string, an
@@ -8885,7 +9372,7 @@
 
 	  Vue.prototype.$mount = function (el) {
 	    if (this._isCompiled) {
-	      process.env.NODE_ENV !== 'production' && warn('$mount() should be called only once.');
+	      process.env.NODE_ENV !== 'production' && warn('$mount() should be called only once.', this);
 	      return;
 	    }
 	    el = query(el);
@@ -8916,6 +9403,9 @@
 	  /**
 	   * Teardown the instance, simply delegate to the internal
 	   * _destroy.
+	   *
+	   * @param {Boolean} remove
+	   * @param {Boolean} deferCleanup
 	   */
 
 	  Vue.prototype.$destroy = function (remove, deferCleanup) {
@@ -8928,6 +9418,8 @@
 	   *
 	   * @param {Element|DocumentFragment} el
 	   * @param {Vue} [host]
+	   * @param {Object} [scope]
+	   * @param {Fragment} [frag]
 	   * @return {Function}
 	   */
 
@@ -8961,12 +9453,102 @@
 	lifecycleMixin(Vue);
 	miscMixin(Vue);
 
-	// install APIs
-	globalAPI(Vue);
+	// install instance APIs
 	dataAPI(Vue);
 	domAPI(Vue);
 	eventsAPI(Vue);
 	lifecycleAPI(Vue);
+
+	var slot = {
+
+	  priority: SLOT,
+	  params: ['name'],
+
+	  bind: function bind() {
+	    // this was resolved during component transclusion
+	    var name = this.params.name || 'default';
+	    var content = this.vm._slotContents && this.vm._slotContents[name];
+	    if (!content || !content.hasChildNodes()) {
+	      this.fallback();
+	    } else {
+	      this.compile(content.cloneNode(true), this.vm._context, this.vm);
+	    }
+	  },
+
+	  compile: function compile(content, context, host) {
+	    if (content && context) {
+	      if (this.el.hasChildNodes() && content.childNodes.length === 1 && content.childNodes[0].nodeType === 1 && content.childNodes[0].hasAttribute('v-if')) {
+	        // if the inserted slot has v-if
+	        // inject fallback content as the v-else
+	        var elseBlock = document.createElement('template');
+	        elseBlock.setAttribute('v-else', '');
+	        elseBlock.innerHTML = this.el.innerHTML;
+	        // the else block should be compiled in child scope
+	        elseBlock._context = this.vm;
+	        content.appendChild(elseBlock);
+	      }
+	      var scope = host ? host._scope : this._scope;
+	      this.unlink = context.$compile(content, host, scope, this._frag);
+	    }
+	    if (content) {
+	      replace(this.el, content);
+	    } else {
+	      remove(this.el);
+	    }
+	  },
+
+	  fallback: function fallback() {
+	    this.compile(extractContent(this.el, true), this.vm);
+	  },
+
+	  unbind: function unbind() {
+	    if (this.unlink) {
+	      this.unlink();
+	    }
+	  }
+	};
+
+	var partial = {
+
+	  priority: PARTIAL,
+
+	  params: ['name'],
+
+	  // watch changes to name for dynamic partials
+	  paramWatchers: {
+	    name: function name(value) {
+	      vIf.remove.call(this);
+	      if (value) {
+	        this.insert(value);
+	      }
+	    }
+	  },
+
+	  bind: function bind() {
+	    this.anchor = createAnchor('v-partial');
+	    replace(this.el, this.anchor);
+	    this.insert(this.params.name);
+	  },
+
+	  insert: function insert(id) {
+	    var partial = resolveAsset(this.vm.$options, 'partials', id, true);
+	    if (partial) {
+	      this.factory = new FragmentFactory(this.vm, partial);
+	      vIf.insert.call(this);
+	    }
+	  },
+
+	  unbind: function unbind() {
+	    if (this.frag) {
+	      this.frag.destroy();
+	    }
+	  }
+	};
+
+	var elementDirectives = {
+	  slot: slot,
+	  partial: partial
+	};
 
 	var convertArray = vFor._postProcess;
 
@@ -8979,6 +9561,7 @@
 
 	function limitBy(arr, n, offset) {
 	  offset = offset ? parseInt(offset, 10) : 0;
+	  n = toNumber(n);
 	  return typeof n === 'number' ? arr.slice(offset, offset + n) : arr;
 	}
 
@@ -9004,9 +9587,7 @@
 	  // because why not
 	  var n = delimiter === 'in' ? 3 : 2;
 	  // extract and flatten keys
-	  var keys = toArray(arguments, n).reduce(function (prev, cur) {
-	    return prev.concat(cur);
-	  }, []);
+	  var keys = Array.prototype.concat.apply([], toArray(arguments, n));
 	  var res = [];
 	  var item, key, val, j;
 	  for (var i = 0, l = arr.length; i < l; i++) {
@@ -9031,26 +9612,58 @@
 	/**
 	 * Filter filter for arrays
 	 *
-	 * @param {String} sortKey
-	 * @param {String} reverse
+	 * @param {String|Array<String>|Function} ...sortKeys
+	 * @param {Number} [order]
 	 */
 
-	function orderBy(arr, sortKey, reverse) {
+	function orderBy(arr) {
+	  var comparator = null;
+	  var sortKeys = undefined;
 	  arr = convertArray(arr);
-	  if (!sortKey) {
-	    return arr;
+
+	  // determine order (last argument)
+	  var args = toArray(arguments, 1);
+	  var order = args[args.length - 1];
+	  if (typeof order === 'number') {
+	    order = order < 0 ? -1 : 1;
+	    args = args.length > 1 ? args.slice(0, -1) : args;
+	  } else {
+	    order = 1;
 	  }
-	  var order = reverse && reverse < 0 ? -1 : 1;
-	  // sort on a copy to avoid mutating original array
-	  return arr.slice().sort(function (a, b) {
-	    if (sortKey !== '$key') {
-	      if (isObject(a) && '$value' in a) a = a.$value;
-	      if (isObject(b) && '$value' in b) b = b.$value;
+
+	  // determine sortKeys & comparator
+	  var firstArg = args[0];
+	  if (!firstArg) {
+	    return arr;
+	  } else if (typeof firstArg === 'function') {
+	    // custom comparator
+	    comparator = function (a, b) {
+	      return firstArg(a, b) * order;
+	    };
+	  } else {
+	    // string keys. flatten first
+	    sortKeys = Array.prototype.concat.apply([], args);
+	    comparator = function (a, b, i) {
+	      i = i || 0;
+	      return i >= sortKeys.length - 1 ? baseCompare(a, b, i) : baseCompare(a, b, i) || comparator(a, b, i + 1);
+	    };
+	  }
+
+	  function baseCompare(a, b, sortKeyIndex) {
+	    var sortKey = sortKeys[sortKeyIndex];
+	    if (sortKey) {
+	      if (sortKey !== '$key') {
+	        if (isObject(a) && '$value' in a) a = a.$value;
+	        if (isObject(b) && '$value' in b) b = b.$value;
+	      }
+	      a = isObject(a) ? getPath(a, sortKey) : a;
+	      b = isObject(b) ? getPath(b, sortKey) : b;
 	    }
-	    a = isObject(a) ? getPath(a, sortKey) : a;
-	    b = isObject(b) ? getPath(b, sortKey) : b;
 	    return a === b ? 0 : a > b ? order : -order;
-	  });
+	  }
+
+	  // sort on a copy to avoid mutating original array
+	  return arr.slice().sort(comparator);
 	}
 
 	/**
@@ -9152,7 +9765,7 @@
 	    var head = i > 0 ? _int.slice(0, i) + (_int.length > 3 ? ',' : '') : '';
 	    var _float = stringified.slice(-3);
 	    var sign = value < 0 ? '-' : '';
-	    return _currency + sign + head + _int.slice(i).replace(digitsRE, '$1,') + _float;
+	    return sign + _currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float;
 	  },
 
 	  /**
@@ -9190,194 +9803,202 @@
 	  }
 	};
 
-	var partial = {
+	function installGlobalAPI (Vue) {
+	  /**
+	   * Vue and every constructor that extends Vue has an
+	   * associated options object, which can be accessed during
+	   * compilation steps as `this.constructor.options`.
+	   *
+	   * These can be seen as the default options of every
+	   * Vue instance.
+	   */
 
-	  priority: 1750,
+	  Vue.options = {
+	    directives: directives,
+	    elementDirectives: elementDirectives,
+	    filters: filters,
+	    transitions: {},
+	    components: {},
+	    partials: {},
+	    replace: true
+	  };
 
-	  params: ['name'],
+	  /**
+	   * Expose useful internals
+	   */
 
-	  // watch changes to name for dynamic partials
-	  paramWatchers: {
-	    name: function name(value) {
-	      vIf.remove.call(this);
-	      if (value) {
-	        this.insert(value);
+	  Vue.util = util;
+	  Vue.config = config;
+	  Vue.set = set;
+	  Vue['delete'] = del;
+	  Vue.nextTick = nextTick;
+
+	  /**
+	   * The following are exposed for advanced usage / plugins
+	   */
+
+	  Vue.compiler = compiler;
+	  Vue.FragmentFactory = FragmentFactory;
+	  Vue.internalDirectives = internalDirectives;
+	  Vue.parsers = {
+	    path: path,
+	    text: text,
+	    template: template,
+	    directive: directive,
+	    expression: expression
+	  };
+
+	  /**
+	   * Each instance constructor, including Vue, has a unique
+	   * cid. This enables us to create wrapped "child
+	   * constructors" for prototypal inheritance and cache them.
+	   */
+
+	  Vue.cid = 0;
+	  var cid = 1;
+
+	  /**
+	   * Class inheritance
+	   *
+	   * @param {Object} extendOptions
+	   */
+
+	  Vue.extend = function (extendOptions) {
+	    extendOptions = extendOptions || {};
+	    var Super = this;
+	    var isFirstExtend = Super.cid === 0;
+	    if (isFirstExtend && extendOptions._Ctor) {
+	      return extendOptions._Ctor;
+	    }
+	    var name = extendOptions.name || Super.options.name;
+	    if (process.env.NODE_ENV !== 'production') {
+	      if (!/^[a-zA-Z][\w-]*$/.test(name)) {
+	        warn('Invalid component name: "' + name + '". Component names ' + 'can only contain alphanumeric characaters and the hyphen.');
+	        name = null;
 	      }
 	    }
-	  },
-
-	  bind: function bind() {
-	    this.anchor = createAnchor('v-partial');
-	    replace(this.el, this.anchor);
-	    this.insert(this.params.name);
-	  },
-
-	  insert: function insert(id) {
-	    var partial = resolveAsset(this.vm.$options, 'partials', id);
-	    if (process.env.NODE_ENV !== 'production') {
-	      assertAsset(partial, 'partial', id);
+	    var Sub = createClass(name || 'VueComponent');
+	    Sub.prototype = Object.create(Super.prototype);
+	    Sub.prototype.constructor = Sub;
+	    Sub.cid = cid++;
+	    Sub.options = mergeOptions(Super.options, extendOptions);
+	    Sub['super'] = Super;
+	    // allow further extension
+	    Sub.extend = Super.extend;
+	    // create asset registers, so extended classes
+	    // can have their private assets too.
+	    config._assetTypes.forEach(function (type) {
+	      Sub[type] = Super[type];
+	    });
+	    // enable recursive self-lookup
+	    if (name) {
+	      Sub.options.components[name] = Sub;
 	    }
-	    if (partial) {
-	      this.factory = new FragmentFactory(this.vm, partial);
-	      vIf.insert.call(this);
+	    // cache constructor
+	    if (isFirstExtend) {
+	      extendOptions._Ctor = Sub;
 	    }
-	  },
+	    return Sub;
+	  };
 
-	  unbind: function unbind() {
-	    if (this.frag) {
-	      this.frag.destroy();
-	    }
+	  /**
+	   * A function that returns a sub-class constructor with the
+	   * given name. This gives us much nicer output when
+	   * logging instances in the console.
+	   *
+	   * @param {String} name
+	   * @return {Function}
+	   */
+
+	  function createClass(name) {
+	    /* eslint-disable no-new-func */
+	    return new Function('return function ' + classify(name) + ' (options) { this._init(options) }')();
+	    /* eslint-enable no-new-func */
 	  }
-	};
 
-	// This is the elementDirective that handles <content>
-	// transclusions. It relies on the raw content of an
-	// instance being stored as `$options._content` during
-	// the transclude phase.
+	  /**
+	   * Plugin system
+	   *
+	   * @param {Object} plugin
+	   */
 
-	var slot = {
-
-	  priority: 1750,
-
-	  params: ['name'],
-
-	  bind: function bind() {
-	    var host = this.vm;
-	    var raw = host.$options._content;
-	    var content;
-	    if (!raw) {
-	      this.fallback();
+	  Vue.use = function (plugin) {
+	    /* istanbul ignore if */
+	    if (plugin.installed) {
 	      return;
 	    }
-	    var context = host._context;
-	    var slotName = this.params.name;
-	    if (!slotName) {
-	      // Default content
-	      var self = this;
-	      var compileDefaultContent = function compileDefaultContent() {
-	        self.compile(extractFragment(raw.childNodes, raw, true), context, host);
-	      };
-	      if (!host._isCompiled) {
-	        // defer until the end of instance compilation,
-	        // because the default outlet must wait until all
-	        // other possible outlets with selectors have picked
-	        // out their contents.
-	        host.$once('hook:compiled', compileDefaultContent);
-	      } else {
-	        compileDefaultContent();
-	      }
+	    // additional parameters
+	    var args = toArray(arguments, 1);
+	    args.unshift(this);
+	    if (typeof plugin.install === 'function') {
+	      plugin.install.apply(plugin, args);
 	    } else {
-	      var selector = '[slot="' + slotName + '"]';
-	      var nodes = raw.querySelectorAll(selector);
-	      if (nodes.length) {
-	        content = extractFragment(nodes, raw);
-	        if (content.hasChildNodes()) {
-	          this.compile(content, context, host);
-	        } else {
-	          this.fallback();
+	      plugin.apply(null, args);
+	    }
+	    plugin.installed = true;
+	    return this;
+	  };
+
+	  /**
+	   * Apply a global mixin by merging it into the default
+	   * options.
+	   */
+
+	  Vue.mixin = function (mixin) {
+	    Vue.options = mergeOptions(Vue.options, mixin);
+	  };
+
+	  /**
+	   * Create asset registration methods with the following
+	   * signature:
+	   *
+	   * @param {String} id
+	   * @param {*} definition
+	   */
+
+	  config._assetTypes.forEach(function (type) {
+	    Vue[type] = function (id, definition) {
+	      if (!definition) {
+	        return this.options[type + 's'][id];
+	      } else {
+	        /* istanbul ignore if */
+	        if (process.env.NODE_ENV !== 'production') {
+	          if (type === 'component' && (commonTagRE.test(id) || reservedTagRE.test(id))) {
+	            warn('Do not use built-in or reserved HTML elements as component ' + 'id: ' + id);
+	          }
 	        }
-	      } else {
-	        this.fallback();
+	        if (type === 'component' && isPlainObject(definition)) {
+	          definition.name = id;
+	          definition = Vue.extend(definition);
+	        }
+	        this.options[type + 's'][id] = definition;
+	        return definition;
 	      }
-	    }
-	  },
+	    };
+	  });
 
-	  fallback: function fallback() {
-	    this.compile(extractContent(this.el, true), this.vm);
-	  },
-
-	  compile: function compile(content, context, host) {
-	    if (content && context) {
-	      var scope = host ? host._scope : this._scope;
-	      this.unlink = context.$compile(content, host, scope, this._frag);
-	    }
-	    if (content) {
-	      replace(this.el, content);
-	    } else {
-	      remove(this.el);
-	    }
-	  },
-
-	  unbind: function unbind() {
-	    if (this.unlink) {
-	      this.unlink();
-	    }
-	  }
-	};
-
-	/**
-	 * Extract qualified content nodes from a node list.
-	 *
-	 * @param {NodeList} nodes
-	 * @param {Element} parent
-	 * @param {Boolean} main
-	 * @return {DocumentFragment}
-	 */
-
-	function extractFragment(nodes, parent, main) {
-	  var frag = document.createDocumentFragment();
-	  for (var i = 0, l = nodes.length; i < l; i++) {
-	    var node = nodes[i];
-	    // if this is the main outlet, we want to skip all
-	    // previously selected nodes;
-	    // otherwise, we want to mark the node as selected.
-	    // clone the node so the original raw content remains
-	    // intact. this ensures proper re-compilation in cases
-	    // where the outlet is inside a conditional block
-	    if (main && !node.__v_selected) {
-	      append(node);
-	    } else if (!main && node.parentNode === parent) {
-	      node.__v_selected = true;
-	      append(node);
-	    }
-	  }
-	  return frag;
-
-	  function append(node) {
-	    if (isTemplate(node) && !node.hasAttribute('v-if') && !node.hasAttribute('v-for')) {
-	      node = parseTemplate(node);
-	    }
-	    node = cloneNode(node);
-	    frag.appendChild(node);
-	  }
+	  // expose internal transition API
+	  extend(Vue.transition, transition);
 	}
 
-	var elementDirectives = {
-	  slot: slot,
-	  partial: partial
-	};
+	installGlobalAPI(Vue);
 
-	Vue.version = '1.0.10';
-
-	/**
-	 * Vue and every constructor that extends Vue has an
-	 * associated options object, which can be accessed during
-	 * compilation steps as `this.constructor.options`.
-	 *
-	 * These can be seen as the default options of every
-	 * Vue instance.
-	 */
-
-	Vue.options = {
-	  directives: publicDirectives,
-	  elementDirectives: elementDirectives,
-	  filters: filters,
-	  transitions: {},
-	  components: {},
-	  partials: {},
-	  replace: true
-	};
+	Vue.version = '1.0.21';
 
 	// devtools global hook
-	/* istanbul ignore if */
-	if (process.env.NODE_ENV !== 'production') {
-	  if (inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
-	    window.__VUE_DEVTOOLS_GLOBAL_HOOK__.emit('init', Vue);
+	/* istanbul ignore next */
+	setTimeout(function () {
+	  if (config.devtools) {
+	    if (devtools) {
+	      devtools.emit('init', Vue);
+	    } else if (process.env.NODE_ENV !== 'production' && inBrowser && /Chrome\/\d+/.test(window.navigator.userAgent)) {
+	      console.log('Download the Vue Devtools for a better development experience:\n' + 'https://github.com/vuejs/vue-devtools');
+	    }
 	  }
-	}
+	}, 0);
 
 	module.exports = Vue;
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(2)))
 
 /***/ },
 /* 2 */
@@ -9483,15 +10104,21 @@
 	var __vue_script__, __vue_template__
 	__webpack_require__(4)
 	__vue_script__ = __webpack_require__(8)
-	__vue_template__ = __webpack_require__(49)
+	if (__vue_script__ &&
+	    __vue_script__.__esModule &&
+	    Object.keys(__vue_script__).length > 1) {
+	  console.warn("[vue-loader] src/vue/app.vue: named exports in *.vue files are ignored.")}
+	__vue_template__ = __webpack_require__(30)
 	module.exports = __vue_script__ || {}
 	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
+	if (__vue_template__) {
+	(typeof module.exports === "function" ? (module.exports.options || (module.exports.options = {})) : module.exports).template = __vue_template__
+	}
 	if (false) {(function () {  module.hot.accept()
 	  var hotAPI = require("vue-hot-reload-api")
 	  hotAPI.install(require("vue"), true)
 	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/app.vue"
+	  var id = "/Users/baidu/Documents/Github/dafrok.github.io/src/vue/app.vue"
 	  if (!module.hot.data) {
 	    hotAPI.createRecord(id, module.exports)
 	  } else {
@@ -9515,8 +10142,8 @@
 	if(false) {
 		// When the styles change, update the <style> tags
 		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-0ea8a4ca&file=app.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./app.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-0ea8a4ca&file=app.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./app.vue");
+			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./app.vue", function() {
+				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./app.vue");
 				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
 				update(newContent);
 			});
@@ -9831,103 +10458,31 @@
 
 	var _config2 = _interopRequireDefault(_config);
 
-	var _menu = __webpack_require__(10);
-
-	var _menu2 = _interopRequireDefault(_menu);
-
-	var _main = __webpack_require__(38);
-
-	var _main2 = _interopRequireDefault(_main);
-
-	var _base = __webpack_require__(18);
+	var _base = __webpack_require__(10);
 
 	var _base2 = _interopRequireDefault(_base);
 
-	var _articles = __webpack_require__(28);
+	var _sideNav = __webpack_require__(15);
 
-	var _articles2 = _interopRequireDefault(_articles);
+	var _sideNav2 = _interopRequireDefault(_sideNav);
+
+	var _appbar = __webpack_require__(25);
+
+	var _appbar2 = _interopRequireDefault(_appbar);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	var repoUrl = _config2.default.repoUrl; // <template lang="jade">
-	// section.body(@touchmove.prevent='prevent')
-	//     menu
-	//     main
-	// </template>
-
-	// <style lang="stylus">
-	// *
-	//     font-family Arial
-	//     appearance none
-	//     border-radius 0
-	//     box-sizing border-box
-	//     padding 0
-	//     margin 0
-	//     border none
-	//     outline 0
-	// html,body
-	//     width 100%
-	//     height 100%
-	// ul,ol
-	//     padding 0
-	//     margin 0
-	// li
-	//     list-style none
-	// .body
-	//     position fixed
-	//     top 0
-	//     bottom 0
-	//     left 0
-	//     right 0
-	//     overflow hidden
-	// </style>
-
-	// <script>
-
+	var repoUrl = _config2.default.repoUrl;
 	var issueUrl = _config2.default.issueUrl;
 
 	exports.default = {
 	    components: {
-	        menu: _menu2.default,
-	        main: _main2.default
+	        appbar: _appbar2.default,
+	        sideNav: _sideNav2.default
 	    },
-	    methods: {
-	        hideMenu: function hideMenu() {
-	            _base2.default.actions.toggleMenu(false);
-	        },
-	        prevent: function prevent(e) {
-	            // if (e.target.tagName !== 'CODE') {
-	            //     e.defaultPrevented = true
-	            // }
-	        }
-	    },
-	    compiled: function compiled() {
-	        fetch(repoUrl).then(function (res) {
-	            return res.json();
-	        }, function () {
-	            console.log('Loading failed!');
-	        }).then(function (data) {
-	            if (data.owner) {
-	                _base2.default.actions.updateInfo(data);
-	            } else {
-	                // todo: forbidden
-	            }
-	        });
-	        fetch(issueUrl).then(function (res) {
-	            return res.json();
-	        }, function () {
-	            console.log('Loading failed!');
-	        }).then(function (data) {
-	            if (data.items) {
-	                _articles2.default.actions.updateList(data.items);
-	                _base2.default.actions.updateCount(data.total_count);
-	            } else {
-	                _articles2.default.actions.updateList([]);
-	            }
-	        });
-	    }
+	    methods: {},
+	    compiled: function compiled() {}
 	};
-	// </script>
 
 /***/ },
 /* 9 */
@@ -9942,20 +10497,20 @@
 	// const repo = 'dafrok.github.io'
 
 	// production
-	var username = location.hostname.split('.')[0];
-	var repo = location.pathname.split('/')[1] || location.hostname;
-	var apiUrl = 'https://api.github.com';
-	var repoUrl = apiUrl + '/repos/' + username + '/' + repo;
-	var searchUrl = apiUrl + '/search/issues';
-	var issueUrl = searchUrl + '?q=author:' + username + '+repo:' + username + '/' + repo;
-
-	// test
-	// const username = 'vuejs'
-	// const repo = 'vue'
+	// const username = location.hostname.split('.')[0]
+	// const repo = location.pathname.split('/')[1] || location.hostname
 	// const apiUrl = 'https://api.github.com'
 	// const repoUrl = apiUrl + '/repos/' + username + '/' + repo
 	// const searchUrl = apiUrl + '/search/issues'
-	// const issueUrl = searchUrl + '?q=repo:' + username + '/' + repo
+	// const issueUrl = searchUrl + '?q=author:' + username + '+repo:' + username + '/' + repo
+
+	// test
+	var username = 'dafrok';
+	var repo = 'dafrok.github.io';
+	var apiUrl = 'https://api.github.com';
+	var repoUrl = apiUrl + '/repos/' + username + '/' + repo;
+	var searchUrl = apiUrl + '/search/issues';
+	var issueUrl = searchUrl + '?q=repo:' + username + '/' + repo;
 
 	exports.default = {
 	    username: username,
@@ -9969,279 +10524,6 @@
 /* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var __vue_script__, __vue_template__
-	__webpack_require__(11)
-	__vue_script__ = __webpack_require__(13)
-	__vue_template__ = __webpack_require__(37)
-	module.exports = __vue_script__ || {}
-	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
-	if (false) {(function () {  module.hot.accept()
-	  var hotAPI = require("vue-hot-reload-api")
-	  hotAPI.install(require("vue"), true)
-	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/menu.vue"
-	  if (!module.hot.data) {
-	    hotAPI.createRecord(id, module.exports)
-	  } else {
-	    hotAPI.update(id, module.exports, __vue_template__)
-	  }
-	})()}
-
-/***/ },
-/* 11 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(12);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-5f73a206&file=menu.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./menu.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-5f73a206&file=menu.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./menu.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 12 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(6)();
-	// imports
-
-
-	// module
-	exports.push([module.id, ".menu {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.2s;\n  transition: all 0.2s;\n  width: 18rem;\n  top: 0;\n  bottom: 0;\n  background: #333;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: hidden;\n  box-shadow: 0 0 0.5rem #000;\n  max-width: 80%;\n  z-index: 1;\n}\n@media screen and (max-width: 64rem) {\n  .menu {\n    -webkit-transform: translate(-100%, 0);\n            transform: translate(-100%, 0);\n    box-shadow: none;\n  }\n}\n.show {\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
-
-	// exports
-
-
-/***/ },
-/* 13 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _info = __webpack_require__(14);
-
-	var _info2 = _interopRequireDefault(_info);
-
-	var _articleList = __webpack_require__(24);
-
-	var _articleList2 = _interopRequireDefault(_articleList);
-
-	var _tools = __webpack_require__(32);
-
-	var _tools2 = _interopRequireDefault(_tools);
-
-	var _base = __webpack_require__(18);
-
-	var _base2 = _interopRequireDefault(_base);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	// <template lang="jade">
-	// section.menu(:class='{show: isShowMenu}')
-	//     info
-	//     tools
-	//     article-list(:articles='articles')
-	// </template>
-
-	// <style lang="stylus">
-	// .menu
-	//     user-select none
-	//     transition all .2s
-	//     width 18rem
-	//     top 0
-	//     bottom 0
-	//     background #333
-	//     color white
-	//     position fixed
-	//     left 0
-	//     overflow hidden
-	//     box-shadow 0 0 .5rem black
-	//     max-width 80%
-	//     z-index 1
-
-	// @media screen and (max-width: 64rem)
-	//     .menu
-	//         transform translate(-100%, 0)
-	//         box-shadow none
-
-	// .show
-	//     transform translate(0, 0)
-	//     box-shadow 0 0 .5rem black
-	// </style>
-
-	// <script>
-	exports.default = {
-	    components: {
-	        info: _info2.default,
-	        articleList: _articleList2.default,
-	        tools: _tools2.default
-	    },
-	    computed: {
-	        isShowMenu: function isShowMenu() {
-	            return _base2.default.state.menu;
-	        }
-	    }
-	};
-	// </script>
-
-/***/ },
-/* 14 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var __vue_script__, __vue_template__
-	__webpack_require__(15)
-	__vue_script__ = __webpack_require__(17)
-	__vue_template__ = __webpack_require__(23)
-	module.exports = __vue_script__ || {}
-	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
-	if (false) {(function () {  module.hot.accept()
-	  var hotAPI = require("vue-hot-reload-api")
-	  hotAPI.install(require("vue"), true)
-	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/info.vue"
-	  if (!module.hot.data) {
-	    hotAPI.createRecord(id, module.exports)
-	  } else {
-	    hotAPI.update(id, module.exports, __vue_template__)
-	  }
-	})()}
-
-/***/ },
-/* 15 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(16);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-e3e89c56&file=info.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./info.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-e3e89c56&file=info.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./info.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 16 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(6)();
-	// imports
-
-
-	// module
-	exports.push([module.id, ".info {\n  position: absolute;\n  overflow: hidden;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 6rem;\n}\n.info .avartar {\n  position: absolute;\n  left: 1rem;\n  width: 4rem;\n  height: 4rem;\n  border-radius: 100%;\n  display: block;\n  margin: 1rem auto;\n  box-shadow: 0 0 3px #fff;\n}\n.info label {\n  display: block;\n  overflow: hidden;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n}\n.info .login {\n  position: absolute;\n  left: 6rem;\n  top: 1.5rem;\n  font-size: 1.5rem;\n}\n.info .count {\n  position: absolute;\n  left: 6rem;\n  top: 3.5rem;\n}\n", ""]);
-
-	// exports
-
-
-/***/ },
-/* 17 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _base = __webpack_require__(18);
-
-	var _base2 = _interopRequireDefault(_base);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	exports.default = {
-	    computed: {
-	        count: function count() {
-	            var count = _base2.default.state.count;
-	            return '(' + (count ? count : 0) + ')';
-	        },
-	        info: function info() {
-	            return _base2.default.state.info;
-	        }
-	    }
-	};
-	// </script>
-	// <template lang="jade">
-	// section.info
-	//     img.avartar(:src='info.owner.avatar_url')
-	//     label.login(v-text='info.owner.login')
-	//     label.count Aritcles
-	//         i(v-text='count')
-	// </template>
-
-	// <style lang="stylus">
-	// .info
-	//     position absolute
-	//     overflow hidden
-	//     top 0
-	//     left 0
-	//     right 0
-	//     height 6rem
-	//     .avartar
-	//         position absolute
-	//         left 1rem
-	//         width 4rem
-	//         height 4rem
-	//         border-radius 100%
-	//         display block
-	//         margin 1rem auto
-	//         box-shadow 0 0 3px white
-	//     label
-	//         display block
-	//         overflow hidden
-	//         white-space nowrap
-	//         text-overflow ellipsis
-	//     .login
-	//         position absolute
-	//         left 6rem
-	//         top 1.5rem
-	//         font-size 1.5rem
-	//     .count
-	//         position absolute
-	//         left 6rem
-	//         top 3.5rem
-	// </style>
-
-	// <script>
-
-/***/ },
-/* 18 */
-/***/ function(module, exports, __webpack_require__) {
-
 	'use strict';
 
 	Object.defineProperty(exports, "__esModule", {
@@ -10252,7 +10534,7 @@
 
 	var _vue2 = _interopRequireDefault(_vue);
 
-	var _vuex = __webpack_require__(19);
+	var _vuex = __webpack_require__(11);
 
 	var _vuex2 = _interopRequireDefault(_vuex);
 
@@ -10298,7 +10580,7 @@
 	});
 
 /***/ },
-/* 19 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -10310,13 +10592,13 @@
 	});
 	exports.createLogger = exports.Store = undefined;
 
-	var _util = __webpack_require__(20);
+	var _util = __webpack_require__(12);
 
-	var _devtool = __webpack_require__(21);
+	var _devtool = __webpack_require__(13);
 
 	var _devtool2 = _interopRequireDefault(_devtool);
 
-	var _logger = __webpack_require__(22);
+	var _logger = __webpack_require__(14);
 
 	var _logger2 = _interopRequireDefault(_logger);
 
@@ -10595,7 +10877,7 @@
 	};
 
 /***/ },
-/* 20 */
+/* 12 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -10695,7 +10977,7 @@
 	}
 
 /***/ },
-/* 21 */
+/* 13 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -10714,7 +10996,7 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 22 */
+/* 14 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -10781,4313 +11063,470 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 23 */
-/***/ function(module, exports) {
-
-	module.exports = "<section class=\"info\"><img :src=\"info.owner.avatar_url\" class=\"avartar\"/><label v-text=\"info.owner.login\" class=\"login\"></label><label class=\"count\">Aritcles <i v-text=\"count\"></i></label></section>";
-
-/***/ },
-/* 24 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __vue_script__, __vue_template__
-	__webpack_require__(25)
-	__vue_script__ = __webpack_require__(27)
-	__vue_template__ = __webpack_require__(31)
+	__webpack_require__(16)
+	__vue_script__ = __webpack_require__(18)
+	if (__vue_script__ &&
+	    __vue_script__.__esModule &&
+	    Object.keys(__vue_script__).length > 1) {
+	  console.warn("[vue-loader] src/vue/util/side-nav.vue: named exports in *.vue files are ignored.")}
+	__vue_template__ = __webpack_require__(24)
 	module.exports = __vue_script__ || {}
 	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
+	if (__vue_template__) {
+	(typeof module.exports === "function" ? (module.exports.options || (module.exports.options = {})) : module.exports).template = __vue_template__
+	}
 	if (false) {(function () {  module.hot.accept()
 	  var hotAPI = require("vue-hot-reload-api")
 	  hotAPI.install(require("vue"), true)
 	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/article-list.vue"
+	  var id = "/Users/baidu/Documents/Github/dafrok.github.io/src/vue/util/side-nav.vue"
 	  if (!module.hot.data) {
 	    hotAPI.createRecord(id, module.exports)
 	  } else {
 	    hotAPI.update(id, module.exports, __vue_template__)
 	  }
 	})()}
+
+/***/ },
+/* 16 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(17);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(7)(content, {});
+	if(content.locals) module.exports = content.locals;
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		if(!content.locals) {
+			module.hot.accept("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./side-nav.vue", function() {
+				var newContent = require("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./side-nav.vue");
+				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+				update(newContent);
+			});
+		}
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 17 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(6)();
+	// imports
+
+
+	// module
+	exports.push([module.id, ".side-nav {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.2s;\n  transition: all 0.2s;\n  width: 18rem;\n  top: 0;\n  bottom: 0;\n  background: #333;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: hidden;\n  box-shadow: 0 0 0.5rem #000;\n  max-width: 80%;\n  z-index: 1;\n}\n@media screen and (max-width: 64rem) {\n  .menu {\n    -webkit-transform: translate(-100%, 0);\n            transform: translate(-100%, 0);\n    box-shadow: none;\n  }\n}\n.show {\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
+
+	// exports
+
+
+/***/ },
+/* 18 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+
+	var _info = __webpack_require__(19);
+
+	var _info2 = _interopRequireDefault(_info);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	exports.default = {
+	    components: {
+	        info: _info2.default
+	    },
+	    computed: {
+	        isShowMenu: function isShowMenu() {
+	            return true;
+	        }
+	    }
+	};
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __vue_script__, __vue_template__
+	__webpack_require__(20)
+	__vue_script__ = __webpack_require__(22)
+	if (__vue_script__ &&
+	    __vue_script__.__esModule &&
+	    Object.keys(__vue_script__).length > 1) {
+	  console.warn("[vue-loader] src/vue/util/info.vue: named exports in *.vue files are ignored.")}
+	__vue_template__ = __webpack_require__(23)
+	module.exports = __vue_script__ || {}
+	if (module.exports.__esModule) module.exports = module.exports.default
+	if (__vue_template__) {
+	(typeof module.exports === "function" ? (module.exports.options || (module.exports.options = {})) : module.exports).template = __vue_template__
+	}
+	if (false) {(function () {  module.hot.accept()
+	  var hotAPI = require("vue-hot-reload-api")
+	  hotAPI.install(require("vue"), true)
+	  if (!hotAPI.compatible) return
+	  var id = "/Users/baidu/Documents/Github/dafrok.github.io/src/vue/util/info.vue"
+	  if (!module.hot.data) {
+	    hotAPI.createRecord(id, module.exports)
+	  } else {
+	    hotAPI.update(id, module.exports, __vue_template__)
+	  }
+	})()}
+
+/***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(21);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(7)(content, {});
+	if(content.locals) module.exports = content.locals;
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		if(!content.locals) {
+			module.hot.accept("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./info.vue", function() {
+				var newContent = require("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./info.vue");
+				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+				update(newContent);
+			});
+		}
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 21 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(6)();
+	// imports
+
+
+	// module
+	exports.push([module.id, ".info {\n  position: absolute;\n  overflow: hidden;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 6rem;\n}\n.info .avartar {\n  position: absolute;\n  left: 1rem;\n  width: 4rem;\n  height: 4rem;\n  border-radius: 100%;\n  display: block;\n  margin: 1rem auto;\n  box-shadow: 0 0 3px #fff;\n}\n.info label {\n  display: block;\n  overflow: hidden;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n}\n.info .login {\n  position: absolute;\n  left: 6rem;\n  top: 1.5rem;\n  font-size: 1.5rem;\n}\n.info .count {\n  position: absolute;\n  left: 6rem;\n  top: 3.5rem;\n}\n", ""]);
+
+	// exports
+
+
+/***/ },
+/* 22 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+
+	var _base = __webpack_require__(10);
+
+	var _base2 = _interopRequireDefault(_base);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	exports.default = {
+	    computed: {
+	        count: function count() {
+	            var count = _base2.default.state.count;
+	            return ' (' + (count ? count : 0) + ')';
+	        },
+	        info: function info() {
+	            return _base2.default.state.info;
+	        }
+	    }
+	};
+
+/***/ },
+/* 23 */
+/***/ function(module, exports) {
+
+	module.exports = "<section class=\"info\"><img :src=\"info.owner.avatar_url\" class=\"avartar\"/><label v-text=\"info.owner.login\" class=\"login\"></label><label class=\"count\">Aritcles<i v-text=\"count\"></i></label></section>";
+
+/***/ },
+/* 24 */
+/***/ function(module, exports) {
+
+	module.exports = "<section :class=\"{show: isShowMenu}\" class=\"side-nav\"><info></info></section>";
 
 /***/ },
 /* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(26);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-fbd51c88&file=article-list.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./article-list.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-fbd51c88&file=article-list.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./article-list.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
+	var __vue_script__, __vue_template__
+	__webpack_require__(26)
+	__vue_script__ = __webpack_require__(28)
+	if (__vue_script__ &&
+	    __vue_script__.__esModule &&
+	    Object.keys(__vue_script__).length > 1) {
+	  console.warn("[vue-loader] src/vue/util/appbar.vue: named exports in *.vue files are ignored.")}
+	__vue_template__ = __webpack_require__(29)
+	module.exports = __vue_script__ || {}
+	if (module.exports.__esModule) module.exports = module.exports.default
+	if (__vue_template__) {
+	(typeof module.exports === "function" ? (module.exports.options || (module.exports.options = {})) : module.exports).template = __vue_template__
 	}
+	if (false) {(function () {  module.hot.accept()
+	  var hotAPI = require("vue-hot-reload-api")
+	  hotAPI.install(require("vue"), true)
+	  if (!hotAPI.compatible) return
+	  var id = "/Users/baidu/Documents/Github/dafrok.github.io/src/vue/util/appbar.vue"
+	  if (!module.hot.data) {
+	    hotAPI.createRecord(id, module.exports)
+	  } else {
+	    hotAPI.update(id, module.exports, __vue_template__)
+	  }
+	})()}
 
 /***/ },
 /* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports = module.exports = __webpack_require__(6)();
-	// imports
+	// style-loader: Adds some css to the DOM by adding a <style> tag
 
-
-	// module
-	exports.push([module.id, "#article-list {\n  position: absolute;\n  top: 9rem;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  overflow: hidden;\n}\n#article-list .article-list li {\n  position: relative;\n  width: 100%;\n  height: 3rem;\n  -webkit-transition: all 0.2s;\n  transition: all 0.2s;\n}\n#article-list .article-list li:active {\n  background: #eee;\n  color: #666;\n}\n#article-list .article-list li.title a {\n  cursor: pointer;\n  display: block;\n  width: 100%;\n  height: 100%;\n  padding: 0 1rem;\n  display: inline-block;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  position: absolute;\n  display: block;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  z-index: 1;\n}\n#article-list .article-list li.title a:before {\n  content: '';\n  font-size: 0;\n  width: 0;\n  height: 100%;\n  vertical-align: middle;\n  display: inline-block;\n}\n", ""]);
-
-	// exports
-
+	// load the styles
+	var content = __webpack_require__(27);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(7)(content, {});
+	if(content.locals) module.exports = content.locals;
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		if(!content.locals) {
+			module.hot.accept("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-f9fddb06&scoped=true!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./appbar.vue", function() {
+				var newContent = require("!!./../../../node_modules/css-loader/index.js!./../../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-f9fddb06&scoped=true!./../../../node_modules/stylus-loader/index.js!./../../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./appbar.vue");
+				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+				update(newContent);
+			});
+		}
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
 
 /***/ },
 /* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	exports = module.exports = __webpack_require__(6)();
+	// imports
 
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
 
-	var _config = __webpack_require__(9);
+	// module
+	exports.push([module.id, "header.appbar[_v-f9fddb06] {\n  position: relative;\n  height: 3.5rem;\n  line-height: 3.5rem;\n  text-align: center;\n  background: #333;\n  color: #fff;\n}\nheader.appbar h2[_v-f9fddb06] {\n  position: absolute;\n  left: 4rem;\n  top: 0;\n  bottom: 0;\n  right: 4rem;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\nheader.appbar a[_v-f9fddb06] {\n  display: none;\n  position: absolute;\n  height: 2.5rem;\n  width: 2.5rem;\n  top: 0;\n  bottom: 0;\n  left: 0.5rem;\n  margin: auto;\n  border-radius: 0.3rem;\n  background-size: cover;\n  border: 1px solid #c0c0c0;\n}\n@media screen and (max-width: 64rem) {\n  header a[_v-f9fddb06] {\n    display: block;\n  }\n}\n", ""]);
 
-	var _config2 = _interopRequireDefault(_config);
+	// exports
 
-	var _articles = __webpack_require__(28);
-
-	var _articles2 = _interopRequireDefault(_articles);
-
-	var _loading = __webpack_require__(29);
-
-	var _loading2 = _interopRequireDefault(_loading);
-
-	var _base = __webpack_require__(18);
-
-	var _base2 = _interopRequireDefault(_base);
-
-	var _vue = __webpack_require__(1);
-
-	var _vue2 = _interopRequireDefault(_vue);
-
-	var _iscroll = __webpack_require__(30);
-
-	var _iscroll2 = _interopRequireDefault(_iscroll);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	// <template lang="jade">
-	// section#article-list
-	//     ul.article-list
-	//         li.title(v-for='article in articles', @click='loadArticle(article.url)', :class="{active: article.active ? 'active' : ''}")
-	//             a(v-text='article.title')
-	// </template>
-
-	// <style lang="stylus">
-	// #article-list
-	//     position absolute
-	//     top 9rem
-	//     left 0
-	//     right 0
-	//     bottom 0
-	//     overflow hidden
-	//     .article-list
-	//         li
-	//             position relative
-	//             width 100%
-	//             height 3rem
-	//             transition all .2s
-	//             &:active
-	//                 background #eee
-	//                 color #666
-	//             &.title
-	//                 a
-	//                     cursor pointer
-	//                     display block
-	//                     width 100%
-	//                     height 100%
-	//                     padding 0 1rem
-	//                     display inline-block
-	//                     white-space nowrap
-	//                     overflow hidden
-	//                     text-overflow ellipsis
-	//                     position absolute
-	//                     display block
-	//                     top 0
-	//                     bottom 0
-	//                     left 0
-	//                     right 0
-	//                     z-index 1
-	//                     &:before
-	//                         content ''
-	//                         font-size 0
-	//                         width 0
-	//                         height 100%
-	//                         vertical-align middle
-	//                         display inline-block
-	// </style>
-
-	// <script>
-	exports.default = {
-	    data: function data() {
-	        return {
-	            iscroll: {}
-	        };
-	    },
-
-	    computed: {
-	        articles: function articles() {
-	            return _articles2.default.state.list;
-	        }
-	    },
-	    watch: {
-	        articles: function articles() {
-	            this.refresh();
-	        }
-	    },
-	    methods: {
-	        refresh: function refresh() {
-	            _vue2.default.nextTick((function () {
-	                this.iscroll.refresh();
-	            }).bind(this));
-	        },
-	        loadArticle: function loadArticle(url) {
-	            _loading2.default.actions.updateArticleLoadingState(true);
-	            _base2.default.actions.toggleMenu(false);
-	            fetch(url).then(function (res) {
-	                return res.json();
-	            }, function () {
-	                console.log('Loading failed!');
-	            }).then(function (data) {
-	                _articles2.default.actions.updateArticle(data.body);
-	                _base2.default.actions.updateTitle(data.title);
-	                _loading2.default.actions.updateArticleLoadingState(false);
-	            });
-	        }
-	    },
-	    compiled: function compiled() {
-	        _vue2.default.nextTick((function () {
-	            this.iscroll = new _iscroll2.default('#article-list', {
-	                preventDefault: false,
-	                mouseWheel: true
-	            });
-	            this.iscroll.on('scrollEnd', (function () {
-	                console.log(this.iscroll.maxScrollY, this.iscroll.directionY);
-	            }).bind(this));
-	        }).bind(this));
-	    }
-	};
-	// </script>
 
 /***/ },
 /* 28 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
-	'use strict';
+	"use strict";
 
 	Object.defineProperty(exports, "__esModule", {
 	    value: true
 	});
-
-	var _vue = __webpack_require__(1);
-
-	var _vue2 = _interopRequireDefault(_vue);
-
-	var _vuex = __webpack_require__(19);
-
-	var _vuex2 = _interopRequireDefault(_vuex);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	_vue2.default.use(_vuex2.default);
-
-	var state = {
-	    list: [],
-	    article: 'None'
+	exports.default = {
+	    methods: {},
+	    watch: {},
+	    computed: {},
+	    compiled: function compiled() {}
 	};
-
-	var mutations = {
-	    UPDATELIST: function UPDATELIST(state, list) {
-	        state.list = list;
-	    },
-	    UPDATEARTICLE: function UPDATEARTICLE(state, article) {
-	        state.article = article;
-	    }
-	};
-
-	var actions = {
-	    updateArticle: 'UPDATEARTICLE',
-	    updateList: 'UPDATELIST'
-	};
-
-	exports.default = new _vuex2.default.Store({
-	    state: state,
-	    mutations: mutations,
-	    actions: actions
-	});
 
 /***/ },
 /* 29 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _vue = __webpack_require__(1);
-
-	var _vue2 = _interopRequireDefault(_vue);
-
-	var _vuex = __webpack_require__(19);
-
-	var _vuex2 = _interopRequireDefault(_vuex);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	_vue2.default.use(_vuex2.default);
-
-	var state = {
-	    isArticleLoading: false
-	};
-
-	var mutations = {
-	    UPDATEARTICLELOADINGSTATE: function UPDATEARTICLELOADINGSTATE(state, bool) {
-	        state.isArticleLoading = bool;
-	    }
-	};
-
-	var actions = {
-	    updateArticleLoadingState: 'UPDATEARTICLELOADINGSTATE'
-	};
-
-	exports.default = new _vuex2.default.Store({
-	    state: state,
-	    mutations: mutations,
-	    actions: actions
-	});
+	module.exports = "<header class=\"appbar\" _v-f9fddb06=\"\"><a _v-f9fddb06=\"\"></a><h2 _v-f9fddb06=\"\"></h2></header>";
 
 /***/ },
 /* 30 */
 /***/ function(module, exports) {
 
-	/*! iScroll v5.1.3 ~ (c) 2008-2014 Matteo Spinelli ~ http://cubiq.org/license */
-	(function (window, document, Math) {
-	var rAF = window.requestAnimationFrame	||
-		window.webkitRequestAnimationFrame	||
-		window.mozRequestAnimationFrame		||
-		window.oRequestAnimationFrame		||
-		window.msRequestAnimationFrame		||
-		function (callback) { window.setTimeout(callback, 1000 / 60); };
-
-	var utils = (function () {
-		var me = {};
-
-		var _elementStyle = document.createElement('div').style;
-		var _vendor = (function () {
-			var vendors = ['t', 'webkitT', 'MozT', 'msT', 'OT'],
-				transform,
-				i = 0,
-				l = vendors.length;
-
-			for ( ; i < l; i++ ) {
-				transform = vendors[i] + 'ransform';
-				if ( transform in _elementStyle ) return vendors[i].substr(0, vendors[i].length-1);
-			}
-
-			return false;
-		})();
-
-		function _prefixStyle (style) {
-			if ( _vendor === false ) return false;
-			if ( _vendor === '' ) return style;
-			return _vendor + style.charAt(0).toUpperCase() + style.substr(1);
-		}
-
-		me.getTime = Date.now || function getTime () { return new Date().getTime(); };
-
-		me.extend = function (target, obj) {
-			for ( var i in obj ) {
-				target[i] = obj[i];
-			}
-		};
-
-		me.addEvent = function (el, type, fn, capture) {
-			el.addEventListener(type, fn, !!capture);
-		};
-
-		me.removeEvent = function (el, type, fn, capture) {
-			el.removeEventListener(type, fn, !!capture);
-		};
-
-		me.prefixPointerEvent = function (pointerEvent) {
-			return window.MSPointerEvent ? 
-				'MSPointer' + pointerEvent.charAt(9).toUpperCase() + pointerEvent.substr(10):
-				pointerEvent;
-		};
-
-		me.momentum = function (current, start, time, lowerMargin, wrapperSize, deceleration) {
-			var distance = current - start,
-				speed = Math.abs(distance) / time,
-				destination,
-				duration;
-
-			deceleration = deceleration === undefined ? 0.0006 : deceleration;
-
-			destination = current + ( speed * speed ) / ( 2 * deceleration ) * ( distance < 0 ? -1 : 1 );
-			duration = speed / deceleration;
-
-			if ( destination < lowerMargin ) {
-				destination = wrapperSize ? lowerMargin - ( wrapperSize / 2.5 * ( speed / 8 ) ) : lowerMargin;
-				distance = Math.abs(destination - current);
-				duration = distance / speed;
-			} else if ( destination > 0 ) {
-				destination = wrapperSize ? wrapperSize / 2.5 * ( speed / 8 ) : 0;
-				distance = Math.abs(current) + destination;
-				duration = distance / speed;
-			}
-
-			return {
-				destination: Math.round(destination),
-				duration: duration
-			};
-		};
-
-		var _transform = _prefixStyle('transform');
-
-		me.extend(me, {
-			hasTransform: _transform !== false,
-			hasPerspective: _prefixStyle('perspective') in _elementStyle,
-			hasTouch: 'ontouchstart' in window,
-			hasPointer: window.PointerEvent || window.MSPointerEvent, // IE10 is prefixed
-			hasTransition: _prefixStyle('transition') in _elementStyle
-		});
-
-		// This should find all Android browsers lower than build 535.19 (both stock browser and webview)
-		me.isBadAndroid = /Android /.test(window.navigator.appVersion) && !(/Chrome\/\d/.test(window.navigator.appVersion));
-
-		me.extend(me.style = {}, {
-			transform: _transform,
-			transitionTimingFunction: _prefixStyle('transitionTimingFunction'),
-			transitionDuration: _prefixStyle('transitionDuration'),
-			transitionDelay: _prefixStyle('transitionDelay'),
-			transformOrigin: _prefixStyle('transformOrigin')
-		});
-
-		me.hasClass = function (e, c) {
-			var re = new RegExp("(^|\\s)" + c + "(\\s|$)");
-			return re.test(e.className);
-		};
-
-		me.addClass = function (e, c) {
-			if ( me.hasClass(e, c) ) {
-				return;
-			}
-
-			var newclass = e.className.split(' ');
-			newclass.push(c);
-			e.className = newclass.join(' ');
-		};
-
-		me.removeClass = function (e, c) {
-			if ( !me.hasClass(e, c) ) {
-				return;
-			}
-
-			var re = new RegExp("(^|\\s)" + c + "(\\s|$)", 'g');
-			e.className = e.className.replace(re, ' ');
-		};
-
-		me.offset = function (el) {
-			var left = -el.offsetLeft,
-				top = -el.offsetTop;
-
-			// jshint -W084
-			while (el = el.offsetParent) {
-				left -= el.offsetLeft;
-				top -= el.offsetTop;
-			}
-			// jshint +W084
-
-			return {
-				left: left,
-				top: top
-			};
-		};
-
-		me.preventDefaultException = function (el, exceptions) {
-			for ( var i in exceptions ) {
-				if ( exceptions[i].test(el[i]) ) {
-					return true;
-				}
-			}
-
-			return false;
-		};
-
-		me.extend(me.eventType = {}, {
-			touchstart: 1,
-			touchmove: 1,
-			touchend: 1,
-
-			mousedown: 2,
-			mousemove: 2,
-			mouseup: 2,
-
-			pointerdown: 3,
-			pointermove: 3,
-			pointerup: 3,
-
-			MSPointerDown: 3,
-			MSPointerMove: 3,
-			MSPointerUp: 3
-		});
-
-		me.extend(me.ease = {}, {
-			quadratic: {
-				style: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-				fn: function (k) {
-					return k * ( 2 - k );
-				}
-			},
-			circular: {
-				style: 'cubic-bezier(0.1, 0.57, 0.1, 1)',	// Not properly "circular" but this looks better, it should be (0.075, 0.82, 0.165, 1)
-				fn: function (k) {
-					return Math.sqrt( 1 - ( --k * k ) );
-				}
-			},
-			back: {
-				style: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-				fn: function (k) {
-					var b = 4;
-					return ( k = k - 1 ) * k * ( ( b + 1 ) * k + b ) + 1;
-				}
-			},
-			bounce: {
-				style: '',
-				fn: function (k) {
-					if ( ( k /= 1 ) < ( 1 / 2.75 ) ) {
-						return 7.5625 * k * k;
-					} else if ( k < ( 2 / 2.75 ) ) {
-						return 7.5625 * ( k -= ( 1.5 / 2.75 ) ) * k + 0.75;
-					} else if ( k < ( 2.5 / 2.75 ) ) {
-						return 7.5625 * ( k -= ( 2.25 / 2.75 ) ) * k + 0.9375;
-					} else {
-						return 7.5625 * ( k -= ( 2.625 / 2.75 ) ) * k + 0.984375;
-					}
-				}
-			},
-			elastic: {
-				style: '',
-				fn: function (k) {
-					var f = 0.22,
-						e = 0.4;
-
-					if ( k === 0 ) { return 0; }
-					if ( k == 1 ) { return 1; }
-
-					return ( e * Math.pow( 2, - 10 * k ) * Math.sin( ( k - f / 4 ) * ( 2 * Math.PI ) / f ) + 1 );
-				}
-			}
-		});
-
-		me.tap = function (e, eventName) {
-			var ev = document.createEvent('Event');
-			ev.initEvent(eventName, true, true);
-			ev.pageX = e.pageX;
-			ev.pageY = e.pageY;
-			e.target.dispatchEvent(ev);
-		};
-
-		me.click = function (e) {
-			var target = e.target,
-				ev;
-
-			if ( !(/(SELECT|INPUT|TEXTAREA)/i).test(target.tagName) ) {
-				ev = document.createEvent('MouseEvents');
-				ev.initMouseEvent('click', true, true, e.view, 1,
-					target.screenX, target.screenY, target.clientX, target.clientY,
-					e.ctrlKey, e.altKey, e.shiftKey, e.metaKey,
-					0, null);
-
-				ev._constructed = true;
-				target.dispatchEvent(ev);
-			}
-		};
-
-		return me;
-	})();
-
-	function IScroll (el, options) {
-		this.wrapper = typeof el == 'string' ? document.querySelector(el) : el;
-		this.scroller = this.wrapper.children[0];
-		this.scrollerStyle = this.scroller.style;		// cache style for better performance
-
-		this.options = {
-
-			resizeScrollbars: true,
-
-			mouseWheelSpeed: 20,
-
-			snapThreshold: 0.334,
-
-	// INSERT POINT: OPTIONS 
-
-			startX: 0,
-			startY: 0,
-			scrollY: true,
-			directionLockThreshold: 5,
-			momentum: true,
-
-			bounce: true,
-			bounceTime: 600,
-			bounceEasing: '',
-
-			preventDefault: true,
-			preventDefaultException: { tagName: /^(INPUT|TEXTAREA|BUTTON|SELECT)$/ },
-
-			HWCompositing: true,
-			useTransition: true,
-			useTransform: true
-		};
-
-		for ( var i in options ) {
-			this.options[i] = options[i];
-		}
-
-		// Normalize options
-		this.translateZ = this.options.HWCompositing && utils.hasPerspective ? ' translateZ(0)' : '';
-
-		this.options.useTransition = utils.hasTransition && this.options.useTransition;
-		this.options.useTransform = utils.hasTransform && this.options.useTransform;
-
-		this.options.eventPassthrough = this.options.eventPassthrough === true ? 'vertical' : this.options.eventPassthrough;
-		this.options.preventDefault = !this.options.eventPassthrough && this.options.preventDefault;
-
-		// If you want eventPassthrough I have to lock one of the axes
-		this.options.scrollY = this.options.eventPassthrough == 'vertical' ? false : this.options.scrollY;
-		this.options.scrollX = this.options.eventPassthrough == 'horizontal' ? false : this.options.scrollX;
-
-		// With eventPassthrough we also need lockDirection mechanism
-		this.options.freeScroll = this.options.freeScroll && !this.options.eventPassthrough;
-		this.options.directionLockThreshold = this.options.eventPassthrough ? 0 : this.options.directionLockThreshold;
-
-		this.options.bounceEasing = typeof this.options.bounceEasing == 'string' ? utils.ease[this.options.bounceEasing] || utils.ease.circular : this.options.bounceEasing;
-
-		this.options.resizePolling = this.options.resizePolling === undefined ? 60 : this.options.resizePolling;
-
-		if ( this.options.tap === true ) {
-			this.options.tap = 'tap';
-		}
-
-		if ( this.options.shrinkScrollbars == 'scale' ) {
-			this.options.useTransition = false;
-		}
-
-		this.options.invertWheelDirection = this.options.invertWheelDirection ? -1 : 1;
-
-	// INSERT POINT: NORMALIZATION
-
-		// Some defaults	
-		this.x = 0;
-		this.y = 0;
-		this.directionX = 0;
-		this.directionY = 0;
-		this._events = {};
-
-	// INSERT POINT: DEFAULTS
-
-		this._init();
-		this.refresh();
-
-		this.scrollTo(this.options.startX, this.options.startY);
-		this.enable();
-	}
-
-	IScroll.prototype = {
-		version: '5.1.3',
-
-		_init: function () {
-			this._initEvents();
-
-			if ( this.options.scrollbars || this.options.indicators ) {
-				this._initIndicators();
-			}
-
-			if ( this.options.mouseWheel ) {
-				this._initWheel();
-			}
-
-			if ( this.options.snap ) {
-				this._initSnap();
-			}
-
-			if ( this.options.keyBindings ) {
-				this._initKeys();
-			}
-
-	// INSERT POINT: _init
-
-		},
-
-		destroy: function () {
-			this._initEvents(true);
-
-			this._execEvent('destroy');
-		},
-
-		_transitionEnd: function (e) {
-			if ( e.target != this.scroller || !this.isInTransition ) {
-				return;
-			}
-
-			this._transitionTime();
-			if ( !this.resetPosition(this.options.bounceTime) ) {
-				this.isInTransition = false;
-				this._execEvent('scrollEnd');
-			}
-		},
-
-		_start: function (e) {
-			// React to left mouse button only
-			if ( utils.eventType[e.type] != 1 ) {
-				if ( e.button !== 0 ) {
-					return;
-				}
-			}
-
-			if ( !this.enabled || (this.initiated && utils.eventType[e.type] !== this.initiated) ) {
-				return;
-			}
-
-			if ( this.options.preventDefault && !utils.isBadAndroid && !utils.preventDefaultException(e.target, this.options.preventDefaultException) ) {
-				e.preventDefault();
-			}
-
-			var point = e.touches ? e.touches[0] : e,
-				pos;
-
-			this.initiated	= utils.eventType[e.type];
-			this.moved		= false;
-			this.distX		= 0;
-			this.distY		= 0;
-			this.directionX = 0;
-			this.directionY = 0;
-			this.directionLocked = 0;
-
-			this._transitionTime();
-
-			this.startTime = utils.getTime();
-
-			if ( this.options.useTransition && this.isInTransition ) {
-				this.isInTransition = false;
-				pos = this.getComputedPosition();
-				this._translate(Math.round(pos.x), Math.round(pos.y));
-				this._execEvent('scrollEnd');
-			} else if ( !this.options.useTransition && this.isAnimating ) {
-				this.isAnimating = false;
-				this._execEvent('scrollEnd');
-			}
-
-			this.startX    = this.x;
-			this.startY    = this.y;
-			this.absStartX = this.x;
-			this.absStartY = this.y;
-			this.pointX    = point.pageX;
-			this.pointY    = point.pageY;
-
-			this._execEvent('beforeScrollStart');
-		},
-
-		_move: function (e) {
-			if ( !this.enabled || utils.eventType[e.type] !== this.initiated ) {
-				return;
-			}
-
-			if ( this.options.preventDefault ) {	// increases performance on Android? TODO: check!
-				e.preventDefault();
-			}
-
-			var point		= e.touches ? e.touches[0] : e,
-				deltaX		= point.pageX - this.pointX,
-				deltaY		= point.pageY - this.pointY,
-				timestamp	= utils.getTime(),
-				newX, newY,
-				absDistX, absDistY;
-
-			this.pointX		= point.pageX;
-			this.pointY		= point.pageY;
-
-			this.distX		+= deltaX;
-			this.distY		+= deltaY;
-			absDistX		= Math.abs(this.distX);
-			absDistY		= Math.abs(this.distY);
-
-			// We need to move at least 10 pixels for the scrolling to initiate
-			if ( timestamp - this.endTime > 300 && (absDistX < 10 && absDistY < 10) ) {
-				return;
-			}
-
-			// If you are scrolling in one direction lock the other
-			if ( !this.directionLocked && !this.options.freeScroll ) {
-				if ( absDistX > absDistY + this.options.directionLockThreshold ) {
-					this.directionLocked = 'h';		// lock horizontally
-				} else if ( absDistY >= absDistX + this.options.directionLockThreshold ) {
-					this.directionLocked = 'v';		// lock vertically
-				} else {
-					this.directionLocked = 'n';		// no lock
-				}
-			}
-
-			if ( this.directionLocked == 'h' ) {
-				if ( this.options.eventPassthrough == 'vertical' ) {
-					e.preventDefault();
-				} else if ( this.options.eventPassthrough == 'horizontal' ) {
-					this.initiated = false;
-					return;
-				}
-
-				deltaY = 0;
-			} else if ( this.directionLocked == 'v' ) {
-				if ( this.options.eventPassthrough == 'horizontal' ) {
-					e.preventDefault();
-				} else if ( this.options.eventPassthrough == 'vertical' ) {
-					this.initiated = false;
-					return;
-				}
-
-				deltaX = 0;
-			}
-
-			deltaX = this.hasHorizontalScroll ? deltaX : 0;
-			deltaY = this.hasVerticalScroll ? deltaY : 0;
-
-			newX = this.x + deltaX;
-			newY = this.y + deltaY;
-
-			// Slow down if outside of the boundaries
-			if ( newX > 0 || newX < this.maxScrollX ) {
-				newX = this.options.bounce ? this.x + deltaX / 3 : newX > 0 ? 0 : this.maxScrollX;
-			}
-			if ( newY > 0 || newY < this.maxScrollY ) {
-				newY = this.options.bounce ? this.y + deltaY / 3 : newY > 0 ? 0 : this.maxScrollY;
-			}
-
-			this.directionX = deltaX > 0 ? -1 : deltaX < 0 ? 1 : 0;
-			this.directionY = deltaY > 0 ? -1 : deltaY < 0 ? 1 : 0;
-
-			if ( !this.moved ) {
-				this._execEvent('scrollStart');
-			}
-
-			this.moved = true;
-
-			this._translate(newX, newY);
-
-	/* REPLACE START: _move */
-
-			if ( timestamp - this.startTime > 300 ) {
-				this.startTime = timestamp;
-				this.startX = this.x;
-				this.startY = this.y;
-			}
-
-	/* REPLACE END: _move */
-
-		},
-
-		_end: function (e) {
-			if ( !this.enabled || utils.eventType[e.type] !== this.initiated ) {
-				return;
-			}
-
-			if ( this.options.preventDefault && !utils.preventDefaultException(e.target, this.options.preventDefaultException) ) {
-				e.preventDefault();
-			}
-
-			var point = e.changedTouches ? e.changedTouches[0] : e,
-				momentumX,
-				momentumY,
-				duration = utils.getTime() - this.startTime,
-				newX = Math.round(this.x),
-				newY = Math.round(this.y),
-				distanceX = Math.abs(newX - this.startX),
-				distanceY = Math.abs(newY - this.startY),
-				time = 0,
-				easing = '';
-
-			this.isInTransition = 0;
-			this.initiated = 0;
-			this.endTime = utils.getTime();
-
-			// reset if we are outside of the boundaries
-			if ( this.resetPosition(this.options.bounceTime) ) {
-				return;
-			}
-
-			this.scrollTo(newX, newY);	// ensures that the last position is rounded
-
-			// we scrolled less than 10 pixels
-			if ( !this.moved ) {
-				if ( this.options.tap ) {
-					utils.tap(e, this.options.tap);
-				}
-
-				if ( this.options.click ) {
-					utils.click(e);
-				}
-
-				this._execEvent('scrollCancel');
-				return;
-			}
-
-			if ( this._events.flick && duration < 200 && distanceX < 100 && distanceY < 100 ) {
-				this._execEvent('flick');
-				return;
-			}
-
-			// start momentum animation if needed
-			if ( this.options.momentum && duration < 300 ) {
-				momentumX = this.hasHorizontalScroll ? utils.momentum(this.x, this.startX, duration, this.maxScrollX, this.options.bounce ? this.wrapperWidth : 0, this.options.deceleration) : { destination: newX, duration: 0 };
-				momentumY = this.hasVerticalScroll ? utils.momentum(this.y, this.startY, duration, this.maxScrollY, this.options.bounce ? this.wrapperHeight : 0, this.options.deceleration) : { destination: newY, duration: 0 };
-				newX = momentumX.destination;
-				newY = momentumY.destination;
-				time = Math.max(momentumX.duration, momentumY.duration);
-				this.isInTransition = 1;
-			}
-
-
-			if ( this.options.snap ) {
-				var snap = this._nearestSnap(newX, newY);
-				this.currentPage = snap;
-				time = this.options.snapSpeed || Math.max(
-						Math.max(
-							Math.min(Math.abs(newX - snap.x), 1000),
-							Math.min(Math.abs(newY - snap.y), 1000)
-						), 300);
-				newX = snap.x;
-				newY = snap.y;
-
-				this.directionX = 0;
-				this.directionY = 0;
-				easing = this.options.bounceEasing;
-			}
-
-	// INSERT POINT: _end
-
-			if ( newX != this.x || newY != this.y ) {
-				// change easing function when scroller goes out of the boundaries
-				if ( newX > 0 || newX < this.maxScrollX || newY > 0 || newY < this.maxScrollY ) {
-					easing = utils.ease.quadratic;
-				}
-
-				this.scrollTo(newX, newY, time, easing);
-				return;
-			}
-
-			this._execEvent('scrollEnd');
-		},
-
-		_resize: function () {
-			var that = this;
-
-			clearTimeout(this.resizeTimeout);
-
-			this.resizeTimeout = setTimeout(function () {
-				that.refresh();
-			}, this.options.resizePolling);
-		},
-
-		resetPosition: function (time) {
-			var x = this.x,
-				y = this.y;
-
-			time = time || 0;
-
-			if ( !this.hasHorizontalScroll || this.x > 0 ) {
-				x = 0;
-			} else if ( this.x < this.maxScrollX ) {
-				x = this.maxScrollX;
-			}
-
-			if ( !this.hasVerticalScroll || this.y > 0 ) {
-				y = 0;
-			} else if ( this.y < this.maxScrollY ) {
-				y = this.maxScrollY;
-			}
-
-			if ( x == this.x && y == this.y ) {
-				return false;
-			}
-
-			this.scrollTo(x, y, time, this.options.bounceEasing);
-
-			return true;
-		},
-
-		disable: function () {
-			this.enabled = false;
-		},
-
-		enable: function () {
-			this.enabled = true;
-		},
-
-		refresh: function () {
-			var rf = this.wrapper.offsetHeight;		// Force reflow
-
-			this.wrapperWidth	= this.wrapper.clientWidth;
-			this.wrapperHeight	= this.wrapper.clientHeight;
-
-	/* REPLACE START: refresh */
-
-			this.scrollerWidth	= this.scroller.offsetWidth;
-			this.scrollerHeight	= this.scroller.offsetHeight;
-
-			this.maxScrollX		= this.wrapperWidth - this.scrollerWidth;
-			this.maxScrollY		= this.wrapperHeight - this.scrollerHeight;
-
-	/* REPLACE END: refresh */
-
-			this.hasHorizontalScroll	= this.options.scrollX && this.maxScrollX < 0;
-			this.hasVerticalScroll		= this.options.scrollY && this.maxScrollY < 0;
-
-			if ( !this.hasHorizontalScroll ) {
-				this.maxScrollX = 0;
-				this.scrollerWidth = this.wrapperWidth;
-			}
-
-			if ( !this.hasVerticalScroll ) {
-				this.maxScrollY = 0;
-				this.scrollerHeight = this.wrapperHeight;
-			}
-
-			this.endTime = 0;
-			this.directionX = 0;
-			this.directionY = 0;
-
-			this.wrapperOffset = utils.offset(this.wrapper);
-
-			this._execEvent('refresh');
-
-			this.resetPosition();
-
-	// INSERT POINT: _refresh
-
-		},
-
-		on: function (type, fn) {
-			if ( !this._events[type] ) {
-				this._events[type] = [];
-			}
-
-			this._events[type].push(fn);
-		},
-
-		off: function (type, fn) {
-			if ( !this._events[type] ) {
-				return;
-			}
-
-			var index = this._events[type].indexOf(fn);
-
-			if ( index > -1 ) {
-				this._events[type].splice(index, 1);
-			}
-		},
-
-		_execEvent: function (type) {
-			if ( !this._events[type] ) {
-				return;
-			}
-
-			var i = 0,
-				l = this._events[type].length;
-
-			if ( !l ) {
-				return;
-			}
-
-			for ( ; i < l; i++ ) {
-				this._events[type][i].apply(this, [].slice.call(arguments, 1));
-			}
-		},
-
-		scrollBy: function (x, y, time, easing) {
-			x = this.x + x;
-			y = this.y + y;
-			time = time || 0;
-
-			this.scrollTo(x, y, time, easing);
-		},
-
-		scrollTo: function (x, y, time, easing) {
-			easing = easing || utils.ease.circular;
-
-			this.isInTransition = this.options.useTransition && time > 0;
-
-			if ( !time || (this.options.useTransition && easing.style) ) {
-				this._transitionTimingFunction(easing.style);
-				this._transitionTime(time);
-				this._translate(x, y);
-			} else {
-				this._animate(x, y, time, easing.fn);
-			}
-		},
-
-		scrollToElement: function (el, time, offsetX, offsetY, easing) {
-			el = el.nodeType ? el : this.scroller.querySelector(el);
-
-			if ( !el ) {
-				return;
-			}
-
-			var pos = utils.offset(el);
-
-			pos.left -= this.wrapperOffset.left;
-			pos.top  -= this.wrapperOffset.top;
-
-			// if offsetX/Y are true we center the element to the screen
-			if ( offsetX === true ) {
-				offsetX = Math.round(el.offsetWidth / 2 - this.wrapper.offsetWidth / 2);
-			}
-			if ( offsetY === true ) {
-				offsetY = Math.round(el.offsetHeight / 2 - this.wrapper.offsetHeight / 2);
-			}
-
-			pos.left -= offsetX || 0;
-			pos.top  -= offsetY || 0;
-
-			pos.left = pos.left > 0 ? 0 : pos.left < this.maxScrollX ? this.maxScrollX : pos.left;
-			pos.top  = pos.top  > 0 ? 0 : pos.top  < this.maxScrollY ? this.maxScrollY : pos.top;
-
-			time = time === undefined || time === null || time === 'auto' ? Math.max(Math.abs(this.x-pos.left), Math.abs(this.y-pos.top)) : time;
-
-			this.scrollTo(pos.left, pos.top, time, easing);
-		},
-
-		_transitionTime: function (time) {
-			time = time || 0;
-
-			this.scrollerStyle[utils.style.transitionDuration] = time + 'ms';
-
-			if ( !time && utils.isBadAndroid ) {
-				this.scrollerStyle[utils.style.transitionDuration] = '0.001s';
-			}
-
-
-			if ( this.indicators ) {
-				for ( var i = this.indicators.length; i--; ) {
-					this.indicators[i].transitionTime(time);
-				}
-			}
-
-
-	// INSERT POINT: _transitionTime
-
-		},
-
-		_transitionTimingFunction: function (easing) {
-			this.scrollerStyle[utils.style.transitionTimingFunction] = easing;
-
-
-			if ( this.indicators ) {
-				for ( var i = this.indicators.length; i--; ) {
-					this.indicators[i].transitionTimingFunction(easing);
-				}
-			}
-
-
-	// INSERT POINT: _transitionTimingFunction
-
-		},
-
-		_translate: function (x, y) {
-			if ( this.options.useTransform ) {
-
-	/* REPLACE START: _translate */
-
-				this.scrollerStyle[utils.style.transform] = 'translate(' + x + 'px,' + y + 'px)' + this.translateZ;
-
-	/* REPLACE END: _translate */
-
-			} else {
-				x = Math.round(x);
-				y = Math.round(y);
-				this.scrollerStyle.left = x + 'px';
-				this.scrollerStyle.top = y + 'px';
-			}
-
-			this.x = x;
-			this.y = y;
-
-
-		if ( this.indicators ) {
-			for ( var i = this.indicators.length; i--; ) {
-				this.indicators[i].updatePosition();
-			}
-		}
-
-
-	// INSERT POINT: _translate
-
-		},
-
-		_initEvents: function (remove) {
-			var eventType = remove ? utils.removeEvent : utils.addEvent,
-				target = this.options.bindToWrapper ? this.wrapper : window;
-
-			eventType(window, 'orientationchange', this);
-			eventType(window, 'resize', this);
-
-			if ( this.options.click ) {
-				eventType(this.wrapper, 'click', this, true);
-			}
-
-			if ( !this.options.disableMouse ) {
-				eventType(this.wrapper, 'mousedown', this);
-				eventType(target, 'mousemove', this);
-				eventType(target, 'mousecancel', this);
-				eventType(target, 'mouseup', this);
-			}
-
-			if ( utils.hasPointer && !this.options.disablePointer ) {
-				eventType(this.wrapper, utils.prefixPointerEvent('pointerdown'), this);
-				eventType(target, utils.prefixPointerEvent('pointermove'), this);
-				eventType(target, utils.prefixPointerEvent('pointercancel'), this);
-				eventType(target, utils.prefixPointerEvent('pointerup'), this);
-			}
-
-			if ( utils.hasTouch && !this.options.disableTouch ) {
-				eventType(this.wrapper, 'touchstart', this);
-				eventType(target, 'touchmove', this);
-				eventType(target, 'touchcancel', this);
-				eventType(target, 'touchend', this);
-			}
-
-			eventType(this.scroller, 'transitionend', this);
-			eventType(this.scroller, 'webkitTransitionEnd', this);
-			eventType(this.scroller, 'oTransitionEnd', this);
-			eventType(this.scroller, 'MSTransitionEnd', this);
-		},
-
-		getComputedPosition: function () {
-			var matrix = window.getComputedStyle(this.scroller, null),
-				x, y;
-
-			if ( this.options.useTransform ) {
-				matrix = matrix[utils.style.transform].split(')')[0].split(', ');
-				x = +(matrix[12] || matrix[4]);
-				y = +(matrix[13] || matrix[5]);
-			} else {
-				x = +matrix.left.replace(/[^-\d.]/g, '');
-				y = +matrix.top.replace(/[^-\d.]/g, '');
-			}
-
-			return { x: x, y: y };
-		},
-
-		_initIndicators: function () {
-			var interactive = this.options.interactiveScrollbars,
-				customStyle = typeof this.options.scrollbars != 'string',
-				indicators = [],
-				indicator;
-
-			var that = this;
-
-			this.indicators = [];
-
-			if ( this.options.scrollbars ) {
-				// Vertical scrollbar
-				if ( this.options.scrollY ) {
-					indicator = {
-						el: createDefaultScrollbar('v', interactive, this.options.scrollbars),
-						interactive: interactive,
-						defaultScrollbars: true,
-						customStyle: customStyle,
-						resize: this.options.resizeScrollbars,
-						shrink: this.options.shrinkScrollbars,
-						fade: this.options.fadeScrollbars,
-						listenX: false
-					};
-
-					this.wrapper.appendChild(indicator.el);
-					indicators.push(indicator);
-				}
-
-				// Horizontal scrollbar
-				if ( this.options.scrollX ) {
-					indicator = {
-						el: createDefaultScrollbar('h', interactive, this.options.scrollbars),
-						interactive: interactive,
-						defaultScrollbars: true,
-						customStyle: customStyle,
-						resize: this.options.resizeScrollbars,
-						shrink: this.options.shrinkScrollbars,
-						fade: this.options.fadeScrollbars,
-						listenY: false
-					};
-
-					this.wrapper.appendChild(indicator.el);
-					indicators.push(indicator);
-				}
-			}
-
-			if ( this.options.indicators ) {
-				// TODO: check concat compatibility
-				indicators = indicators.concat(this.options.indicators);
-			}
-
-			for ( var i = indicators.length; i--; ) {
-				this.indicators.push( new Indicator(this, indicators[i]) );
-			}
-
-			// TODO: check if we can use array.map (wide compatibility and performance issues)
-			function _indicatorsMap (fn) {
-				for ( var i = that.indicators.length; i--; ) {
-					fn.call(that.indicators[i]);
-				}
-			}
-
-			if ( this.options.fadeScrollbars ) {
-				this.on('scrollEnd', function () {
-					_indicatorsMap(function () {
-						this.fade();
-					});
-				});
-
-				this.on('scrollCancel', function () {
-					_indicatorsMap(function () {
-						this.fade();
-					});
-				});
-
-				this.on('scrollStart', function () {
-					_indicatorsMap(function () {
-						this.fade(1);
-					});
-				});
-
-				this.on('beforeScrollStart', function () {
-					_indicatorsMap(function () {
-						this.fade(1, true);
-					});
-				});
-			}
-
-
-			this.on('refresh', function () {
-				_indicatorsMap(function () {
-					this.refresh();
-				});
-			});
-
-			this.on('destroy', function () {
-				_indicatorsMap(function () {
-					this.destroy();
-				});
-
-				delete this.indicators;
-			});
-		},
-
-		_initWheel: function () {
-			utils.addEvent(this.wrapper, 'wheel', this);
-			utils.addEvent(this.wrapper, 'mousewheel', this);
-			utils.addEvent(this.wrapper, 'DOMMouseScroll', this);
-
-			this.on('destroy', function () {
-				utils.removeEvent(this.wrapper, 'wheel', this);
-				utils.removeEvent(this.wrapper, 'mousewheel', this);
-				utils.removeEvent(this.wrapper, 'DOMMouseScroll', this);
-			});
-		},
-
-		_wheel: function (e) {
-			if ( !this.enabled ) {
-				return;
-			}
-
-			e.preventDefault();
-			e.stopPropagation();
-
-			var wheelDeltaX, wheelDeltaY,
-				newX, newY,
-				that = this;
-
-			if ( this.wheelTimeout === undefined ) {
-				that._execEvent('scrollStart');
-			}
-
-			// Execute the scrollEnd event after 400ms the wheel stopped scrolling
-			clearTimeout(this.wheelTimeout);
-			this.wheelTimeout = setTimeout(function () {
-				that._execEvent('scrollEnd');
-				that.wheelTimeout = undefined;
-			}, 400);
-
-			if ( 'deltaX' in e ) {
-				if (e.deltaMode === 1) {
-					wheelDeltaX = -e.deltaX * this.options.mouseWheelSpeed;
-					wheelDeltaY = -e.deltaY * this.options.mouseWheelSpeed;
-				} else {
-					wheelDeltaX = -e.deltaX;
-					wheelDeltaY = -e.deltaY;
-				}
-			} else if ( 'wheelDeltaX' in e ) {
-				wheelDeltaX = e.wheelDeltaX / 120 * this.options.mouseWheelSpeed;
-				wheelDeltaY = e.wheelDeltaY / 120 * this.options.mouseWheelSpeed;
-			} else if ( 'wheelDelta' in e ) {
-				wheelDeltaX = wheelDeltaY = e.wheelDelta / 120 * this.options.mouseWheelSpeed;
-			} else if ( 'detail' in e ) {
-				wheelDeltaX = wheelDeltaY = -e.detail / 3 * this.options.mouseWheelSpeed;
-			} else {
-				return;
-			}
-
-			wheelDeltaX *= this.options.invertWheelDirection;
-			wheelDeltaY *= this.options.invertWheelDirection;
-
-			if ( !this.hasVerticalScroll ) {
-				wheelDeltaX = wheelDeltaY;
-				wheelDeltaY = 0;
-			}
-
-			if ( this.options.snap ) {
-				newX = this.currentPage.pageX;
-				newY = this.currentPage.pageY;
-
-				if ( wheelDeltaX > 0 ) {
-					newX--;
-				} else if ( wheelDeltaX < 0 ) {
-					newX++;
-				}
-
-				if ( wheelDeltaY > 0 ) {
-					newY--;
-				} else if ( wheelDeltaY < 0 ) {
-					newY++;
-				}
-
-				this.goToPage(newX, newY);
-
-				return;
-			}
-
-			newX = this.x + Math.round(this.hasHorizontalScroll ? wheelDeltaX : 0);
-			newY = this.y + Math.round(this.hasVerticalScroll ? wheelDeltaY : 0);
-
-			if ( newX > 0 ) {
-				newX = 0;
-			} else if ( newX < this.maxScrollX ) {
-				newX = this.maxScrollX;
-			}
-
-			if ( newY > 0 ) {
-				newY = 0;
-			} else if ( newY < this.maxScrollY ) {
-				newY = this.maxScrollY;
-			}
-
-			this.scrollTo(newX, newY, 0);
-
-	// INSERT POINT: _wheel
-		},
-
-		_initSnap: function () {
-			this.currentPage = {};
-
-			if ( typeof this.options.snap == 'string' ) {
-				this.options.snap = this.scroller.querySelectorAll(this.options.snap);
-			}
-
-			this.on('refresh', function () {
-				var i = 0, l,
-					m = 0, n,
-					cx, cy,
-					x = 0, y,
-					stepX = this.options.snapStepX || this.wrapperWidth,
-					stepY = this.options.snapStepY || this.wrapperHeight,
-					el;
-
-				this.pages = [];
-
-				if ( !this.wrapperWidth || !this.wrapperHeight || !this.scrollerWidth || !this.scrollerHeight ) {
-					return;
-				}
-
-				if ( this.options.snap === true ) {
-					cx = Math.round( stepX / 2 );
-					cy = Math.round( stepY / 2 );
-
-					while ( x > -this.scrollerWidth ) {
-						this.pages[i] = [];
-						l = 0;
-						y = 0;
-
-						while ( y > -this.scrollerHeight ) {
-							this.pages[i][l] = {
-								x: Math.max(x, this.maxScrollX),
-								y: Math.max(y, this.maxScrollY),
-								width: stepX,
-								height: stepY,
-								cx: x - cx,
-								cy: y - cy
-							};
-
-							y -= stepY;
-							l++;
-						}
-
-						x -= stepX;
-						i++;
-					}
-				} else {
-					el = this.options.snap;
-					l = el.length;
-					n = -1;
-
-					for ( ; i < l; i++ ) {
-						if ( i === 0 || el[i].offsetLeft <= el[i-1].offsetLeft ) {
-							m = 0;
-							n++;
-						}
-
-						if ( !this.pages[m] ) {
-							this.pages[m] = [];
-						}
-
-						x = Math.max(-el[i].offsetLeft, this.maxScrollX);
-						y = Math.max(-el[i].offsetTop, this.maxScrollY);
-						cx = x - Math.round(el[i].offsetWidth / 2);
-						cy = y - Math.round(el[i].offsetHeight / 2);
-
-						this.pages[m][n] = {
-							x: x,
-							y: y,
-							width: el[i].offsetWidth,
-							height: el[i].offsetHeight,
-							cx: cx,
-							cy: cy
-						};
-
-						if ( x > this.maxScrollX ) {
-							m++;
-						}
-					}
-				}
-
-				this.goToPage(this.currentPage.pageX || 0, this.currentPage.pageY || 0, 0);
-
-				// Update snap threshold if needed
-				if ( this.options.snapThreshold % 1 === 0 ) {
-					this.snapThresholdX = this.options.snapThreshold;
-					this.snapThresholdY = this.options.snapThreshold;
-				} else {
-					this.snapThresholdX = Math.round(this.pages[this.currentPage.pageX][this.currentPage.pageY].width * this.options.snapThreshold);
-					this.snapThresholdY = Math.round(this.pages[this.currentPage.pageX][this.currentPage.pageY].height * this.options.snapThreshold);
-				}
-			});
-
-			this.on('flick', function () {
-				var time = this.options.snapSpeed || Math.max(
-						Math.max(
-							Math.min(Math.abs(this.x - this.startX), 1000),
-							Math.min(Math.abs(this.y - this.startY), 1000)
-						), 300);
-
-				this.goToPage(
-					this.currentPage.pageX + this.directionX,
-					this.currentPage.pageY + this.directionY,
-					time
-				);
-			});
-		},
-
-		_nearestSnap: function (x, y) {
-			if ( !this.pages.length ) {
-				return { x: 0, y: 0, pageX: 0, pageY: 0 };
-			}
-
-			var i = 0,
-				l = this.pages.length,
-				m = 0;
-
-			// Check if we exceeded the snap threshold
-			if ( Math.abs(x - this.absStartX) < this.snapThresholdX &&
-				Math.abs(y - this.absStartY) < this.snapThresholdY ) {
-				return this.currentPage;
-			}
-
-			if ( x > 0 ) {
-				x = 0;
-			} else if ( x < this.maxScrollX ) {
-				x = this.maxScrollX;
-			}
-
-			if ( y > 0 ) {
-				y = 0;
-			} else if ( y < this.maxScrollY ) {
-				y = this.maxScrollY;
-			}
-
-			for ( ; i < l; i++ ) {
-				if ( x >= this.pages[i][0].cx ) {
-					x = this.pages[i][0].x;
-					break;
-				}
-			}
-
-			l = this.pages[i].length;
-
-			for ( ; m < l; m++ ) {
-				if ( y >= this.pages[0][m].cy ) {
-					y = this.pages[0][m].y;
-					break;
-				}
-			}
-
-			if ( i == this.currentPage.pageX ) {
-				i += this.directionX;
-
-				if ( i < 0 ) {
-					i = 0;
-				} else if ( i >= this.pages.length ) {
-					i = this.pages.length - 1;
-				}
-
-				x = this.pages[i][0].x;
-			}
-
-			if ( m == this.currentPage.pageY ) {
-				m += this.directionY;
-
-				if ( m < 0 ) {
-					m = 0;
-				} else if ( m >= this.pages[0].length ) {
-					m = this.pages[0].length - 1;
-				}
-
-				y = this.pages[0][m].y;
-			}
-
-			return {
-				x: x,
-				y: y,
-				pageX: i,
-				pageY: m
-			};
-		},
-
-		goToPage: function (x, y, time, easing) {
-			easing = easing || this.options.bounceEasing;
-
-			if ( x >= this.pages.length ) {
-				x = this.pages.length - 1;
-			} else if ( x < 0 ) {
-				x = 0;
-			}
-
-			if ( y >= this.pages[x].length ) {
-				y = this.pages[x].length - 1;
-			} else if ( y < 0 ) {
-				y = 0;
-			}
-
-			var posX = this.pages[x][y].x,
-				posY = this.pages[x][y].y;
-
-			time = time === undefined ? this.options.snapSpeed || Math.max(
-				Math.max(
-					Math.min(Math.abs(posX - this.x), 1000),
-					Math.min(Math.abs(posY - this.y), 1000)
-				), 300) : time;
-
-			this.currentPage = {
-				x: posX,
-				y: posY,
-				pageX: x,
-				pageY: y
-			};
-
-			this.scrollTo(posX, posY, time, easing);
-		},
-
-		next: function (time, easing) {
-			var x = this.currentPage.pageX,
-				y = this.currentPage.pageY;
-
-			x++;
-
-			if ( x >= this.pages.length && this.hasVerticalScroll ) {
-				x = 0;
-				y++;
-			}
-
-			this.goToPage(x, y, time, easing);
-		},
-
-		prev: function (time, easing) {
-			var x = this.currentPage.pageX,
-				y = this.currentPage.pageY;
-
-			x--;
-
-			if ( x < 0 && this.hasVerticalScroll ) {
-				x = 0;
-				y--;
-			}
-
-			this.goToPage(x, y, time, easing);
-		},
-
-		_initKeys: function (e) {
-			// default key bindings
-			var keys = {
-				pageUp: 33,
-				pageDown: 34,
-				end: 35,
-				home: 36,
-				left: 37,
-				up: 38,
-				right: 39,
-				down: 40
-			};
-			var i;
-
-			// if you give me characters I give you keycode
-			if ( typeof this.options.keyBindings == 'object' ) {
-				for ( i in this.options.keyBindings ) {
-					if ( typeof this.options.keyBindings[i] == 'string' ) {
-						this.options.keyBindings[i] = this.options.keyBindings[i].toUpperCase().charCodeAt(0);
-					}
-				}
-			} else {
-				this.options.keyBindings = {};
-			}
-
-			for ( i in keys ) {
-				this.options.keyBindings[i] = this.options.keyBindings[i] || keys[i];
-			}
-
-			utils.addEvent(window, 'keydown', this);
-
-			this.on('destroy', function () {
-				utils.removeEvent(window, 'keydown', this);
-			});
-		},
-
-		_key: function (e) {
-			if ( !this.enabled ) {
-				return;
-			}
-
-			var snap = this.options.snap,	// we are using this alot, better to cache it
-				newX = snap ? this.currentPage.pageX : this.x,
-				newY = snap ? this.currentPage.pageY : this.y,
-				now = utils.getTime(),
-				prevTime = this.keyTime || 0,
-				acceleration = 0.250,
-				pos;
-
-			if ( this.options.useTransition && this.isInTransition ) {
-				pos = this.getComputedPosition();
-
-				this._translate(Math.round(pos.x), Math.round(pos.y));
-				this.isInTransition = false;
-			}
-
-			this.keyAcceleration = now - prevTime < 200 ? Math.min(this.keyAcceleration + acceleration, 50) : 0;
-
-			switch ( e.keyCode ) {
-				case this.options.keyBindings.pageUp:
-					if ( this.hasHorizontalScroll && !this.hasVerticalScroll ) {
-						newX += snap ? 1 : this.wrapperWidth;
-					} else {
-						newY += snap ? 1 : this.wrapperHeight;
-					}
-					break;
-				case this.options.keyBindings.pageDown:
-					if ( this.hasHorizontalScroll && !this.hasVerticalScroll ) {
-						newX -= snap ? 1 : this.wrapperWidth;
-					} else {
-						newY -= snap ? 1 : this.wrapperHeight;
-					}
-					break;
-				case this.options.keyBindings.end:
-					newX = snap ? this.pages.length-1 : this.maxScrollX;
-					newY = snap ? this.pages[0].length-1 : this.maxScrollY;
-					break;
-				case this.options.keyBindings.home:
-					newX = 0;
-					newY = 0;
-					break;
-				case this.options.keyBindings.left:
-					newX += snap ? -1 : 5 + this.keyAcceleration>>0;
-					break;
-				case this.options.keyBindings.up:
-					newY += snap ? 1 : 5 + this.keyAcceleration>>0;
-					break;
-				case this.options.keyBindings.right:
-					newX -= snap ? -1 : 5 + this.keyAcceleration>>0;
-					break;
-				case this.options.keyBindings.down:
-					newY -= snap ? 1 : 5 + this.keyAcceleration>>0;
-					break;
-				default:
-					return;
-			}
-
-			if ( snap ) {
-				this.goToPage(newX, newY);
-				return;
-			}
-
-			if ( newX > 0 ) {
-				newX = 0;
-				this.keyAcceleration = 0;
-			} else if ( newX < this.maxScrollX ) {
-				newX = this.maxScrollX;
-				this.keyAcceleration = 0;
-			}
-
-			if ( newY > 0 ) {
-				newY = 0;
-				this.keyAcceleration = 0;
-			} else if ( newY < this.maxScrollY ) {
-				newY = this.maxScrollY;
-				this.keyAcceleration = 0;
-			}
-
-			this.scrollTo(newX, newY, 0);
-
-			this.keyTime = now;
-		},
-
-		_animate: function (destX, destY, duration, easingFn) {
-			var that = this,
-				startX = this.x,
-				startY = this.y,
-				startTime = utils.getTime(),
-				destTime = startTime + duration;
-
-			function step () {
-				var now = utils.getTime(),
-					newX, newY,
-					easing;
-
-				if ( now >= destTime ) {
-					that.isAnimating = false;
-					that._translate(destX, destY);
-
-					if ( !that.resetPosition(that.options.bounceTime) ) {
-						that._execEvent('scrollEnd');
-					}
-
-					return;
-				}
-
-				now = ( now - startTime ) / duration;
-				easing = easingFn(now);
-				newX = ( destX - startX ) * easing + startX;
-				newY = ( destY - startY ) * easing + startY;
-				that._translate(newX, newY);
-
-				if ( that.isAnimating ) {
-					rAF(step);
-				}
-			}
-
-			this.isAnimating = true;
-			step();
-		},
-		handleEvent: function (e) {
-			switch ( e.type ) {
-				case 'touchstart':
-				case 'pointerdown':
-				case 'MSPointerDown':
-				case 'mousedown':
-					this._start(e);
-					break;
-				case 'touchmove':
-				case 'pointermove':
-				case 'MSPointerMove':
-				case 'mousemove':
-					this._move(e);
-					break;
-				case 'touchend':
-				case 'pointerup':
-				case 'MSPointerUp':
-				case 'mouseup':
-				case 'touchcancel':
-				case 'pointercancel':
-				case 'MSPointerCancel':
-				case 'mousecancel':
-					this._end(e);
-					break;
-				case 'orientationchange':
-				case 'resize':
-					this._resize();
-					break;
-				case 'transitionend':
-				case 'webkitTransitionEnd':
-				case 'oTransitionEnd':
-				case 'MSTransitionEnd':
-					this._transitionEnd(e);
-					break;
-				case 'wheel':
-				case 'DOMMouseScroll':
-				case 'mousewheel':
-					this._wheel(e);
-					break;
-				case 'keydown':
-					this._key(e);
-					break;
-				case 'click':
-					if ( !e._constructed ) {
-						e.preventDefault();
-						e.stopPropagation();
-					}
-					break;
-			}
-		}
-	};
-	function createDefaultScrollbar (direction, interactive, type) {
-		var scrollbar = document.createElement('div'),
-			indicator = document.createElement('div');
-
-		if ( type === true ) {
-			scrollbar.style.cssText = 'position:absolute;z-index:9999';
-			indicator.style.cssText = '-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;position:absolute;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.9);border-radius:3px';
-		}
-
-		indicator.className = 'iScrollIndicator';
-
-		if ( direction == 'h' ) {
-			if ( type === true ) {
-				scrollbar.style.cssText += ';height:7px;left:2px;right:2px;bottom:0';
-				indicator.style.height = '100%';
-			}
-			scrollbar.className = 'iScrollHorizontalScrollbar';
-		} else {
-			if ( type === true ) {
-				scrollbar.style.cssText += ';width:7px;bottom:2px;top:2px;right:1px';
-				indicator.style.width = '100%';
-			}
-			scrollbar.className = 'iScrollVerticalScrollbar';
-		}
-
-		scrollbar.style.cssText += ';overflow:hidden';
-
-		if ( !interactive ) {
-			scrollbar.style.pointerEvents = 'none';
-		}
-
-		scrollbar.appendChild(indicator);
-
-		return scrollbar;
-	}
-
-	function Indicator (scroller, options) {
-		this.wrapper = typeof options.el == 'string' ? document.querySelector(options.el) : options.el;
-		this.wrapperStyle = this.wrapper.style;
-		this.indicator = this.wrapper.children[0];
-		this.indicatorStyle = this.indicator.style;
-		this.scroller = scroller;
-
-		this.options = {
-			listenX: true,
-			listenY: true,
-			interactive: false,
-			resize: true,
-			defaultScrollbars: false,
-			shrink: false,
-			fade: false,
-			speedRatioX: 0,
-			speedRatioY: 0
-		};
-
-		for ( var i in options ) {
-			this.options[i] = options[i];
-		}
-
-		this.sizeRatioX = 1;
-		this.sizeRatioY = 1;
-		this.maxPosX = 0;
-		this.maxPosY = 0;
-
-		if ( this.options.interactive ) {
-			if ( !this.options.disableTouch ) {
-				utils.addEvent(this.indicator, 'touchstart', this);
-				utils.addEvent(window, 'touchend', this);
-			}
-			if ( !this.options.disablePointer ) {
-				utils.addEvent(this.indicator, utils.prefixPointerEvent('pointerdown'), this);
-				utils.addEvent(window, utils.prefixPointerEvent('pointerup'), this);
-			}
-			if ( !this.options.disableMouse ) {
-				utils.addEvent(this.indicator, 'mousedown', this);
-				utils.addEvent(window, 'mouseup', this);
-			}
-		}
-
-		if ( this.options.fade ) {
-			this.wrapperStyle[utils.style.transform] = this.scroller.translateZ;
-			this.wrapperStyle[utils.style.transitionDuration] = utils.isBadAndroid ? '0.001s' : '0ms';
-			this.wrapperStyle.opacity = '0';
-		}
-	}
-
-	Indicator.prototype = {
-		handleEvent: function (e) {
-			switch ( e.type ) {
-				case 'touchstart':
-				case 'pointerdown':
-				case 'MSPointerDown':
-				case 'mousedown':
-					this._start(e);
-					break;
-				case 'touchmove':
-				case 'pointermove':
-				case 'MSPointerMove':
-				case 'mousemove':
-					this._move(e);
-					break;
-				case 'touchend':
-				case 'pointerup':
-				case 'MSPointerUp':
-				case 'mouseup':
-				case 'touchcancel':
-				case 'pointercancel':
-				case 'MSPointerCancel':
-				case 'mousecancel':
-					this._end(e);
-					break;
-			}
-		},
-
-		destroy: function () {
-			if ( this.options.interactive ) {
-				utils.removeEvent(this.indicator, 'touchstart', this);
-				utils.removeEvent(this.indicator, utils.prefixPointerEvent('pointerdown'), this);
-				utils.removeEvent(this.indicator, 'mousedown', this);
-
-				utils.removeEvent(window, 'touchmove', this);
-				utils.removeEvent(window, utils.prefixPointerEvent('pointermove'), this);
-				utils.removeEvent(window, 'mousemove', this);
-
-				utils.removeEvent(window, 'touchend', this);
-				utils.removeEvent(window, utils.prefixPointerEvent('pointerup'), this);
-				utils.removeEvent(window, 'mouseup', this);
-			}
-
-			if ( this.options.defaultScrollbars ) {
-				this.wrapper.parentNode.removeChild(this.wrapper);
-			}
-		},
-
-		_start: function (e) {
-			var point = e.touches ? e.touches[0] : e;
-
-			e.preventDefault();
-			e.stopPropagation();
-
-			this.transitionTime();
-
-			this.initiated = true;
-			this.moved = false;
-			this.lastPointX	= point.pageX;
-			this.lastPointY	= point.pageY;
-
-			this.startTime	= utils.getTime();
-
-			if ( !this.options.disableTouch ) {
-				utils.addEvent(window, 'touchmove', this);
-			}
-			if ( !this.options.disablePointer ) {
-				utils.addEvent(window, utils.prefixPointerEvent('pointermove'), this);
-			}
-			if ( !this.options.disableMouse ) {
-				utils.addEvent(window, 'mousemove', this);
-			}
-
-			this.scroller._execEvent('beforeScrollStart');
-		},
-
-		_move: function (e) {
-			var point = e.touches ? e.touches[0] : e,
-				deltaX, deltaY,
-				newX, newY,
-				timestamp = utils.getTime();
-
-			if ( !this.moved ) {
-				this.scroller._execEvent('scrollStart');
-			}
-
-			this.moved = true;
-
-			deltaX = point.pageX - this.lastPointX;
-			this.lastPointX = point.pageX;
-
-			deltaY = point.pageY - this.lastPointY;
-			this.lastPointY = point.pageY;
-
-			newX = this.x + deltaX;
-			newY = this.y + deltaY;
-
-			this._pos(newX, newY);
-
-	// INSERT POINT: indicator._move
-
-			e.preventDefault();
-			e.stopPropagation();
-		},
-
-		_end: function (e) {
-			if ( !this.initiated ) {
-				return;
-			}
-
-			this.initiated = false;
-
-			e.preventDefault();
-			e.stopPropagation();
-
-			utils.removeEvent(window, 'touchmove', this);
-			utils.removeEvent(window, utils.prefixPointerEvent('pointermove'), this);
-			utils.removeEvent(window, 'mousemove', this);
-
-			if ( this.scroller.options.snap ) {
-				var snap = this.scroller._nearestSnap(this.scroller.x, this.scroller.y);
-
-				var time = this.options.snapSpeed || Math.max(
-						Math.max(
-							Math.min(Math.abs(this.scroller.x - snap.x), 1000),
-							Math.min(Math.abs(this.scroller.y - snap.y), 1000)
-						), 300);
-
-				if ( this.scroller.x != snap.x || this.scroller.y != snap.y ) {
-					this.scroller.directionX = 0;
-					this.scroller.directionY = 0;
-					this.scroller.currentPage = snap;
-					this.scroller.scrollTo(snap.x, snap.y, time, this.scroller.options.bounceEasing);
-				}
-			}
-
-			if ( this.moved ) {
-				this.scroller._execEvent('scrollEnd');
-			}
-		},
-
-		transitionTime: function (time) {
-			time = time || 0;
-			this.indicatorStyle[utils.style.transitionDuration] = time + 'ms';
-
-			if ( !time && utils.isBadAndroid ) {
-				this.indicatorStyle[utils.style.transitionDuration] = '0.001s';
-			}
-		},
-
-		transitionTimingFunction: function (easing) {
-			this.indicatorStyle[utils.style.transitionTimingFunction] = easing;
-		},
-
-		refresh: function () {
-			this.transitionTime();
-
-			if ( this.options.listenX && !this.options.listenY ) {
-				this.indicatorStyle.display = this.scroller.hasHorizontalScroll ? 'block' : 'none';
-			} else if ( this.options.listenY && !this.options.listenX ) {
-				this.indicatorStyle.display = this.scroller.hasVerticalScroll ? 'block' : 'none';
-			} else {
-				this.indicatorStyle.display = this.scroller.hasHorizontalScroll || this.scroller.hasVerticalScroll ? 'block' : 'none';
-			}
-
-			if ( this.scroller.hasHorizontalScroll && this.scroller.hasVerticalScroll ) {
-				utils.addClass(this.wrapper, 'iScrollBothScrollbars');
-				utils.removeClass(this.wrapper, 'iScrollLoneScrollbar');
-
-				if ( this.options.defaultScrollbars && this.options.customStyle ) {
-					if ( this.options.listenX ) {
-						this.wrapper.style.right = '8px';
-					} else {
-						this.wrapper.style.bottom = '8px';
-					}
-				}
-			} else {
-				utils.removeClass(this.wrapper, 'iScrollBothScrollbars');
-				utils.addClass(this.wrapper, 'iScrollLoneScrollbar');
-
-				if ( this.options.defaultScrollbars && this.options.customStyle ) {
-					if ( this.options.listenX ) {
-						this.wrapper.style.right = '2px';
-					} else {
-						this.wrapper.style.bottom = '2px';
-					}
-				}
-			}
-
-			var r = this.wrapper.offsetHeight;	// force refresh
-
-			if ( this.options.listenX ) {
-				this.wrapperWidth = this.wrapper.clientWidth;
-				if ( this.options.resize ) {
-					this.indicatorWidth = Math.max(Math.round(this.wrapperWidth * this.wrapperWidth / (this.scroller.scrollerWidth || this.wrapperWidth || 1)), 8);
-					this.indicatorStyle.width = this.indicatorWidth + 'px';
-				} else {
-					this.indicatorWidth = this.indicator.clientWidth;
-				}
-
-				this.maxPosX = this.wrapperWidth - this.indicatorWidth;
-
-				if ( this.options.shrink == 'clip' ) {
-					this.minBoundaryX = -this.indicatorWidth + 8;
-					this.maxBoundaryX = this.wrapperWidth - 8;
-				} else {
-					this.minBoundaryX = 0;
-					this.maxBoundaryX = this.maxPosX;
-				}
-
-				this.sizeRatioX = this.options.speedRatioX || (this.scroller.maxScrollX && (this.maxPosX / this.scroller.maxScrollX));	
-			}
-
-			if ( this.options.listenY ) {
-				this.wrapperHeight = this.wrapper.clientHeight;
-				if ( this.options.resize ) {
-					this.indicatorHeight = Math.max(Math.round(this.wrapperHeight * this.wrapperHeight / (this.scroller.scrollerHeight || this.wrapperHeight || 1)), 8);
-					this.indicatorStyle.height = this.indicatorHeight + 'px';
-				} else {
-					this.indicatorHeight = this.indicator.clientHeight;
-				}
-
-				this.maxPosY = this.wrapperHeight - this.indicatorHeight;
-
-				if ( this.options.shrink == 'clip' ) {
-					this.minBoundaryY = -this.indicatorHeight + 8;
-					this.maxBoundaryY = this.wrapperHeight - 8;
-				} else {
-					this.minBoundaryY = 0;
-					this.maxBoundaryY = this.maxPosY;
-				}
-
-				this.maxPosY = this.wrapperHeight - this.indicatorHeight;
-				this.sizeRatioY = this.options.speedRatioY || (this.scroller.maxScrollY && (this.maxPosY / this.scroller.maxScrollY));
-			}
-
-			this.updatePosition();
-		},
-
-		updatePosition: function () {
-			var x = this.options.listenX && Math.round(this.sizeRatioX * this.scroller.x) || 0,
-				y = this.options.listenY && Math.round(this.sizeRatioY * this.scroller.y) || 0;
-
-			if ( !this.options.ignoreBoundaries ) {
-				if ( x < this.minBoundaryX ) {
-					if ( this.options.shrink == 'scale' ) {
-						this.width = Math.max(this.indicatorWidth + x, 8);
-						this.indicatorStyle.width = this.width + 'px';
-					}
-					x = this.minBoundaryX;
-				} else if ( x > this.maxBoundaryX ) {
-					if ( this.options.shrink == 'scale' ) {
-						this.width = Math.max(this.indicatorWidth - (x - this.maxPosX), 8);
-						this.indicatorStyle.width = this.width + 'px';
-						x = this.maxPosX + this.indicatorWidth - this.width;
-					} else {
-						x = this.maxBoundaryX;
-					}
-				} else if ( this.options.shrink == 'scale' && this.width != this.indicatorWidth ) {
-					this.width = this.indicatorWidth;
-					this.indicatorStyle.width = this.width + 'px';
-				}
-
-				if ( y < this.minBoundaryY ) {
-					if ( this.options.shrink == 'scale' ) {
-						this.height = Math.max(this.indicatorHeight + y * 3, 8);
-						this.indicatorStyle.height = this.height + 'px';
-					}
-					y = this.minBoundaryY;
-				} else if ( y > this.maxBoundaryY ) {
-					if ( this.options.shrink == 'scale' ) {
-						this.height = Math.max(this.indicatorHeight - (y - this.maxPosY) * 3, 8);
-						this.indicatorStyle.height = this.height + 'px';
-						y = this.maxPosY + this.indicatorHeight - this.height;
-					} else {
-						y = this.maxBoundaryY;
-					}
-				} else if ( this.options.shrink == 'scale' && this.height != this.indicatorHeight ) {
-					this.height = this.indicatorHeight;
-					this.indicatorStyle.height = this.height + 'px';
-				}
-			}
-
-			this.x = x;
-			this.y = y;
-
-			if ( this.scroller.options.useTransform ) {
-				this.indicatorStyle[utils.style.transform] = 'translate(' + x + 'px,' + y + 'px)' + this.scroller.translateZ;
-			} else {
-				this.indicatorStyle.left = x + 'px';
-				this.indicatorStyle.top = y + 'px';
-			}
-		},
-
-		_pos: function (x, y) {
-			if ( x < 0 ) {
-				x = 0;
-			} else if ( x > this.maxPosX ) {
-				x = this.maxPosX;
-			}
-
-			if ( y < 0 ) {
-				y = 0;
-			} else if ( y > this.maxPosY ) {
-				y = this.maxPosY;
-			}
-
-			x = this.options.listenX ? Math.round(x / this.sizeRatioX) : this.scroller.x;
-			y = this.options.listenY ? Math.round(y / this.sizeRatioY) : this.scroller.y;
-
-			this.scroller.scrollTo(x, y);
-		},
-
-		fade: function (val, hold) {
-			if ( hold && !this.visible ) {
-				return;
-			}
-
-			clearTimeout(this.fadeTimeout);
-			this.fadeTimeout = null;
-
-			var time = val ? 250 : 500,
-				delay = val ? 0 : 300;
-
-			val = val ? '1' : '0';
-
-			this.wrapperStyle[utils.style.transitionDuration] = time + 'ms';
-
-			this.fadeTimeout = setTimeout((function (val) {
-				this.wrapperStyle.opacity = val;
-				this.visible = +val;
-			}).bind(this, val), delay);
-		}
-	};
-
-	IScroll.utils = utils;
-
-	if ( typeof module != 'undefined' && module.exports ) {
-		module.exports = IScroll;
-	} else {
-		window.IScroll = IScroll;
-	}
-
-	})(window, document, Math);
+	module.exports = "<section class=\"body\"><appbar></appbar><side-nav></side-nav></section>";
 
 /***/ },
 /* 31 */
-/***/ function(module, exports) {
-
-	module.exports = "<section id=\"article-list\"><ul class=\"article-list\"><li v-for=\"article in articles\" @click=\"loadArticle(article.url)\" :class=\"{active: article.active ? 'active' : ''}\" class=\"title\"><a v-text=\"article.title\"></a></li></ul></section>";
-
-/***/ },
-/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var __vue_script__, __vue_template__
-	__webpack_require__(33)
-	__vue_script__ = __webpack_require__(35)
-	__vue_template__ = __webpack_require__(36)
-	module.exports = __vue_script__ || {}
-	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
-	if (false) {(function () {  module.hot.accept()
-	  var hotAPI = require("vue-hot-reload-api")
-	  hotAPI.install(require("vue"), true)
-	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/tools.vue"
-	  if (!module.hot.data) {
-	    hotAPI.createRecord(id, module.exports)
-	  } else {
-	    hotAPI.update(id, module.exports, __vue_template__)
-	  }
-	})()}
-
-/***/ },
-/* 33 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(34);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-563cb178&file=tools.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./tools.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-563cb178&file=tools.vue!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./tools.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(6)();
-	// imports
-
-
-	// module
-	exports.push([module.id, ".tools {\n  height: 3rem;\n  position: absolute;\n  top: 6rem;\n  left: 0;\n  right: 0;\n}\n.tools .search {\n  height: 3rem;\n  padding: 0 0.5rem;\n  background: #fff;\n  margin: 0 0.5rem;\n  overflow: hidden;\n  border-radius: 0.5rem;\n}\n.tools .search input {\n  width: 100%;\n  height: 100%;\n  font-size: 1rem;\n}\n", ""]);
-
-	// exports
-
-
-/***/ },
-/* 35 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _config = __webpack_require__(9);
-
-	var _config2 = _interopRequireDefault(_config);
-
-	var _articles = __webpack_require__(28);
-
-	var _articles2 = _interopRequireDefault(_articles);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	// <template lang="jade">
-	// section.tools
-	//     form.search(@submit.prevent='search')
-	//         input(type='search', placeholder='Search', name='q')
-	// </template>
-
-	// <style lang="stylus">
-	// .tools
-	//     height 3rem
-	//     position absolute
-	//     top 6rem
-	//     left 0
-	//     right 0
-	//     .search
-	//         height 3rem
-	//         padding 0 .5rem
-	//         background white
-	//         margin 0 .5rem
-	//         overflow hidden
-	//         border-radius .5rem
-	//         input
-	//             width 100%
-	//             height 100%
-	//             font-size 1rem
-	//     // a
-	//     //     cursor pointer
-	//     //     user-select none
-	//     //     display block
-	//     //     text-align center
-	//     //     line-height 3rem
-	//     //     background #ccc
-	//     //     font-family Arial
-	//     //     position absolute
-	//     //     top 0
-	//     //     right 0
-	//     //     bottom 0
-	//     //     width 3rem
-	//     //     font-size 2rem
-	//     //     &:hover,&:active
-	//     //         background #ddd
-	// </style>
-
-	// <script>
-	exports.default = {
-	    methods: {
-	        search: function search(e) {
-	            var formData = {};
-	            var els = e.target.elements;
-	            for (var i = 0; i < els.length; i++) {
-	                if (els[i].name) {
-	                    formData[els[i].name] = els[i].value;
-	                }
-	            }
-	            fetch(_config2.default.searchUrl + '?q=' + formData.q + '+author:' + _config2.default.username + '+repo:' + _config2.default.username + '/' + _config2.default.repo).then(function (res) {
-	                return res.json();
-	            }, function () {
-	                console.log('Loading failed!');
-	            }).then(function (data) {
-	                if (data.items) {
-	                    _articles2.default.actions.updateList(data.items);
-	                } else {
-	                    _articles2.default.actions.updateList([]);
-	                }
-	            });
-	        }
-	    }
-	};
-	// </script>
-
-/***/ },
-/* 36 */
-/***/ function(module, exports) {
-
-	module.exports = "<section class=\"tools\"><form @submit.prevent=\"search\" class=\"search\"><input type=\"search\" placeholder=\"Search\" name=\"q\"/></form></section>";
-
-/***/ },
-/* 37 */
-/***/ function(module, exports) {
-
-	module.exports = "<section :class=\"{show: isShowMenu}\" class=\"menu\"><info></info><tools></tools><article-list :articles=\"articles\"></article-list></section>";
-
-/***/ },
-/* 38 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var __vue_script__, __vue_template__
-	__webpack_require__(39)
-	__vue_script__ = __webpack_require__(41)
-	__vue_template__ = __webpack_require__(48)
-	module.exports = __vue_script__ || {}
-	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
-	if (false) {(function () {  module.hot.accept()
-	  var hotAPI = require("vue-hot-reload-api")
-	  hotAPI.install(require("vue"), true)
-	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/main.vue"
-	  if (!module.hot.data) {
-	    hotAPI.createRecord(id, module.exports)
-	  } else {
-	    hotAPI.update(id, module.exports, __vue_template__)
-	  }
-	})()}
-
-/***/ },
-/* 39 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(40);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-fa205540&file=main.vue&scoped=true!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./main.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-fa205540&file=main.vue&scoped=true!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./main.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 40 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(6)();
-	// imports
-
-
-	// module
-	exports.push([module.id, ".main[_v-fa205540] {\n  -webkit-transition: all 0.5s;\n  transition: all 0.5s;\n  position: fixed;\n  top: 0;\n  bottom: 0;\n  right: 0;\n  left: 18rem;\n  background: #f3f3f3;\n}\n.main header[_v-fa205540] {\n  position: relative;\n  height: 3.5rem;\n  line-height: 3.5rem;\n  text-align: center;\n  background: #333;\n  color: #fff;\n}\n.main header h2[_v-fa205540] {\n  position: absolute;\n  left: 4rem;\n  top: 0;\n  bottom: 0;\n  right: 4rem;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\n.main header a[_v-fa205540] {\n  display: none;\n  position: absolute;\n  height: 2.5rem;\n  width: 2.5rem;\n  top: 0;\n  bottom: 0;\n  left: 0.5rem;\n  margin: auto;\n  border-radius: 0.3rem;\n  background-size: cover;\n  border: 1px solid #c0c0c0;\n}\n.main .wrapper[_v-fa205540] {\n  position: absolute;\n  top: 3.5rem;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  overflow: hidden;\n}\n.main .wrapper article[_v-fa205540] {\n  padding: 1rem;\n}\n@media screen and (max-width: 64rem) {\n  .main[_v-fa205540] {\n    left: 0;\n  }\n  .main header a[_v-fa205540] {\n    display: block;\n  }\n}\n", ""]);
-
-	// exports
-
-
-/***/ },
-/* 41 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _vue = __webpack_require__(1);
-
-	var _vue2 = _interopRequireDefault(_vue);
-
-	var _articles = __webpack_require__(28);
-
-	var _articles2 = _interopRequireDefault(_articles);
-
-	var _base = __webpack_require__(18);
-
-	var _base2 = _interopRequireDefault(_base);
-
-	var _loading = __webpack_require__(42);
-
-	var _loading2 = _interopRequireDefault(_loading);
-
-	var _marked = __webpack_require__(47);
-
-	var _marked2 = _interopRequireDefault(_marked);
-
-	var _iscroll = __webpack_require__(30);
-
-	var _iscroll2 = _interopRequireDefault(_iscroll);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	// <template lang="jade">
-	// section.main
-	//     header
-	//         a(:style='{backgroundImage: avatar}', @click.stop='toggleMenu', @touchstart.stop='toggleMenu')
-	//         h2(v-text='title')
-	//     section.wrapper#content(@click.stop='toggleMenu(false)', @touchstart.stop='toggleMenu(false)')
-	//         article.markdown-body(v-html='article')
-	//         loading
-	// </template>
-
-	// <style lang="stylus" scoped>
-	// .main
-	//     transition all .5s
-	//     position fixed
-	//     top 0
-	//     bottom 0
-	//     right 0
-	//     left 18rem
-	//     background #f3f3f3
-	//     header
-	//         position relative
-	//         height 3.5rem
-	//         line-height 3.5rem
-	//         text-align center
-	//         background #333
-	//         color white
-	//         h2
-	//             position absolute
-	//             left 4rem
-	//             top 0
-	//             bottom 0
-	//             right 4rem
-	//             white-space nowrap
-	//             text-overflow ellipsis
-	//             overflow hidden
-	//         a
-	//             display none
-	//             position absolute
-	//             height 2.5rem
-	//             width 2.5rem
-	//             top 0
-	//             bottom 0
-	//             left .5rem
-	//             margin auto
-	//             border-radius .3rem
-	//             background-size cover
-	//             border 1px solid silver
-	//     .wrapper
-	//         position absolute
-	//         top 3.5rem
-	//         bottom 0
-	//         left 0
-	//         right 0
-	//         overflow hidden
-	//         article
-	//             padding 1rem
-	// @media screen and (max-width: 64rem)
-	//     .main
-	//         left 0
-	//         header
-	//             a
-	//                 display block
-	// </style>
-
-	// <script>
-	exports.default = {
-	    data: function data() {
-	        return {
-	            iscroll: {}
-	        };
-	    },
-
-	    components: {
-	        loading: _loading2.default
-	    },
-	    methods: {
-	        toggleMenu: function toggleMenu(bool) {
-	            _base2.default.actions.toggleMenu(bool);
-	        },
-	        refresh: function refresh() {
-	            _vue2.default.nextTick((function () {
-	                this.iscroll.refresh();
-	                // var codes = document.querySelectorAll('pre')
-	                // for (let el of codes) {
-	                //     el.style.overflow = 'hidden'
-	                //     let codeScroll = new IScroll(el, {
-	                //         mouseWheel: true
-	                //     })
-	                // }
-	            }).bind(this));
-	        }
-	    },
-	    watch: {
-	        article: function article() {
-	            this.refresh();
-	        }
-	    },
-	    computed: {
-	        article: function article() {
-	            return (0, _marked2.default)(_articles2.default.state.article);
-	            this.refresh();
-	        },
-	        title: function title() {
-	            return _base2.default.state.title;
-	        },
-	        avatar: function avatar() {
-	            var url = _base2.default.state.info.owner.avatar_url;
-	            return url ? 'url(' + url + ')' : 'none';
-	        }
-	    },
-	    compiled: function compiled() {
-	        _vue2.default.nextTick((function () {
-	            this.iscroll = new _iscroll2.default('#content', {
-	                preventDefault: false,
-	                mouseWheel: true
-	            });
-	        }).bind(this));
-	    }
-	};
-	// </script>
-
-/***/ },
-/* 42 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var __vue_script__, __vue_template__
-	__webpack_require__(43)
-	__vue_script__ = __webpack_require__(45)
-	__vue_template__ = __webpack_require__(46)
-	module.exports = __vue_script__ || {}
-	if (module.exports.__esModule) module.exports = module.exports.default
-	if (__vue_template__) { (typeof module.exports === "function" ? module.exports.options : module.exports).template = __vue_template__ }
-	if (false) {(function () {  module.hot.accept()
-	  var hotAPI = require("vue-hot-reload-api")
-	  hotAPI.install(require("vue"), true)
-	  if (!hotAPI.compatible) return
-	  var id = "/Users/baidu/WebstormProjects/dafrok.github.io/src/vue/loading.vue"
-	  if (!module.hot.data) {
-	    hotAPI.createRecord(id, module.exports)
-	  } else {
-	    hotAPI.update(id, module.exports, __vue_template__)
-	  }
-	})()}
-
-/***/ },
-/* 43 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(44);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(7)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-7c6c55e5&file=loading.vue&scoped=true!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./loading.vue", function() {
-				var newContent = require("!!./../../node_modules/css-loader/index.js!./../../node_modules/vue-loader/lib/style-rewriter.js?id=_v-7c6c55e5&file=loading.vue&scoped=true!./../../node_modules/stylus-loader/index.js!./../../node_modules/vue-loader/lib/selector.js?type=style&index=0!./loading.vue");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 44 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(6)();
-	// imports
-
-
-	// module
-	exports.push([module.id, "circle[_v-7c6c55e5] {\n  -webkit-transform-origin: 50% 50%;\n          transform-origin: 50% 50%;\n}\n.layer-1[_v-7c6c55e5] {\n  -webkit-animation: loading 1.8s infinite;\n          animation: loading 1.8s infinite;\n}\n.layer-2[_v-7c6c55e5] {\n  -webkit-animation: loading 1.8s -0.9s infinite;\n          animation: loading 1.8s -0.9s infinite;\n}\n.fade-transition[_v-7c6c55e5] {\n  -webkit-transition: all 0.3s;\n  transition: all 0.3s;\n  opacity: 1;\n}\n.fade-enter[_v-7c6c55e5],\n.fade-leave[_v-7c6c55e5] {\n  opacity: 0;\n}\n.loading[_v-7c6c55e5] {\n  position: absolute;\n  width: 100%;\n  height: 100%;\n  top: 0;\n  left: 0;\n  background: rgba(0,0,0,0.3);\n}\n.loading i[_v-7c6c55e5] {\n  display: block;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  -webkit-transform: translate(-50%, -50%);\n          transform: translate(-50%, -50%);\n  overflow: display;\n  width: 10rem;\n  height: 10rem;\n}\n@-webkit-keyframes loading {\n  0% {\n    opacity: 0;\n    -webkit-transform: scale(0);\n            transform: scale(0);\n  }\n  50% {\n    opacity: 1;\n    -webkit-transform: scale(0.5);\n            transform: scale(0.5);\n  }\n  100% {\n    opacity: 0;\n    -webkit-transform: scale(1);\n            transform: scale(1);\n  }\n}\n@keyframes loading {\n  0% {\n    opacity: 0;\n    -webkit-transform: scale(0);\n            transform: scale(0);\n  }\n  50% {\n    opacity: 1;\n    -webkit-transform: scale(0.5);\n            transform: scale(0.5);\n  }\n  100% {\n    opacity: 0;\n    -webkit-transform: scale(1);\n            transform: scale(1);\n  }\n}\n", ""]);
-
-	// exports
-
-
-/***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _loading = __webpack_require__(29);
-
-	var _loading2 = _interopRequireDefault(_loading);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-	exports.default = {
-	    computed: {
-	        isLoading: function isLoading() {
-	            return _loading2.default.state.isArticleLoading;
-	        }
-	    }
-	};
-	// </script>
-	// <template lang="jade">
-	// aside.loading(v-if='isLoading', transition='fade')
-	//     i.icon
-	//         svg(xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 44 44" stroke="#fff")
-	//             g(fill="none" fill-rule="evenodd" stroke-width=".3rem")
-	//                 circle.layer-1(cx="22" cy="22" r="6.68326")
-	//                     //- animate(attributeName="r" begin="0s" dur="1.8s" values="1; 20" calcMode="spline" keyTimes="0; 1" keySplines="0.165, 0.84, 0.44, 1" repeatCount="indefinite")
-	//                     //- animate(attributeName="stroke-opacity" begin="0s" dur="1.8s" values="1; 0" calcMode="spline" keyTimes="0; 1" keySplines="0.3, 0.61, 0.355, 1" repeatCount="indefinite")
-	//                 circle.layer-2(cx="22" cy="22" r="18.9267")
-	//                     //- animate(attributeName="r" begin="-0.9s" dur="1.8s" values="1; 20" calcMode="spline" keyTimes="0; 1" keySplines="0.165, 0.84, 0.44, 1" repeatCount="indefinite")
-	//                     //- animate(attributeName="stroke-opacity" begin="-0.9s" dur="1.8s" values="1; 0" calcMode="spline" keyTimes="0; 1" keySplines="0.3, 0.61, 0.355, 1" repeatCount="indefinite")
-	// </template>
-
-	// <style lang="stylus" scoped>
-	// @keyframes loading
-	//     0%
-	//         opacity 0
-	//         transform scale(0)
-	//     50%
-	//         opacity 1
-	//         transform scale(.5)
-	//     100%
-	//         opacity 0
-	//         transform scale(1)
-	// circle
-	//     transform-origin 50% 50%
-	// .layer-1
-	//     animation loading 1.8s infinite
-	// .layer-2
-	//     animation loading 1.8s -.9s infinite
-
-	// .fade-transition
-	//     transition all .3s
-	//     opacity 1
-	// .fade-enter, .fade-leave
-	//     opacity 0
-	// .loading
-	//     position absolute
-	//     width 100%
-	//     height 100%
-	//     top 0
-	//     left 0
-	//     background rgba(0,0,0,0.3)
-	//     i
-	//         display block
-	//         position absolute
-	//         top 50%
-	//         left 50%
-	//         transform translate(-50%, -50%)
-	//         overflow display
-	//         width 10rem
-	//         height 10rem
-	// </style>
-
-	// <script>
-
-/***/ },
-/* 46 */
-/***/ function(module, exports) {
-
-	module.exports = "<aside v-if=\"isLoading\" transition=\"fade\" class=\"loading\" _v-7c6c55e5=\"\"><i class=\"icon\" _v-7c6c55e5=\"\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 44 44\" stroke=\"#fff\" _v-7c6c55e5=\"\"><g fill=\"none\" fill-rule=\"evenodd\" stroke-width=\".3rem\" _v-7c6c55e5=\"\"><circle cx=\"22\" cy=\"22\" r=\"6.68326\" class=\"layer-1\" _v-7c6c55e5=\"\"></circle><circle cx=\"22\" cy=\"22\" r=\"18.9267\" class=\"layer-2\" _v-7c6c55e5=\"\"></circle></g></svg></i></aside>";
-
-/***/ },
-/* 47 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {/**
-	 * marked - a markdown parser
-	 * Copyright (c) 2011-2014, Christopher Jeffrey. (MIT Licensed)
-	 * https://github.com/chjj/marked
-	 */
-
-	;(function() {
-
-	/**
-	 * Block-Level Grammar
-	 */
-
-	var block = {
-	  newline: /^\n+/,
-	  code: /^( {4}[^\n]+\n*)+/,
-	  fences: noop,
-	  hr: /^( *[-*_]){3,} *(?:\n+|$)/,
-	  heading: /^ *(#{1,6}) *([^\n]+?) *#* *(?:\n+|$)/,
-	  nptable: noop,
-	  lheading: /^([^\n]+)\n *(=|-){2,} *(?:\n+|$)/,
-	  blockquote: /^( *>[^\n]+(\n(?!def)[^\n]+)*\n*)+/,
-	  list: /^( *)(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/,
-	  html: /^ *(?:comment *(?:\n|\s*$)|closed *(?:\n{2,}|\s*$)|closing *(?:\n{2,}|\s*$))/,
-	  def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +["(]([^\n]+)[")])? *(?:\n+|$)/,
-	  table: noop,
-	  paragraph: /^((?:[^\n]+\n?(?!hr|heading|lheading|blockquote|tag|def))+)\n*/,
-	  text: /^[^\n]+/
-	};
-
-	block.bullet = /(?:[*+-]|\d+\.)/;
-	block.item = /^( *)(bull) [^\n]*(?:\n(?!\1bull )[^\n]*)*/;
-	block.item = replace(block.item, 'gm')
-	  (/bull/g, block.bullet)
-	  ();
-
-	block.list = replace(block.list)
-	  (/bull/g, block.bullet)
-	  ('hr', '\\n+(?=\\1?(?:[-*_] *){3,}(?:\\n+|$))')
-	  ('def', '\\n+(?=' + block.def.source + ')')
-	  ();
-
-	block.blockquote = replace(block.blockquote)
-	  ('def', block.def)
-	  ();
-
-	block._tag = '(?!(?:'
-	  + 'a|em|strong|small|s|cite|q|dfn|abbr|data|time|code'
-	  + '|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo'
-	  + '|span|br|wbr|ins|del|img)\\b)\\w+(?!:/|[^\\w\\s@]*@)\\b';
-
-	block.html = replace(block.html)
-	  ('comment', /<!--[\s\S]*?-->/)
-	  ('closed', /<(tag)[\s\S]+?<\/\1>/)
-	  ('closing', /<tag(?:"[^"]*"|'[^']*'|[^'">])*?>/)
-	  (/tag/g, block._tag)
-	  ();
-
-	block.paragraph = replace(block.paragraph)
-	  ('hr', block.hr)
-	  ('heading', block.heading)
-	  ('lheading', block.lheading)
-	  ('blockquote', block.blockquote)
-	  ('tag', '<' + block._tag)
-	  ('def', block.def)
-	  ();
-
-	/**
-	 * Normal Block Grammar
-	 */
-
-	block.normal = merge({}, block);
-
-	/**
-	 * GFM Block Grammar
-	 */
-
-	block.gfm = merge({}, block.normal, {
-	  fences: /^ *(`{3,}|~{3,})[ \.]*(\S+)? *\n([\s\S]*?)\s*\1 *(?:\n+|$)/,
-	  paragraph: /^/,
-	  heading: /^ *(#{1,6}) +([^\n]+?) *#* *(?:\n+|$)/
-	});
-
-	block.gfm.paragraph = replace(block.paragraph)
-	  ('(?!', '(?!'
-	    + block.gfm.fences.source.replace('\\1', '\\2') + '|'
-	    + block.list.source.replace('\\1', '\\3') + '|')
-	  ();
-
-	/**
-	 * GFM + Tables Block Grammar
-	 */
-
-	block.tables = merge({}, block.gfm, {
-	  nptable: /^ *(\S.*\|.*)\n *([-:]+ *\|[-| :]*)\n((?:.*\|.*(?:\n|$))*)\n*/,
-	  table: /^ *\|(.+)\n *\|( *[-:]+[-| :]*)\n((?: *\|.*(?:\n|$))*)\n*/
-	});
-
-	/**
-	 * Block Lexer
-	 */
-
-	function Lexer(options) {
-	  this.tokens = [];
-	  this.tokens.links = {};
-	  this.options = options || marked.defaults;
-	  this.rules = block.normal;
-
-	  if (this.options.gfm) {
-	    if (this.options.tables) {
-	      this.rules = block.tables;
-	    } else {
-	      this.rules = block.gfm;
-	    }
-	  }
-	}
-
-	/**
-	 * Expose Block Rules
-	 */
-
-	Lexer.rules = block;
-
-	/**
-	 * Static Lex Method
-	 */
-
-	Lexer.lex = function(src, options) {
-	  var lexer = new Lexer(options);
-	  return lexer.lex(src);
-	};
-
-	/**
-	 * Preprocessing
-	 */
-
-	Lexer.prototype.lex = function(src) {
-	  src = src
-	    .replace(/\r\n|\r/g, '\n')
-	    .replace(/\t/g, '    ')
-	    .replace(/\u00a0/g, ' ')
-	    .replace(/\u2424/g, '\n');
-
-	  return this.token(src, true);
-	};
-
-	/**
-	 * Lexing
-	 */
-
-	Lexer.prototype.token = function(src, top, bq) {
-	  var src = src.replace(/^ +$/gm, '')
-	    , next
-	    , loose
-	    , cap
-	    , bull
-	    , b
-	    , item
-	    , space
-	    , i
-	    , l;
-
-	  while (src) {
-	    // newline
-	    if (cap = this.rules.newline.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      if (cap[0].length > 1) {
-	        this.tokens.push({
-	          type: 'space'
-	        });
-	      }
-	    }
-
-	    // code
-	    if (cap = this.rules.code.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      cap = cap[0].replace(/^ {4}/gm, '');
-	      this.tokens.push({
-	        type: 'code',
-	        text: !this.options.pedantic
-	          ? cap.replace(/\n+$/, '')
-	          : cap
-	      });
-	      continue;
-	    }
-
-	    // fences (gfm)
-	    if (cap = this.rules.fences.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'code',
-	        lang: cap[2],
-	        text: cap[3] || ''
-	      });
-	      continue;
-	    }
-
-	    // heading
-	    if (cap = this.rules.heading.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'heading',
-	        depth: cap[1].length,
-	        text: cap[2]
-	      });
-	      continue;
-	    }
-
-	    // table no leading pipe (gfm)
-	    if (top && (cap = this.rules.nptable.exec(src))) {
-	      src = src.substring(cap[0].length);
-
-	      item = {
-	        type: 'table',
-	        header: cap[1].replace(/^ *| *\| *$/g, '').split(/ *\| */),
-	        align: cap[2].replace(/^ *|\| *$/g, '').split(/ *\| */),
-	        cells: cap[3].replace(/\n$/, '').split('\n')
-	      };
-
-	      for (i = 0; i < item.align.length; i++) {
-	        if (/^ *-+: *$/.test(item.align[i])) {
-	          item.align[i] = 'right';
-	        } else if (/^ *:-+: *$/.test(item.align[i])) {
-	          item.align[i] = 'center';
-	        } else if (/^ *:-+ *$/.test(item.align[i])) {
-	          item.align[i] = 'left';
-	        } else {
-	          item.align[i] = null;
-	        }
-	      }
-
-	      for (i = 0; i < item.cells.length; i++) {
-	        item.cells[i] = item.cells[i].split(/ *\| */);
-	      }
-
-	      this.tokens.push(item);
-
-	      continue;
-	    }
-
-	    // lheading
-	    if (cap = this.rules.lheading.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'heading',
-	        depth: cap[2] === '=' ? 1 : 2,
-	        text: cap[1]
-	      });
-	      continue;
-	    }
-
-	    // hr
-	    if (cap = this.rules.hr.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'hr'
-	      });
-	      continue;
-	    }
-
-	    // blockquote
-	    if (cap = this.rules.blockquote.exec(src)) {
-	      src = src.substring(cap[0].length);
-
-	      this.tokens.push({
-	        type: 'blockquote_start'
-	      });
-
-	      cap = cap[0].replace(/^ *> ?/gm, '');
-
-	      // Pass `top` to keep the current
-	      // "toplevel" state. This is exactly
-	      // how markdown.pl works.
-	      this.token(cap, top, true);
-
-	      this.tokens.push({
-	        type: 'blockquote_end'
-	      });
-
-	      continue;
-	    }
-
-	    // list
-	    if (cap = this.rules.list.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      bull = cap[2];
-
-	      this.tokens.push({
-	        type: 'list_start',
-	        ordered: bull.length > 1
-	      });
-
-	      // Get each top-level item.
-	      cap = cap[0].match(this.rules.item);
-
-	      next = false;
-	      l = cap.length;
-	      i = 0;
-
-	      for (; i < l; i++) {
-	        item = cap[i];
-
-	        // Remove the list item's bullet
-	        // so it is seen as the next token.
-	        space = item.length;
-	        item = item.replace(/^ *([*+-]|\d+\.) +/, '');
-
-	        // Outdent whatever the
-	        // list item contains. Hacky.
-	        if (~item.indexOf('\n ')) {
-	          space -= item.length;
-	          item = !this.options.pedantic
-	            ? item.replace(new RegExp('^ {1,' + space + '}', 'gm'), '')
-	            : item.replace(/^ {1,4}/gm, '');
-	        }
-
-	        // Determine whether the next list item belongs here.
-	        // Backpedal if it does not belong in this list.
-	        if (this.options.smartLists && i !== l - 1) {
-	          b = block.bullet.exec(cap[i + 1])[0];
-	          if (bull !== b && !(bull.length > 1 && b.length > 1)) {
-	            src = cap.slice(i + 1).join('\n') + src;
-	            i = l - 1;
-	          }
-	        }
-
-	        // Determine whether item is loose or not.
-	        // Use: /(^|\n)(?! )[^\n]+\n\n(?!\s*$)/
-	        // for discount behavior.
-	        loose = next || /\n\n(?!\s*$)/.test(item);
-	        if (i !== l - 1) {
-	          next = item.charAt(item.length - 1) === '\n';
-	          if (!loose) loose = next;
-	        }
-
-	        this.tokens.push({
-	          type: loose
-	            ? 'loose_item_start'
-	            : 'list_item_start'
-	        });
-
-	        // Recurse.
-	        this.token(item, false, bq);
-
-	        this.tokens.push({
-	          type: 'list_item_end'
-	        });
-	      }
-
-	      this.tokens.push({
-	        type: 'list_end'
-	      });
-
-	      continue;
-	    }
-
-	    // html
-	    if (cap = this.rules.html.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: this.options.sanitize
-	          ? 'paragraph'
-	          : 'html',
-	        pre: !this.options.sanitizer
-	          && (cap[1] === 'pre' || cap[1] === 'script' || cap[1] === 'style'),
-	        text: cap[0]
-	      });
-	      continue;
-	    }
-
-	    // def
-	    if ((!bq && top) && (cap = this.rules.def.exec(src))) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.links[cap[1].toLowerCase()] = {
-	        href: cap[2],
-	        title: cap[3]
-	      };
-	      continue;
-	    }
-
-	    // table (gfm)
-	    if (top && (cap = this.rules.table.exec(src))) {
-	      src = src.substring(cap[0].length);
-
-	      item = {
-	        type: 'table',
-	        header: cap[1].replace(/^ *| *\| *$/g, '').split(/ *\| */),
-	        align: cap[2].replace(/^ *|\| *$/g, '').split(/ *\| */),
-	        cells: cap[3].replace(/(?: *\| *)?\n$/, '').split('\n')
-	      };
-
-	      for (i = 0; i < item.align.length; i++) {
-	        if (/^ *-+: *$/.test(item.align[i])) {
-	          item.align[i] = 'right';
-	        } else if (/^ *:-+: *$/.test(item.align[i])) {
-	          item.align[i] = 'center';
-	        } else if (/^ *:-+ *$/.test(item.align[i])) {
-	          item.align[i] = 'left';
-	        } else {
-	          item.align[i] = null;
-	        }
-	      }
-
-	      for (i = 0; i < item.cells.length; i++) {
-	        item.cells[i] = item.cells[i]
-	          .replace(/^ *\| *| *\| *$/g, '')
-	          .split(/ *\| */);
-	      }
-
-	      this.tokens.push(item);
-
-	      continue;
-	    }
-
-	    // top-level paragraph
-	    if (top && (cap = this.rules.paragraph.exec(src))) {
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'paragraph',
-	        text: cap[1].charAt(cap[1].length - 1) === '\n'
-	          ? cap[1].slice(0, -1)
-	          : cap[1]
-	      });
-	      continue;
-	    }
-
-	    // text
-	    if (cap = this.rules.text.exec(src)) {
-	      // Top-level should never reach here.
-	      src = src.substring(cap[0].length);
-	      this.tokens.push({
-	        type: 'text',
-	        text: cap[0]
-	      });
-	      continue;
-	    }
-
-	    if (src) {
-	      throw new
-	        Error('Infinite loop on byte: ' + src.charCodeAt(0));
-	    }
-	  }
-
-	  return this.tokens;
-	};
-
-	/**
-	 * Inline-Level Grammar
-	 */
-
-	var inline = {
-	  escape: /^\\([\\`*{}\[\]()#+\-.!_>])/,
-	  autolink: /^<([^ >]+(@|:\/)[^ >]+)>/,
-	  url: noop,
-	  tag: /^<!--[\s\S]*?-->|^<\/?\w+(?:"[^"]*"|'[^']*'|[^'">])*?>/,
-	  link: /^!?\[(inside)\]\(href\)/,
-	  reflink: /^!?\[(inside)\]\s*\[([^\]]*)\]/,
-	  nolink: /^!?\[((?:\[[^\]]*\]|[^\[\]])*)\]/,
-	  strong: /^__([\s\S]+?)__(?!_)|^\*\*([\s\S]+?)\*\*(?!\*)/,
-	  em: /^\b_((?:[^_]|__)+?)_\b|^\*((?:\*\*|[\s\S])+?)\*(?!\*)/,
-	  code: /^(`+)\s*([\s\S]*?[^`])\s*\1(?!`)/,
-	  br: /^ {2,}\n(?!\s*$)/,
-	  del: noop,
-	  text: /^[\s\S]+?(?=[\\<!\[_*`]| {2,}\n|$)/
-	};
-
-	inline._inside = /(?:\[[^\]]*\]|[^\[\]]|\](?=[^\[]*\]))*/;
-	inline._href = /\s*<?([\s\S]*?)>?(?:\s+['"]([\s\S]*?)['"])?\s*/;
-
-	inline.link = replace(inline.link)
-	  ('inside', inline._inside)
-	  ('href', inline._href)
-	  ();
-
-	inline.reflink = replace(inline.reflink)
-	  ('inside', inline._inside)
-	  ();
-
-	/**
-	 * Normal Inline Grammar
-	 */
-
-	inline.normal = merge({}, inline);
-
-	/**
-	 * Pedantic Inline Grammar
-	 */
-
-	inline.pedantic = merge({}, inline.normal, {
-	  strong: /^__(?=\S)([\s\S]*?\S)__(?!_)|^\*\*(?=\S)([\s\S]*?\S)\*\*(?!\*)/,
-	  em: /^_(?=\S)([\s\S]*?\S)_(?!_)|^\*(?=\S)([\s\S]*?\S)\*(?!\*)/
-	});
-
-	/**
-	 * GFM Inline Grammar
-	 */
-
-	inline.gfm = merge({}, inline.normal, {
-	  escape: replace(inline.escape)('])', '~|])')(),
-	  url: /^(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/,
-	  del: /^~~(?=\S)([\s\S]*?\S)~~/,
-	  text: replace(inline.text)
-	    (']|', '~]|')
-	    ('|', '|https?://|')
-	    ()
-	});
-
-	/**
-	 * GFM + Line Breaks Inline Grammar
-	 */
-
-	inline.breaks = merge({}, inline.gfm, {
-	  br: replace(inline.br)('{2,}', '*')(),
-	  text: replace(inline.gfm.text)('{2,}', '*')()
-	});
-
-	/**
-	 * Inline Lexer & Compiler
-	 */
-
-	function InlineLexer(links, options) {
-	  this.options = options || marked.defaults;
-	  this.links = links;
-	  this.rules = inline.normal;
-	  this.renderer = this.options.renderer || new Renderer;
-	  this.renderer.options = this.options;
-
-	  if (!this.links) {
-	    throw new
-	      Error('Tokens array requires a `links` property.');
-	  }
-
-	  if (this.options.gfm) {
-	    if (this.options.breaks) {
-	      this.rules = inline.breaks;
-	    } else {
-	      this.rules = inline.gfm;
-	    }
-	  } else if (this.options.pedantic) {
-	    this.rules = inline.pedantic;
-	  }
-	}
-
-	/**
-	 * Expose Inline Rules
-	 */
-
-	InlineLexer.rules = inline;
-
-	/**
-	 * Static Lexing/Compiling Method
-	 */
-
-	InlineLexer.output = function(src, links, options) {
-	  var inline = new InlineLexer(links, options);
-	  return inline.output(src);
-	};
-
-	/**
-	 * Lexing/Compiling
-	 */
-
-	InlineLexer.prototype.output = function(src) {
-	  var out = ''
-	    , link
-	    , text
-	    , href
-	    , cap;
-
-	  while (src) {
-	    // escape
-	    if (cap = this.rules.escape.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += cap[1];
-	      continue;
-	    }
-
-	    // autolink
-	    if (cap = this.rules.autolink.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      if (cap[2] === '@') {
-	        text = cap[1].charAt(6) === ':'
-	          ? this.mangle(cap[1].substring(7))
-	          : this.mangle(cap[1]);
-	        href = this.mangle('mailto:') + text;
-	      } else {
-	        text = escape(cap[1]);
-	        href = text;
-	      }
-	      out += this.renderer.link(href, null, text);
-	      continue;
-	    }
-
-	    // url (gfm)
-	    if (!this.inLink && (cap = this.rules.url.exec(src))) {
-	      src = src.substring(cap[0].length);
-	      text = escape(cap[1]);
-	      href = text;
-	      out += this.renderer.link(href, null, text);
-	      continue;
-	    }
-
-	    // tag
-	    if (cap = this.rules.tag.exec(src)) {
-	      if (!this.inLink && /^<a /i.test(cap[0])) {
-	        this.inLink = true;
-	      } else if (this.inLink && /^<\/a>/i.test(cap[0])) {
-	        this.inLink = false;
-	      }
-	      src = src.substring(cap[0].length);
-	      out += this.options.sanitize
-	        ? this.options.sanitizer
-	          ? this.options.sanitizer(cap[0])
-	          : escape(cap[0])
-	        : cap[0]
-	      continue;
-	    }
-
-	    // link
-	    if (cap = this.rules.link.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      this.inLink = true;
-	      out += this.outputLink(cap, {
-	        href: cap[2],
-	        title: cap[3]
-	      });
-	      this.inLink = false;
-	      continue;
-	    }
-
-	    // reflink, nolink
-	    if ((cap = this.rules.reflink.exec(src))
-	        || (cap = this.rules.nolink.exec(src))) {
-	      src = src.substring(cap[0].length);
-	      link = (cap[2] || cap[1]).replace(/\s+/g, ' ');
-	      link = this.links[link.toLowerCase()];
-	      if (!link || !link.href) {
-	        out += cap[0].charAt(0);
-	        src = cap[0].substring(1) + src;
-	        continue;
-	      }
-	      this.inLink = true;
-	      out += this.outputLink(cap, link);
-	      this.inLink = false;
-	      continue;
-	    }
-
-	    // strong
-	    if (cap = this.rules.strong.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.strong(this.output(cap[2] || cap[1]));
-	      continue;
-	    }
-
-	    // em
-	    if (cap = this.rules.em.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.em(this.output(cap[2] || cap[1]));
-	      continue;
-	    }
-
-	    // code
-	    if (cap = this.rules.code.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.codespan(escape(cap[2], true));
-	      continue;
-	    }
-
-	    // br
-	    if (cap = this.rules.br.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.br();
-	      continue;
-	    }
-
-	    // del (gfm)
-	    if (cap = this.rules.del.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.del(this.output(cap[1]));
-	      continue;
-	    }
-
-	    // text
-	    if (cap = this.rules.text.exec(src)) {
-	      src = src.substring(cap[0].length);
-	      out += this.renderer.text(escape(this.smartypants(cap[0])));
-	      continue;
-	    }
-
-	    if (src) {
-	      throw new
-	        Error('Infinite loop on byte: ' + src.charCodeAt(0));
-	    }
-	  }
-
-	  return out;
-	};
-
-	/**
-	 * Compile Link
-	 */
-
-	InlineLexer.prototype.outputLink = function(cap, link) {
-	  var href = escape(link.href)
-	    , title = link.title ? escape(link.title) : null;
-
-	  return cap[0].charAt(0) !== '!'
-	    ? this.renderer.link(href, title, this.output(cap[1]))
-	    : this.renderer.image(href, title, escape(cap[1]));
-	};
-
-	/**
-	 * Smartypants Transformations
-	 */
-
-	InlineLexer.prototype.smartypants = function(text) {
-	  if (!this.options.smartypants) return text;
-	  return text
-	    // em-dashes
-	    .replace(/---/g, '\u2014')
-	    // en-dashes
-	    .replace(/--/g, '\u2013')
-	    // opening singles
-	    .replace(/(^|[-\u2014/(\[{"\s])'/g, '$1\u2018')
-	    // closing singles & apostrophes
-	    .replace(/'/g, '\u2019')
-	    // opening doubles
-	    .replace(/(^|[-\u2014/(\[{\u2018\s])"/g, '$1\u201c')
-	    // closing doubles
-	    .replace(/"/g, '\u201d')
-	    // ellipses
-	    .replace(/\.{3}/g, '\u2026');
-	};
-
-	/**
-	 * Mangle Links
-	 */
-
-	InlineLexer.prototype.mangle = function(text) {
-	  if (!this.options.mangle) return text;
-	  var out = ''
-	    , l = text.length
-	    , i = 0
-	    , ch;
-
-	  for (; i < l; i++) {
-	    ch = text.charCodeAt(i);
-	    if (Math.random() > 0.5) {
-	      ch = 'x' + ch.toString(16);
-	    }
-	    out += '&#' + ch + ';';
-	  }
-
-	  return out;
-	};
-
-	/**
-	 * Renderer
-	 */
-
-	function Renderer(options) {
-	  this.options = options || {};
-	}
-
-	Renderer.prototype.code = function(code, lang, escaped) {
-	  if (this.options.highlight) {
-	    var out = this.options.highlight(code, lang);
-	    if (out != null && out !== code) {
-	      escaped = true;
-	      code = out;
-	    }
-	  }
-
-	  if (!lang) {
-	    return '<pre><code>'
-	      + (escaped ? code : escape(code, true))
-	      + '\n</code></pre>';
-	  }
-
-	  return '<pre><code class="'
-	    + this.options.langPrefix
-	    + escape(lang, true)
-	    + '">'
-	    + (escaped ? code : escape(code, true))
-	    + '\n</code></pre>\n';
-	};
-
-	Renderer.prototype.blockquote = function(quote) {
-	  return '<blockquote>\n' + quote + '</blockquote>\n';
-	};
-
-	Renderer.prototype.html = function(html) {
-	  return html;
-	};
-
-	Renderer.prototype.heading = function(text, level, raw) {
-	  return '<h'
-	    + level
-	    + ' id="'
-	    + this.options.headerPrefix
-	    + raw.toLowerCase().replace(/[^\w]+/g, '-')
-	    + '">'
-	    + text
-	    + '</h'
-	    + level
-	    + '>\n';
-	};
-
-	Renderer.prototype.hr = function() {
-	  return this.options.xhtml ? '<hr/>\n' : '<hr>\n';
-	};
-
-	Renderer.prototype.list = function(body, ordered) {
-	  var type = ordered ? 'ol' : 'ul';
-	  return '<' + type + '>\n' + body + '</' + type + '>\n';
-	};
-
-	Renderer.prototype.listitem = function(text) {
-	  return '<li>' + text + '</li>\n';
-	};
-
-	Renderer.prototype.paragraph = function(text) {
-	  return '<p>' + text + '</p>\n';
-	};
-
-	Renderer.prototype.table = function(header, body) {
-	  return '<table>\n'
-	    + '<thead>\n'
-	    + header
-	    + '</thead>\n'
-	    + '<tbody>\n'
-	    + body
-	    + '</tbody>\n'
-	    + '</table>\n';
-	};
-
-	Renderer.prototype.tablerow = function(content) {
-	  return '<tr>\n' + content + '</tr>\n';
-	};
-
-	Renderer.prototype.tablecell = function(content, flags) {
-	  var type = flags.header ? 'th' : 'td';
-	  var tag = flags.align
-	    ? '<' + type + ' style="text-align:' + flags.align + '">'
-	    : '<' + type + '>';
-	  return tag + content + '</' + type + '>\n';
-	};
-
-	// span level renderer
-	Renderer.prototype.strong = function(text) {
-	  return '<strong>' + text + '</strong>';
-	};
-
-	Renderer.prototype.em = function(text) {
-	  return '<em>' + text + '</em>';
-	};
-
-	Renderer.prototype.codespan = function(text) {
-	  return '<code>' + text + '</code>';
-	};
-
-	Renderer.prototype.br = function() {
-	  return this.options.xhtml ? '<br/>' : '<br>';
-	};
-
-	Renderer.prototype.del = function(text) {
-	  return '<del>' + text + '</del>';
-	};
-
-	Renderer.prototype.link = function(href, title, text) {
-	  if (this.options.sanitize) {
-	    try {
-	      var prot = decodeURIComponent(unescape(href))
-	        .replace(/[^\w:]/g, '')
-	        .toLowerCase();
-	    } catch (e) {
-	      return '';
-	    }
-	    if (prot.indexOf('javascript:') === 0 || prot.indexOf('vbscript:') === 0) {
-	      return '';
-	    }
-	  }
-	  var out = '<a href="' + href + '"';
-	  if (title) {
-	    out += ' title="' + title + '"';
-	  }
-	  out += '>' + text + '</a>';
-	  return out;
-	};
-
-	Renderer.prototype.image = function(href, title, text) {
-	  var out = '<img src="' + href + '" alt="' + text + '"';
-	  if (title) {
-	    out += ' title="' + title + '"';
-	  }
-	  out += this.options.xhtml ? '/>' : '>';
-	  return out;
-	};
-
-	Renderer.prototype.text = function(text) {
-	  return text;
-	};
-
-	/**
-	 * Parsing & Compiling
-	 */
-
-	function Parser(options) {
-	  this.tokens = [];
-	  this.token = null;
-	  this.options = options || marked.defaults;
-	  this.options.renderer = this.options.renderer || new Renderer;
-	  this.renderer = this.options.renderer;
-	  this.renderer.options = this.options;
-	}
-
-	/**
-	 * Static Parse Method
-	 */
-
-	Parser.parse = function(src, options, renderer) {
-	  var parser = new Parser(options, renderer);
-	  return parser.parse(src);
-	};
-
-	/**
-	 * Parse Loop
-	 */
-
-	Parser.prototype.parse = function(src) {
-	  this.inline = new InlineLexer(src.links, this.options, this.renderer);
-	  this.tokens = src.reverse();
-
-	  var out = '';
-	  while (this.next()) {
-	    out += this.tok();
-	  }
-
-	  return out;
-	};
-
-	/**
-	 * Next Token
-	 */
-
-	Parser.prototype.next = function() {
-	  return this.token = this.tokens.pop();
-	};
-
-	/**
-	 * Preview Next Token
-	 */
-
-	Parser.prototype.peek = function() {
-	  return this.tokens[this.tokens.length - 1] || 0;
-	};
-
-	/**
-	 * Parse Text Tokens
-	 */
-
-	Parser.prototype.parseText = function() {
-	  var body = this.token.text;
-
-	  while (this.peek().type === 'text') {
-	    body += '\n' + this.next().text;
-	  }
-
-	  return this.inline.output(body);
-	};
-
-	/**
-	 * Parse Current Token
-	 */
-
-	Parser.prototype.tok = function() {
-	  switch (this.token.type) {
-	    case 'space': {
-	      return '';
-	    }
-	    case 'hr': {
-	      return this.renderer.hr();
-	    }
-	    case 'heading': {
-	      return this.renderer.heading(
-	        this.inline.output(this.token.text),
-	        this.token.depth,
-	        this.token.text);
-	    }
-	    case 'code': {
-	      return this.renderer.code(this.token.text,
-	        this.token.lang,
-	        this.token.escaped);
-	    }
-	    case 'table': {
-	      var header = ''
-	        , body = ''
-	        , i
-	        , row
-	        , cell
-	        , flags
-	        , j;
-
-	      // header
-	      cell = '';
-	      for (i = 0; i < this.token.header.length; i++) {
-	        flags = { header: true, align: this.token.align[i] };
-	        cell += this.renderer.tablecell(
-	          this.inline.output(this.token.header[i]),
-	          { header: true, align: this.token.align[i] }
-	        );
-	      }
-	      header += this.renderer.tablerow(cell);
-
-	      for (i = 0; i < this.token.cells.length; i++) {
-	        row = this.token.cells[i];
-
-	        cell = '';
-	        for (j = 0; j < row.length; j++) {
-	          cell += this.renderer.tablecell(
-	            this.inline.output(row[j]),
-	            { header: false, align: this.token.align[j] }
-	          );
-	        }
-
-	        body += this.renderer.tablerow(cell);
-	      }
-	      return this.renderer.table(header, body);
-	    }
-	    case 'blockquote_start': {
-	      var body = '';
-
-	      while (this.next().type !== 'blockquote_end') {
-	        body += this.tok();
-	      }
-
-	      return this.renderer.blockquote(body);
-	    }
-	    case 'list_start': {
-	      var body = ''
-	        , ordered = this.token.ordered;
-
-	      while (this.next().type !== 'list_end') {
-	        body += this.tok();
-	      }
-
-	      return this.renderer.list(body, ordered);
-	    }
-	    case 'list_item_start': {
-	      var body = '';
-
-	      while (this.next().type !== 'list_item_end') {
-	        body += this.token.type === 'text'
-	          ? this.parseText()
-	          : this.tok();
-	      }
-
-	      return this.renderer.listitem(body);
-	    }
-	    case 'loose_item_start': {
-	      var body = '';
-
-	      while (this.next().type !== 'list_item_end') {
-	        body += this.tok();
-	      }
-
-	      return this.renderer.listitem(body);
-	    }
-	    case 'html': {
-	      var html = !this.token.pre && !this.options.pedantic
-	        ? this.inline.output(this.token.text)
-	        : this.token.text;
-	      return this.renderer.html(html);
-	    }
-	    case 'paragraph': {
-	      return this.renderer.paragraph(this.inline.output(this.token.text));
-	    }
-	    case 'text': {
-	      return this.renderer.paragraph(this.parseText());
-	    }
-	  }
-	};
-
-	/**
-	 * Helpers
-	 */
-
-	function escape(html, encode) {
-	  return html
-	    .replace(!encode ? /&(?!#?\w+;)/g : /&/g, '&amp;')
-	    .replace(/</g, '&lt;')
-	    .replace(/>/g, '&gt;')
-	    .replace(/"/g, '&quot;')
-	    .replace(/'/g, '&#39;');
-	}
-
-	function unescape(html) {
-	  return html.replace(/&([#\w]+);/g, function(_, n) {
-	    n = n.toLowerCase();
-	    if (n === 'colon') return ':';
-	    if (n.charAt(0) === '#') {
-	      return n.charAt(1) === 'x'
-	        ? String.fromCharCode(parseInt(n.substring(2), 16))
-	        : String.fromCharCode(+n.substring(1));
-	    }
-	    return '';
-	  });
-	}
-
-	function replace(regex, opt) {
-	  regex = regex.source;
-	  opt = opt || '';
-	  return function self(name, val) {
-	    if (!name) return new RegExp(regex, opt);
-	    val = val.source || val;
-	    val = val.replace(/(^|[^\[])\^/g, '$1');
-	    regex = regex.replace(name, val);
-	    return self;
-	  };
-	}
-
-	function noop() {}
-	noop.exec = noop;
-
-	function merge(obj) {
-	  var i = 1
-	    , target
-	    , key;
-
-	  for (; i < arguments.length; i++) {
-	    target = arguments[i];
-	    for (key in target) {
-	      if (Object.prototype.hasOwnProperty.call(target, key)) {
-	        obj[key] = target[key];
-	      }
-	    }
-	  }
-
-	  return obj;
-	}
-
-
-	/**
-	 * Marked
-	 */
-
-	function marked(src, opt, callback) {
-	  if (callback || typeof opt === 'function') {
-	    if (!callback) {
-	      callback = opt;
-	      opt = null;
-	    }
-
-	    opt = merge({}, marked.defaults, opt || {});
-
-	    var highlight = opt.highlight
-	      , tokens
-	      , pending
-	      , i = 0;
-
-	    try {
-	      tokens = Lexer.lex(src, opt)
-	    } catch (e) {
-	      return callback(e);
-	    }
-
-	    pending = tokens.length;
-
-	    var done = function(err) {
-	      if (err) {
-	        opt.highlight = highlight;
-	        return callback(err);
-	      }
-
-	      var out;
-
-	      try {
-	        out = Parser.parse(tokens, opt);
-	      } catch (e) {
-	        err = e;
-	      }
-
-	      opt.highlight = highlight;
-
-	      return err
-	        ? callback(err)
-	        : callback(null, out);
-	    };
-
-	    if (!highlight || highlight.length < 3) {
-	      return done();
-	    }
-
-	    delete opt.highlight;
-
-	    if (!pending) return done();
-
-	    for (; i < tokens.length; i++) {
-	      (function(token) {
-	        if (token.type !== 'code') {
-	          return --pending || done();
-	        }
-	        return highlight(token.text, token.lang, function(err, code) {
-	          if (err) return done(err);
-	          if (code == null || code === token.text) {
-	            return --pending || done();
-	          }
-	          token.text = code;
-	          token.escaped = true;
-	          --pending || done();
-	        });
-	      })(tokens[i]);
-	    }
-
-	    return;
-	  }
-	  try {
-	    if (opt) opt = merge({}, marked.defaults, opt);
-	    return Parser.parse(Lexer.lex(src, opt), opt);
-	  } catch (e) {
-	    e.message += '\nPlease report this to https://github.com/chjj/marked.';
-	    if ((opt || marked.defaults).silent) {
-	      return '<p>An error occured:</p><pre>'
-	        + escape(e.message + '', true)
-	        + '</pre>';
-	    }
-	    throw e;
-	  }
-	}
-
-	/**
-	 * Options
-	 */
-
-	marked.options =
-	marked.setOptions = function(opt) {
-	  merge(marked.defaults, opt);
-	  return marked;
-	};
-
-	marked.defaults = {
-	  gfm: true,
-	  tables: true,
-	  breaks: false,
-	  pedantic: false,
-	  sanitize: false,
-	  sanitizer: null,
-	  mangle: true,
-	  smartLists: false,
-	  silent: false,
-	  highlight: null,
-	  langPrefix: 'lang-',
-	  smartypants: false,
-	  headerPrefix: '',
-	  renderer: new Renderer,
-	  xhtml: false
-	};
-
-	/**
-	 * Expose
-	 */
-
-	marked.Parser = Parser;
-	marked.parser = Parser.parse;
-
-	marked.Renderer = Renderer;
-
-	marked.Lexer = Lexer;
-	marked.lexer = Lexer.lex;
-
-	marked.InlineLexer = InlineLexer;
-	marked.inlineLexer = InlineLexer.output;
-
-	marked.parse = marked;
-
-	if (true) {
-	  module.exports = marked;
-	} else if (typeof define === 'function' && define.amd) {
-	  define(function() { return marked; });
-	} else {
-	  this.marked = marked;
-	}
-
-	}).call(function() {
-	  return this || (typeof window !== 'undefined' ? window : global);
-	}());
-
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
-
-/***/ },
-/* 48 */
-/***/ function(module, exports) {
-
-	module.exports = "<section class=\"main\" _v-fa205540=\"\"><header _v-fa205540=\"\"><a :style=\"{backgroundImage: avatar}\" @click.stop=\"toggleMenu\" @touchstart.stop=\"toggleMenu\" _v-fa205540=\"\"></a><h2 v-text=\"title\" _v-fa205540=\"\"></h2></header><section id=\"content\" @click.stop=\"toggleMenu(false)\" @touchstart.stop=\"toggleMenu(false)\" class=\"wrapper\" _v-fa205540=\"\"><article v-html=\"article\" class=\"markdown-body\" _v-fa205540=\"\"></article><loading _v-fa205540=\"\"></loading></section></section>";
-
-/***/ },
-/* 49 */
-/***/ function(module, exports) {
-
-	module.exports = "<section @touchmove.prevent=\"prevent\" class=\"body\"><menu></menu><main></main></section>";
-
-/***/ },
-/* 50 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var hljs = __webpack_require__(51);
-
-	hljs.registerLanguage('1c', __webpack_require__(52));
-	hljs.registerLanguage('accesslog', __webpack_require__(53));
-	hljs.registerLanguage('actionscript', __webpack_require__(54));
-	hljs.registerLanguage('apache', __webpack_require__(55));
-	hljs.registerLanguage('applescript', __webpack_require__(56));
-	hljs.registerLanguage('armasm', __webpack_require__(57));
-	hljs.registerLanguage('xml', __webpack_require__(58));
-	hljs.registerLanguage('asciidoc', __webpack_require__(59));
-	hljs.registerLanguage('aspectj', __webpack_require__(60));
-	hljs.registerLanguage('autohotkey', __webpack_require__(61));
-	hljs.registerLanguage('autoit', __webpack_require__(62));
-	hljs.registerLanguage('avrasm', __webpack_require__(63));
-	hljs.registerLanguage('axapta', __webpack_require__(64));
-	hljs.registerLanguage('bash', __webpack_require__(65));
-	hljs.registerLanguage('brainfuck', __webpack_require__(66));
-	hljs.registerLanguage('cal', __webpack_require__(67));
-	hljs.registerLanguage('capnproto', __webpack_require__(68));
-	hljs.registerLanguage('ceylon', __webpack_require__(69));
-	hljs.registerLanguage('clojure', __webpack_require__(70));
-	hljs.registerLanguage('clojure-repl', __webpack_require__(71));
-	hljs.registerLanguage('cmake', __webpack_require__(72));
-	hljs.registerLanguage('coffeescript', __webpack_require__(73));
-	hljs.registerLanguage('cos', __webpack_require__(74));
-	hljs.registerLanguage('cpp', __webpack_require__(75));
-	hljs.registerLanguage('crmsh', __webpack_require__(76));
-	hljs.registerLanguage('crystal', __webpack_require__(77));
-	hljs.registerLanguage('cs', __webpack_require__(78));
-	hljs.registerLanguage('css', __webpack_require__(79));
-	hljs.registerLanguage('d', __webpack_require__(80));
-	hljs.registerLanguage('markdown', __webpack_require__(81));
-	hljs.registerLanguage('dart', __webpack_require__(82));
-	hljs.registerLanguage('delphi', __webpack_require__(83));
-	hljs.registerLanguage('diff', __webpack_require__(84));
-	hljs.registerLanguage('django', __webpack_require__(85));
-	hljs.registerLanguage('dns', __webpack_require__(86));
-	hljs.registerLanguage('dockerfile', __webpack_require__(87));
-	hljs.registerLanguage('dos', __webpack_require__(88));
-	hljs.registerLanguage('dust', __webpack_require__(89));
-	hljs.registerLanguage('elixir', __webpack_require__(90));
-	hljs.registerLanguage('elm', __webpack_require__(91));
-	hljs.registerLanguage('ruby', __webpack_require__(92));
-	hljs.registerLanguage('erb', __webpack_require__(93));
-	hljs.registerLanguage('erlang-repl', __webpack_require__(94));
-	hljs.registerLanguage('erlang', __webpack_require__(95));
-	hljs.registerLanguage('fix', __webpack_require__(96));
-	hljs.registerLanguage('fortran', __webpack_require__(97));
-	hljs.registerLanguage('fsharp', __webpack_require__(98));
-	hljs.registerLanguage('gams', __webpack_require__(99));
-	hljs.registerLanguage('gcode', __webpack_require__(100));
-	hljs.registerLanguage('gherkin', __webpack_require__(101));
-	hljs.registerLanguage('glsl', __webpack_require__(102));
-	hljs.registerLanguage('go', __webpack_require__(103));
-	hljs.registerLanguage('golo', __webpack_require__(104));
-	hljs.registerLanguage('gradle', __webpack_require__(105));
-	hljs.registerLanguage('groovy', __webpack_require__(106));
-	hljs.registerLanguage('haml', __webpack_require__(107));
-	hljs.registerLanguage('handlebars', __webpack_require__(108));
-	hljs.registerLanguage('haskell', __webpack_require__(109));
-	hljs.registerLanguage('haxe', __webpack_require__(110));
-	hljs.registerLanguage('hsp', __webpack_require__(111));
-	hljs.registerLanguage('http', __webpack_require__(112));
-	hljs.registerLanguage('inform7', __webpack_require__(113));
-	hljs.registerLanguage('ini', __webpack_require__(114));
-	hljs.registerLanguage('irpf90', __webpack_require__(115));
-	hljs.registerLanguage('java', __webpack_require__(116));
-	hljs.registerLanguage('javascript', __webpack_require__(117));
-	hljs.registerLanguage('json', __webpack_require__(118));
-	hljs.registerLanguage('julia', __webpack_require__(119));
-	hljs.registerLanguage('kotlin', __webpack_require__(120));
-	hljs.registerLanguage('lasso', __webpack_require__(121));
-	hljs.registerLanguage('less', __webpack_require__(122));
-	hljs.registerLanguage('lisp', __webpack_require__(123));
-	hljs.registerLanguage('livecodeserver', __webpack_require__(124));
-	hljs.registerLanguage('livescript', __webpack_require__(125));
-	hljs.registerLanguage('lua', __webpack_require__(126));
-	hljs.registerLanguage('makefile', __webpack_require__(127));
-	hljs.registerLanguage('mathematica', __webpack_require__(128));
-	hljs.registerLanguage('matlab', __webpack_require__(129));
-	hljs.registerLanguage('mel', __webpack_require__(130));
-	hljs.registerLanguage('mercury', __webpack_require__(131));
-	hljs.registerLanguage('mipsasm', __webpack_require__(132));
-	hljs.registerLanguage('mizar', __webpack_require__(133));
-	hljs.registerLanguage('perl', __webpack_require__(134));
-	hljs.registerLanguage('mojolicious', __webpack_require__(135));
-	hljs.registerLanguage('monkey', __webpack_require__(136));
-	hljs.registerLanguage('nginx', __webpack_require__(137));
-	hljs.registerLanguage('nimrod', __webpack_require__(138));
-	hljs.registerLanguage('nix', __webpack_require__(139));
-	hljs.registerLanguage('nsis', __webpack_require__(140));
-	hljs.registerLanguage('objectivec', __webpack_require__(141));
-	hljs.registerLanguage('ocaml', __webpack_require__(142));
-	hljs.registerLanguage('openscad', __webpack_require__(143));
-	hljs.registerLanguage('oxygene', __webpack_require__(144));
-	hljs.registerLanguage('parser3', __webpack_require__(145));
-	hljs.registerLanguage('pf', __webpack_require__(146));
-	hljs.registerLanguage('php', __webpack_require__(147));
-	hljs.registerLanguage('powershell', __webpack_require__(148));
-	hljs.registerLanguage('processing', __webpack_require__(149));
-	hljs.registerLanguage('profile', __webpack_require__(150));
-	hljs.registerLanguage('prolog', __webpack_require__(151));
-	hljs.registerLanguage('protobuf', __webpack_require__(152));
-	hljs.registerLanguage('puppet', __webpack_require__(153));
-	hljs.registerLanguage('python', __webpack_require__(154));
-	hljs.registerLanguage('q', __webpack_require__(155));
-	hljs.registerLanguage('r', __webpack_require__(156));
-	hljs.registerLanguage('rib', __webpack_require__(157));
-	hljs.registerLanguage('roboconf', __webpack_require__(158));
-	hljs.registerLanguage('rsl', __webpack_require__(159));
-	hljs.registerLanguage('ruleslanguage', __webpack_require__(160));
-	hljs.registerLanguage('rust', __webpack_require__(161));
-	hljs.registerLanguage('scala', __webpack_require__(162));
-	hljs.registerLanguage('scheme', __webpack_require__(163));
-	hljs.registerLanguage('scilab', __webpack_require__(164));
-	hljs.registerLanguage('scss', __webpack_require__(165));
-	hljs.registerLanguage('smali', __webpack_require__(166));
-	hljs.registerLanguage('smalltalk', __webpack_require__(167));
-	hljs.registerLanguage('sml', __webpack_require__(168));
-	hljs.registerLanguage('sqf', __webpack_require__(169));
-	hljs.registerLanguage('sql', __webpack_require__(170));
-	hljs.registerLanguage('stata', __webpack_require__(171));
-	hljs.registerLanguage('step21', __webpack_require__(172));
-	hljs.registerLanguage('stylus', __webpack_require__(173));
-	hljs.registerLanguage('swift', __webpack_require__(174));
-	hljs.registerLanguage('tcl', __webpack_require__(175));
-	hljs.registerLanguage('tex', __webpack_require__(176));
-	hljs.registerLanguage('thrift', __webpack_require__(177));
-	hljs.registerLanguage('tp', __webpack_require__(178));
-	hljs.registerLanguage('twig', __webpack_require__(179));
-	hljs.registerLanguage('typescript', __webpack_require__(180));
-	hljs.registerLanguage('vala', __webpack_require__(181));
-	hljs.registerLanguage('vbnet', __webpack_require__(182));
-	hljs.registerLanguage('vbscript', __webpack_require__(183));
-	hljs.registerLanguage('vbscript-html', __webpack_require__(184));
-	hljs.registerLanguage('verilog', __webpack_require__(185));
-	hljs.registerLanguage('vhdl', __webpack_require__(186));
-	hljs.registerLanguage('vim', __webpack_require__(187));
-	hljs.registerLanguage('x86asm', __webpack_require__(188));
-	hljs.registerLanguage('xl', __webpack_require__(189));
-	hljs.registerLanguage('xquery', __webpack_require__(190));
-	hljs.registerLanguage('yaml', __webpack_require__(191));
-	hljs.registerLanguage('zephir', __webpack_require__(192));
+	var hljs = __webpack_require__(32);
+
+	hljs.registerLanguage('1c', __webpack_require__(33));
+	hljs.registerLanguage('accesslog', __webpack_require__(34));
+	hljs.registerLanguage('actionscript', __webpack_require__(35));
+	hljs.registerLanguage('apache', __webpack_require__(36));
+	hljs.registerLanguage('applescript', __webpack_require__(37));
+	hljs.registerLanguage('arduino', __webpack_require__(38));
+	hljs.registerLanguage('armasm', __webpack_require__(39));
+	hljs.registerLanguage('xml', __webpack_require__(40));
+	hljs.registerLanguage('asciidoc', __webpack_require__(41));
+	hljs.registerLanguage('aspectj', __webpack_require__(42));
+	hljs.registerLanguage('autohotkey', __webpack_require__(43));
+	hljs.registerLanguage('autoit', __webpack_require__(44));
+	hljs.registerLanguage('avrasm', __webpack_require__(45));
+	hljs.registerLanguage('axapta', __webpack_require__(46));
+	hljs.registerLanguage('bash', __webpack_require__(47));
+	hljs.registerLanguage('basic', __webpack_require__(48));
+	hljs.registerLanguage('brainfuck', __webpack_require__(49));
+	hljs.registerLanguage('cal', __webpack_require__(50));
+	hljs.registerLanguage('capnproto', __webpack_require__(51));
+	hljs.registerLanguage('ceylon', __webpack_require__(52));
+	hljs.registerLanguage('clojure', __webpack_require__(53));
+	hljs.registerLanguage('clojure-repl', __webpack_require__(54));
+	hljs.registerLanguage('cmake', __webpack_require__(55));
+	hljs.registerLanguage('coffeescript', __webpack_require__(56));
+	hljs.registerLanguage('cos', __webpack_require__(57));
+	hljs.registerLanguage('cpp', __webpack_require__(58));
+	hljs.registerLanguage('crmsh', __webpack_require__(59));
+	hljs.registerLanguage('crystal', __webpack_require__(60));
+	hljs.registerLanguage('cs', __webpack_require__(61));
+	hljs.registerLanguage('csp', __webpack_require__(62));
+	hljs.registerLanguage('css', __webpack_require__(63));
+	hljs.registerLanguage('d', __webpack_require__(64));
+	hljs.registerLanguage('markdown', __webpack_require__(65));
+	hljs.registerLanguage('dart', __webpack_require__(66));
+	hljs.registerLanguage('delphi', __webpack_require__(67));
+	hljs.registerLanguage('diff', __webpack_require__(68));
+	hljs.registerLanguage('django', __webpack_require__(69));
+	hljs.registerLanguage('dns', __webpack_require__(70));
+	hljs.registerLanguage('dockerfile', __webpack_require__(71));
+	hljs.registerLanguage('dos', __webpack_require__(72));
+	hljs.registerLanguage('dts', __webpack_require__(73));
+	hljs.registerLanguage('dust', __webpack_require__(74));
+	hljs.registerLanguage('elixir', __webpack_require__(75));
+	hljs.registerLanguage('elm', __webpack_require__(76));
+	hljs.registerLanguage('ruby', __webpack_require__(77));
+	hljs.registerLanguage('erb', __webpack_require__(78));
+	hljs.registerLanguage('erlang-repl', __webpack_require__(79));
+	hljs.registerLanguage('erlang', __webpack_require__(80));
+	hljs.registerLanguage('fix', __webpack_require__(81));
+	hljs.registerLanguage('fortran', __webpack_require__(82));
+	hljs.registerLanguage('fsharp', __webpack_require__(83));
+	hljs.registerLanguage('gams', __webpack_require__(84));
+	hljs.registerLanguage('gauss', __webpack_require__(85));
+	hljs.registerLanguage('gcode', __webpack_require__(86));
+	hljs.registerLanguage('gherkin', __webpack_require__(87));
+	hljs.registerLanguage('glsl', __webpack_require__(88));
+	hljs.registerLanguage('go', __webpack_require__(89));
+	hljs.registerLanguage('golo', __webpack_require__(90));
+	hljs.registerLanguage('gradle', __webpack_require__(91));
+	hljs.registerLanguage('groovy', __webpack_require__(92));
+	hljs.registerLanguage('haml', __webpack_require__(93));
+	hljs.registerLanguage('handlebars', __webpack_require__(94));
+	hljs.registerLanguage('haskell', __webpack_require__(95));
+	hljs.registerLanguage('haxe', __webpack_require__(96));
+	hljs.registerLanguage('hsp', __webpack_require__(97));
+	hljs.registerLanguage('htmlbars', __webpack_require__(98));
+	hljs.registerLanguage('http', __webpack_require__(99));
+	hljs.registerLanguage('inform7', __webpack_require__(100));
+	hljs.registerLanguage('ini', __webpack_require__(101));
+	hljs.registerLanguage('irpf90', __webpack_require__(102));
+	hljs.registerLanguage('java', __webpack_require__(103));
+	hljs.registerLanguage('javascript', __webpack_require__(104));
+	hljs.registerLanguage('json', __webpack_require__(105));
+	hljs.registerLanguage('julia', __webpack_require__(106));
+	hljs.registerLanguage('kotlin', __webpack_require__(107));
+	hljs.registerLanguage('lasso', __webpack_require__(108));
+	hljs.registerLanguage('less', __webpack_require__(109));
+	hljs.registerLanguage('lisp', __webpack_require__(110));
+	hljs.registerLanguage('livecodeserver', __webpack_require__(111));
+	hljs.registerLanguage('livescript', __webpack_require__(112));
+	hljs.registerLanguage('lua', __webpack_require__(113));
+	hljs.registerLanguage('makefile', __webpack_require__(114));
+	hljs.registerLanguage('mathematica', __webpack_require__(115));
+	hljs.registerLanguage('matlab', __webpack_require__(116));
+	hljs.registerLanguage('maxima', __webpack_require__(117));
+	hljs.registerLanguage('mel', __webpack_require__(118));
+	hljs.registerLanguage('mercury', __webpack_require__(119));
+	hljs.registerLanguage('mipsasm', __webpack_require__(120));
+	hljs.registerLanguage('mizar', __webpack_require__(121));
+	hljs.registerLanguage('perl', __webpack_require__(122));
+	hljs.registerLanguage('mojolicious', __webpack_require__(123));
+	hljs.registerLanguage('monkey', __webpack_require__(124));
+	hljs.registerLanguage('moonscript', __webpack_require__(125));
+	hljs.registerLanguage('nginx', __webpack_require__(126));
+	hljs.registerLanguage('nimrod', __webpack_require__(127));
+	hljs.registerLanguage('nix', __webpack_require__(128));
+	hljs.registerLanguage('nsis', __webpack_require__(129));
+	hljs.registerLanguage('objectivec', __webpack_require__(130));
+	hljs.registerLanguage('ocaml', __webpack_require__(131));
+	hljs.registerLanguage('openscad', __webpack_require__(132));
+	hljs.registerLanguage('oxygene', __webpack_require__(133));
+	hljs.registerLanguage('parser3', __webpack_require__(134));
+	hljs.registerLanguage('pf', __webpack_require__(135));
+	hljs.registerLanguage('php', __webpack_require__(136));
+	hljs.registerLanguage('powershell', __webpack_require__(137));
+	hljs.registerLanguage('processing', __webpack_require__(138));
+	hljs.registerLanguage('profile', __webpack_require__(139));
+	hljs.registerLanguage('prolog', __webpack_require__(140));
+	hljs.registerLanguage('protobuf', __webpack_require__(141));
+	hljs.registerLanguage('puppet', __webpack_require__(142));
+	hljs.registerLanguage('python', __webpack_require__(143));
+	hljs.registerLanguage('q', __webpack_require__(144));
+	hljs.registerLanguage('qml', __webpack_require__(145));
+	hljs.registerLanguage('r', __webpack_require__(146));
+	hljs.registerLanguage('rib', __webpack_require__(147));
+	hljs.registerLanguage('roboconf', __webpack_require__(148));
+	hljs.registerLanguage('rsl', __webpack_require__(149));
+	hljs.registerLanguage('ruleslanguage', __webpack_require__(150));
+	hljs.registerLanguage('rust', __webpack_require__(151));
+	hljs.registerLanguage('scala', __webpack_require__(152));
+	hljs.registerLanguage('scheme', __webpack_require__(153));
+	hljs.registerLanguage('scilab', __webpack_require__(154));
+	hljs.registerLanguage('scss', __webpack_require__(155));
+	hljs.registerLanguage('smali', __webpack_require__(156));
+	hljs.registerLanguage('smalltalk', __webpack_require__(157));
+	hljs.registerLanguage('sml', __webpack_require__(158));
+	hljs.registerLanguage('sqf', __webpack_require__(159));
+	hljs.registerLanguage('sql', __webpack_require__(160));
+	hljs.registerLanguage('stan', __webpack_require__(161));
+	hljs.registerLanguage('stata', __webpack_require__(162));
+	hljs.registerLanguage('step21', __webpack_require__(163));
+	hljs.registerLanguage('stylus', __webpack_require__(164));
+	hljs.registerLanguage('swift', __webpack_require__(165));
+	hljs.registerLanguage('taggerscript', __webpack_require__(166));
+	hljs.registerLanguage('tcl', __webpack_require__(167));
+	hljs.registerLanguage('tex', __webpack_require__(168));
+	hljs.registerLanguage('thrift', __webpack_require__(169));
+	hljs.registerLanguage('tp', __webpack_require__(170));
+	hljs.registerLanguage('twig', __webpack_require__(171));
+	hljs.registerLanguage('typescript', __webpack_require__(172));
+	hljs.registerLanguage('vala', __webpack_require__(173));
+	hljs.registerLanguage('vbnet', __webpack_require__(174));
+	hljs.registerLanguage('vbscript', __webpack_require__(175));
+	hljs.registerLanguage('vbscript-html', __webpack_require__(176));
+	hljs.registerLanguage('verilog', __webpack_require__(177));
+	hljs.registerLanguage('vhdl', __webpack_require__(178));
+	hljs.registerLanguage('vim', __webpack_require__(179));
+	hljs.registerLanguage('x86asm', __webpack_require__(180));
+	hljs.registerLanguage('xl', __webpack_require__(181));
+	hljs.registerLanguage('xquery', __webpack_require__(182));
+	hljs.registerLanguage('yaml', __webpack_require__(183));
+	hljs.registerLanguage('zephir', __webpack_require__(184));
 
 	module.exports = hljs;
 
 /***/ },
-/* 51 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -15097,19 +11536,23 @@
 
 	(function(factory) {
 
+	  // Find the global object for export to both the browser and web workers.
+	  var globalObject = typeof window == 'object' && window ||
+	                     typeof self == 'object' && self;
+
 	  // Setup highlight.js for different environments. First is Node.js or
 	  // CommonJS.
 	  if(true) {
 	    factory(exports);
-	  } else {
+	  } else if(globalObject) {
 	    // Export hljs globally even when using AMD for cases when this script
 	    // is loaded with others that may still expect a global hljs.
-	    self.hljs = factory({});
+	    globalObject.hljs = factory({});
 
 	    // Finally register the global hljs with AMD.
 	    if(typeof define === 'function' && define.amd) {
-	      define('hljs', [], function() {
-	        return self.hljs;
+	      define([], function() {
+	        return globalObject.hljs;
 	      });
 	    }
 	  }
@@ -15141,7 +11584,7 @@
 
 	    classes += block.parentNode ? block.parentNode.className : '';
 
-	    // language-* takes precedence over non-prefixed class names
+	    // language-* takes precedence over non-prefixed class names.
 	    match = (/\blang(?:uage)?-([\w-]+)\b/i).exec(classes);
 	    if (match) {
 	      return getLanguage(match[1]) ? match[1] : 'no-highlight';
@@ -15313,7 +11756,7 @@
 	        }
 	        mode.keywords = compiled_keywords;
 	      }
-	      mode.lexemesRe = langRe(mode.lexemes || /\b\w+\b/, true);
+	      mode.lexemesRe = langRe(mode.lexemes || /\w+/, true);
 
 	      if (parent) {
 	        if (mode.beginKeywords) {
@@ -15461,35 +11904,37 @@
 	    }
 
 	    function processBuffer() {
-	      return top.subLanguage !== undefined ? processSubLanguage() : processKeywords();
+	      result += (top.subLanguage !== undefined ? processSubLanguage() : processKeywords());
+	      mode_buffer = '';
 	    }
 
 	    function startNewMode(mode, lexeme) {
-	      var markup = mode.className? buildSpan(mode.className, '', true): '';
-	      if (mode.returnBegin) {
-	        result += markup;
-	        mode_buffer = '';
-	      } else if (mode.excludeBegin) {
-	        result += escape(lexeme) + markup;
-	        mode_buffer = '';
-	      } else {
-	        result += markup;
-	        mode_buffer = lexeme;
-	      }
+	      result += mode.className? buildSpan(mode.className, '', true): '';
 	      top = Object.create(mode, {parent: {value: top}});
 	    }
 
 	    function processLexeme(buffer, lexeme) {
 
 	      mode_buffer += buffer;
+
 	      if (lexeme === undefined) {
-	        result += processBuffer();
+	        processBuffer();
 	        return 0;
 	      }
 
 	      var new_mode = subMode(lexeme, top);
 	      if (new_mode) {
-	        result += processBuffer();
+	        if (new_mode.skip) {
+	          mode_buffer += lexeme;
+	        } else {
+	          if (new_mode.excludeBegin) {
+	            mode_buffer += lexeme;
+	          }
+	          processBuffer();
+	          if (!new_mode.returnBegin && !new_mode.excludeBegin) {
+	            mode_buffer = lexeme;
+	          }
+	        }
 	        startNewMode(new_mode, lexeme);
 	        return new_mode.returnBegin ? 0 : lexeme.length;
 	      }
@@ -15497,21 +11942,26 @@
 	      var end_mode = endOfMode(top, lexeme);
 	      if (end_mode) {
 	        var origin = top;
-	        if (!(origin.returnEnd || origin.excludeEnd)) {
+	        if (origin.skip) {
 	          mode_buffer += lexeme;
+	        } else {
+	          if (!(origin.returnEnd || origin.excludeEnd)) {
+	            mode_buffer += lexeme;
+	          }
+	          processBuffer();
+	          if (origin.excludeEnd) {
+	            mode_buffer = lexeme;
+	          }
 	        }
-	        result += processBuffer();
 	        do {
 	          if (top.className) {
 	            result += '</span>';
 	          }
-	          relevance += top.relevance;
+	          if (!top.skip) {
+	            relevance += top.relevance;
+	          }
 	          top = top.parent;
 	        } while (top != end_mode.parent);
-	        if (origin.excludeEnd) {
-	          result += escape(lexeme);
-	        }
-	        mode_buffer = '';
 	        if (end_mode.starts) {
 	          startNewMode(end_mode.starts, '');
 	        }
@@ -15598,10 +12048,7 @@
 	      value: escape(text)
 	    };
 	    var second_best = result;
-	    languageSubset.forEach(function(name) {
-	      if (!getLanguage(name)) {
-	        return;
-	      }
+	    languageSubset.filter(getLanguage).forEach(function(name) {
 	      var current = highlight(name, text, false);
 	      current.language = name;
 	      if (current.relevance > second_best.relevance) {
@@ -15701,7 +12148,7 @@
 	  };
 
 	  /*
-	  Updates highlight.js global options with values passed in the form of an object
+	  Updates highlight.js global options with values passed in the form of an object.
 	  */
 	  function configure(user_options) {
 	    options = inherit(options, user_options);
@@ -15785,7 +12232,7 @@
 	    contains: [hljs.BACKSLASH_ESCAPE]
 	  };
 	  hljs.PHRASAL_WORDS_MODE = {
-	    begin: /\b(a|an|the|are|I|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|like)\b/
+	    begin: /\b(a|an|the|are|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|like)\b/
 	  };
 	  hljs.COMMENT = function (begin, end, inherits) {
 	    var mode = hljs.inherit(
@@ -15858,13 +12305,18 @@
 	    begin: hljs.UNDERSCORE_IDENT_RE,
 	    relevance: 0
 	  };
+	  hljs.METHOD_GUARD = {
+	    // excludes method names from keyword processing
+	    begin: '\\.\\s*' + hljs.UNDERSCORE_IDENT_RE,
+	    relevance: 0
+	  };
 
 	  return hljs;
 	}));
 
 
 /***/ },
-/* 52 */
+/* 33 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -15947,7 +12399,7 @@
 	};
 
 /***/ },
-/* 53 */
+/* 34 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -15989,7 +12441,7 @@
 	};
 
 /***/ },
-/* 54 */
+/* 35 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16059,14 +12511,15 @@
 	            begin: ':\\s*' + IDENT_FUNC_RETURN_TYPE_RE
 	          }
 	        ]
-	      }
+	      },
+	      hljs.METHOD_GUARD
 	    ],
 	    illegal: /#/
 	  };
 	};
 
 /***/ },
-/* 55 */
+/* 36 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16116,7 +12569,7 @@
 	};
 
 /***/ },
-/* 56 */
+/* 37 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16206,7 +12659,165 @@
 	};
 
 /***/ },
-/* 57 */
+/* 38 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+
+		// CPP Strings
+		var STRINGS = {
+		    className: 'string',
+		    variants: [
+		      hljs.inherit(hljs.QUOTE_STRING_MODE, { begin: '((u8?|U)|L)?"' }),
+		      {
+		        begin: '(u8?|U)?R"', end: '"',
+		        contains: [hljs.BACKSLASH_ESCAPE]
+		      },
+		      {
+		        begin: '\'\\\\?.', end: '\'',
+		        illegal: '.'
+		      }
+		    ]
+		  };
+
+		// CPP preprocessor
+		var PREPROCESSOR =       {
+		    className: 'meta',
+		    begin: '#', end: '$',
+		    keywords: {'meta-keyword': 'if else elif endif define undef warning error line ' +
+		                  'pragma ifdef ifndef'},
+		    contains: [
+		      {
+		        begin: /\\\n/, relevance: 0
+		      },
+		      {
+		        beginKeywords: 'include', end: '$',
+		        keywords: {'meta-keyword': 'include'},
+		        contains: [
+		          hljs.inherit(STRINGS, {className: 'meta-string'}),
+		          {
+		            className: 'meta-string',
+		            begin: '<', end: '>',
+		            illegal: '\\n',
+		          }
+		        ]
+		      },
+		      STRINGS,
+		      hljs.C_LINE_COMMENT_MODE,
+		      hljs.C_BLOCK_COMMENT_MODE
+		    ]
+		  };
+
+	  	return {
+		    keywords: {
+		      keyword: 'boolean byte word string String array ' +
+		      // CPP keywords
+		      'int float private char export virtual operator sizeof uint8_t uint16_t ' +
+		      'uint32_t uint64_t int8_t int16_t int32_t int64_t ' +
+		      'dynamic_cast typedef const_cast const struct static_cast union namespace ' +
+		      'unsigned long volatile static protected bool template mutable public friend ' +
+		      'auto void enum extern using class asm typeid ' +
+		      'short reinterpret_cast double register explicit signed typename this ' +
+		      'inline delete alignof constexpr decltype ' +
+		      'noexcept static_assert thread_local restrict _Bool complex _Complex _Imaginary ' +
+		      'atomic_bool atomic_char atomic_schar ' +
+		      'atomic_uchar atomic_short atomic_ushort atomic_int atomic_uint atomic_long atomic_ulong atomic_llong ' +
+		      'atomic_ullong',
+		      built_in:
+	              'setup loop while catch for if do goto try switch case else ' +
+	              'default break continue return ' +
+	              'KeyboardController MouseController SoftwareSerial ' +
+		            'EthernetServer EthernetClient LiquidCrystal ' +
+		            'RobotControl GSMVoiceCall EthernetUDP EsploraTFT ' +
+		            'HttpClient RobotMotor WiFiClient GSMScanner ' +
+		            'FileSystem Scheduler GSMServer YunClient YunServer ' +
+		            'IPAddress GSMClient GSMModem Keyboard Ethernet ' +
+		            'Console GSMBand Esplora Stepper Process ' +
+		            'WiFiUDP GSM_SMS Mailbox USBHost Firmata PImage ' +
+		            'Client Server GSMPIN FileIO Bridge Serial ' +
+		            'EEPROM Stream Mouse Audio Servo File Task ' +
+		            'GPRS WiFi Wire TFT GSM SPI SD ' +
+		            'runShellCommandAsynchronously analogWriteResolution ' +
+		            'retrieveCallingNumber printFirmwareVersion ' +
+		            'analogReadResolution sendDigitalPortPair ' +
+		            'noListenOnLocalhost readJoystickButton setFirmwareVersion ' +
+		            'readJoystickSwitch scrollDisplayRight getVoiceCallStatus ' +
+		            'scrollDisplayLeft writeMicroseconds delayMicroseconds ' +
+		            'beginTransmission getSignalStrength runAsynchronously ' +
+		            'getAsynchronously listenOnLocalhost getCurrentCarrier ' +
+		            'readAccelerometer messageAvailable sendDigitalPorts ' +
+		            'lineFollowConfig countryNameWrite runShellCommand ' +
+		            'readStringUntil rewindDirectory readTemperature ' +
+		            'setClockDivider readLightSensor endTransmission ' +
+		            'analogReference detachInterrupt countryNameRead ' +
+		            'attachInterrupt encryptionType readBytesUntil ' +
+		            'robotNameWrite readMicrophone robotNameRead cityNameWrite ' +
+		            'userNameWrite readJoystickY readJoystickX mouseReleased ' +
+		            'openNextFile scanNetworks noInterrupts digitalWrite ' +
+		            'beginSpeaker mousePressed isActionDone mouseDragged ' +
+		            'displayLogos noAutoscroll addParameter remoteNumber ' +
+		            'getModifiers keyboardRead userNameRead waitContinue ' +
+		            'processInput parseCommand printVersion readNetworks ' +
+		            'writeMessage blinkVersion cityNameRead readMessage ' +
+		            'setDataMode parsePacket isListening setBitOrder ' +
+		            'beginPacket isDirectory motorsWrite drawCompass ' +
+		            'digitalRead clearScreen serialEvent rightToLeft ' +
+		            'setTextSize leftToRight requestFrom keyReleased ' +
+		            'compassRead analogWrite interrupts WiFiServer ' +
+		            'disconnect playMelody parseFloat autoscroll ' +
+		            'getPINUsed setPINUsed setTimeout sendAnalog ' +
+		            'readSlider analogRead beginWrite createChar ' +
+		            'motorsStop keyPressed tempoWrite readButton ' +
+		            'subnetMask debugPrint macAddress writeGreen ' +
+		            'randomSeed attachGPRS readString sendString ' +
+		            'remotePort releaseAll mouseMoved background ' +
+		            'getXChange getYChange answerCall getResult ' +
+		            'voiceCall endPacket constrain getSocket writeJSON ' +
+		            'getButton available connected findUntil readBytes ' +
+		            'exitValue readGreen writeBlue startLoop IPAddress ' +
+		            'isPressed sendSysex pauseMode gatewayIP setCursor ' +
+		            'getOemKey tuneWrite noDisplay loadImage switchPIN ' +
+		            'onRequest onReceive changePIN playFile noBuffer ' +
+		            'parseInt overflow checkPIN knobRead beginTFT ' +
+		            'bitClear updateIR bitWrite position writeRGB ' +
+		            'highByte writeRed setSpeed readBlue noStroke ' +
+		            'remoteIP transfer shutdown hangCall beginSMS ' +
+		            'endWrite attached maintain noCursor checkReg ' +
+		            'checkPUK shiftOut isValid shiftIn pulseIn ' +
+		            'connect println localIP pinMode getIMEI ' +
+		            'display noBlink process getBand running beginSD ' +
+		            'drawBMP lowByte setBand release bitRead prepare ' +
+		            'pointTo readRed setMode noFill remove listen ' +
+		            'stroke detach attach noTone exists buffer ' +
+		            'height bitSet circle config cursor random ' +
+		            'IRread setDNS endSMS getKey micros ' +
+		            'millis begin print write ready flush width ' +
+		            'isPIN blink clear press mkdir rmdir close ' +
+		            'point yield image BSSID click delay ' +
+		            'read text move peek beep rect line open ' +
+		            'seek fill size turn stop home find ' +
+		            'step tone sqrt RSSI SSID ' +
+		            'end bit tan cos sin pow map abs max ' +
+		            'min get run put',
+		        literal: 'DIGITAL_MESSAGE FIRMATA_STRING ANALOG_MESSAGE ' +
+		            'REPORT_DIGITAL REPORT_ANALOG INPUT_PULLUP ' +
+		            'SET_PIN_MODE INTERNAL2V56 SYSTEM_RESET LED_BUILTIN ' +
+		            'INTERNAL1V1 SYSEX_START INTERNAL EXTERNAL ' +
+		            'DEFAULT OUTPUT INPUT HIGH LOW'
+		    },
+		    contains: [
+		      PREPROCESSOR,
+		      hljs.C_LINE_COMMENT_MODE,
+		      hljs.C_BLOCK_COMMENT_MODE,
+		      hljs.APOS_STRING_MODE,
+		      hljs.QUOTE_STRING_MODE,
+		      hljs.C_NUMBER_MODE
+		    ]
+	    };
+	};
+
+/***/ },
+/* 39 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16302,37 +12913,32 @@
 	};
 
 /***/ },
-/* 58 */
+/* 40 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var XML_IDENT_RE = '[A-Za-z0-9\\._:-]+';
-	  var PHP = {
-	    begin: /<\?(php)?(?!\w)/, end: /\?>/,
-	    subLanguage: 'php'
-	  };
 	  var TAG_INTERNALS = {
 	    endsWithParent: true,
 	    illegal: /</,
 	    relevance: 0,
 	    contains: [
-	      PHP,
 	      {
 	        className: 'attr',
 	        begin: XML_IDENT_RE,
 	        relevance: 0
 	      },
 	      {
-	        begin: '=',
+	        begin: /=\s*/,
 	        relevance: 0,
 	        contains: [
 	          {
 	            className: 'string',
-	            contains: [PHP],
+	            endsParent: true,
 	            variants: [
 	              {begin: /"/, end: /"/},
 	              {begin: /'/, end: /'/},
-	              {begin: /[^\s\/>]+/}
+	              {begin: /[^\s"'=<>`]+/}
 	            ]
 	          }
 	        ]
@@ -16361,6 +12967,11 @@
 	        relevance: 10
 	      },
 	      {
+	        begin: /<\?(php)?/, end: /\?>/,
+	        subLanguage: 'php',
+	        contains: [{begin: '/\\*', end: '\\*/', skip: true}]
+	      },
+	      {
 	        className: 'tag',
 	        /*
 	        The lookahead pattern (?=...) ensures that 'begin' only matches
@@ -16387,11 +12998,12 @@
 	          subLanguage: ['actionscript', 'javascript', 'handlebars', 'xml']
 	        }
 	      },
-	      PHP,
 	      {
 	        className: 'meta',
-	        begin: /<\?\w+/, end: /\?>/,
-	        relevance: 10
+	        variants: [
+	          {begin: /<\?xml/, end: /\?>/, relevance: 10},
+	          {begin: /<\?\w+/, end: /\?>/}
+	        ]
 	      },
 	      {
 	        className: 'tag',
@@ -16408,7 +13020,7 @@
 	};
 
 /***/ },
-/* 59 */
+/* 41 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16600,7 +13212,7 @@
 	};
 
 /***/ },
-/* 60 */
+/* 42 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -16748,7 +13360,7 @@
 	};
 
 /***/ },
-/* 61 */
+/* 43 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -16760,7 +13372,7 @@
 	    case_insensitive: true,
 	    keywords: {
 	      keyword: 'Break Continue Else Gosub If Loop Return While',
-	      literal: 'A true false NOT AND OR',
+	      literal: 'A|0 true false NOT AND OR',
 	      built_in: 'ComSpec Clipboard ClipboardAll ErrorLevel',
 	    },
 	    contains: [
@@ -16800,7 +13412,7 @@
 	};
 
 /***/ },
-/* 62 */
+/* 44 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18558,7 +15170,7 @@
 	};
 
 /***/ },
-/* 63 */
+/* 45 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18624,7 +15236,7 @@
 	};
 
 /***/ },
-/* 64 */
+/* 46 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18659,7 +15271,7 @@
 	};
 
 /***/ },
-/* 65 */
+/* 47 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18738,7 +15350,62 @@
 	};
 
 /***/ },
-/* 66 */
+/* 48 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    case_insensitive: true,
+	    illegal: '^\.',
+	    // Support explicitely typed variables that end with $%! or #.
+	    lexemes: '[a-zA-Z][a-zA-Z0-9_\$\%\!\#]*',
+	    keywords: {
+	        keyword:
+	          'ABS ASC AND ATN AUTO|0 BEEP BLOAD|10 BSAVE|10 CALL CALLS CDBL CHAIN CHDIR CHR$|10 CINT CIRCLE ' +
+	          'CLEAR CLOSE CLS COLOR COM COMMON CONT COS CSNG CSRLIN CVD CVI CVS DATA DATE$ ' +
+	          'DEFDBL DEFINT DEFSNG DEFSTR DEF|0 SEG USR DELETE DIM DRAW EDIT END ENVIRON ENVIRON$ ' +
+	          'EOF EQV ERASE ERDEV ERDEV$ ERL ERR ERROR EXP FIELD FILES FIX FOR|0 FRE GET GOSUB|10 GOTO ' +
+	          'HEX$ IF|0 THEN ELSE|0 INKEY$ INP INPUT INPUT# INPUT$ INSTR IMP INT IOCTL IOCTL$ KEY ON ' +
+	          'OFF LIST KILL LEFT$ LEN LET LINE LLIST LOAD LOC LOCATE LOF LOG LPRINT USING LSET ' +
+	          'MERGE MID$ MKDIR MKD$ MKI$ MKS$ MOD NAME NEW NEXT NOISE NOT OCT$ ON OR PEN PLAY STRIG OPEN OPTION ' +
+	          'BASE OUT PAINT PALETTE PCOPY PEEK PMAP POINT POKE POS PRINT PRINT] PSET PRESET ' +
+	          'PUT RANDOMIZE READ REM RENUM RESET|0 RESTORE RESUME RETURN|0 RIGHT$ RMDIR RND RSET ' +
+	          'RUN SAVE SCREEN SGN SHELL SIN SOUND SPACE$ SPC SQR STEP STICK STOP STR$ STRING$ SWAP ' +
+	          'SYSTEM TAB TAN TIME$ TIMER TROFF TRON TO USR VAL VARPTR VARPTR$ VIEW WAIT WHILE ' +
+	          'WEND WIDTH WINDOW WRITE XOR'
+	    },
+	    contains: [
+	      hljs.QUOTE_STRING_MODE,
+	      hljs.COMMENT('REM', '$', {relevance: 10}),
+	      hljs.COMMENT('\'', '$', {relevance: 0}),
+	      {
+	        // Match line numbers
+	        className: 'symbol',
+	        begin: '^[0-9]+\ ',
+	        relevance: 10
+	      },
+	      {
+	        // Match typed numeric constants (1000, 12.34!, 1.2e5, 1.5#, 1.2D2)
+	        className: 'number',
+	        begin: '\\b([0-9]+[0-9edED\.]*[#\!]?)',
+	        relevance: 0
+	      },
+	      {
+	        // Match hexadecimal numbers (&Hxxxx)
+	        className: 'number',
+	        begin: '(\&[hH][0-9a-fA-F]{1,4})'
+	      },
+	      {
+	        // Match octal numbers (&Oxxxxxx)
+	        className: 'number',
+	        begin: '(\&[oO][0-7]{1,6})'
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 49 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -18779,7 +15446,7 @@
 	};
 
 /***/ },
-/* 67 */
+/* 50 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18863,7 +15530,7 @@
 	};
 
 /***/ },
-/* 68 */
+/* 51 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18916,7 +15583,7 @@
 	};
 
 /***/ },
-/* 69 */
+/* 52 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -18987,7 +15654,7 @@
 	};
 
 /***/ },
-/* 70 */
+/* 53 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19086,7 +15753,7 @@
 	};
 
 /***/ },
-/* 71 */
+/* 54 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19105,7 +15772,7 @@
 	};
 
 /***/ },
-/* 72 */
+/* 55 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19147,7 +15814,7 @@
 	};
 
 /***/ },
-/* 73 */
+/* 56 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19290,7 +15957,7 @@
 	};
 
 /***/ },
-/* 74 */
+/* 57 */
 /***/ function(module, exports) {
 
 	module.exports = function cos (hljs) {
@@ -19315,12 +15982,11 @@
 	    relevance: 0
 	  };
 
-	  var METHOD_TITLE = hljs.IDENT_RE + "\\s*\\(";
-
 	  var COS_KEYWORDS = {
 	    keyword: [
 
-	      "break", "catch", "close", "continue", "do", "d", "else",
+	      "property", "parameter", "class", "classmethod", "clientmethod", "extends",
+	      "as", "break", "catch", "close", "continue", "do", "d", "else",
 	      "elseif", "for", "goto", "halt", "hang", "h", "if", "job",
 	      "j", "kill", "k", "lock", "l", "merge", "new", "open", "quit",
 	      "q", "read", "r", "return", "set", "s", "tcommit", "throw",
@@ -19379,21 +16045,30 @@
 	      STRINGS,
 	      hljs.C_LINE_COMMENT_MODE,
 	      hljs.C_BLOCK_COMMENT_MODE,
-	      { // functions
-	        className: "built_in",
-	        begin: /\$\$?[a-zA-Z]+/
+	      {
+	        className: "comment",
+	        begin: /;/, end: "$",
+	        relevance: 0
 	      },
-	      { // macro
-	        className: "keyword",
+	      { // Functions and user-defined functions: write $ztime(60*60*3), $$myFunc(10), $$^Val(1)
+	        className: "built_in",
+	        begin: /(?:\$\$?|\.\.)\^?[a-zA-Z]+/
+	      },
+	      { // Macro command: quit $$$OK
+	        className: "built_in",
 	        begin: /\$\$\$[a-zA-Z]+/
 	      },
-	      { // globals
+	      { // Special (global) variables: write %request.Content; Built-in classes: %Library.Integer
+	        className: "built_in",
+	        begin: /%[a-z]+(?:\.[a-z]+)*/
+	      },
+	      { // Global variable: set ^globalName = 12 write ^globalName
 	        className: "symbol",
 	        begin: /\^%?[a-zA-Z][\w]*/
 	      },
-	      { // static class reference constructions
-	        className: 'keyword',
-	        begin: /##class/
+	      { // Some control constructions: do ##class(Package.ClassName).Method(), ##super()
+	        className: "keyword",
+	        begin: /##class|##super|#define|#dim/
 	      },
 
 	      // sub-languages: are not fully supported by hljs by 11/15/2015
@@ -19409,15 +16084,16 @@
 	        subLanguage: "javascript"
 	      },
 	      {
-	        begin: /&html<\s*</, end: />\s*>/, // brakes first tag, but the only way to embed valid html
-	        subLanguage: "xml" // no html?
+	        // this brakes first and last tag, but this is the only way to embed a valid html
+	        begin: /&html<\s*</, end: />\s*>/,
+	        subLanguage: "xml"
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 75 */
+/* 58 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19502,16 +16178,19 @@
 	    literal: 'true false nullptr NULL'
 	  };
 
+	  var EXPRESSION_CONTAINS = [
+	    CPP_PRIMATIVE_TYPES,
+	    hljs.C_LINE_COMMENT_MODE,
+	    hljs.C_BLOCK_COMMENT_MODE,
+	    NUMBERS,
+	    STRINGS
+	  ];
+
 	  return {
 	    aliases: ['c', 'cc', 'h', 'c++', 'h++', 'hpp'],
 	    keywords: CPP_KEYWORDS,
 	    illegal: '</',
-	    contains: [
-	      CPP_PRIMATIVE_TYPES,
-	      hljs.C_LINE_COMMENT_MODE,
-	      hljs.C_BLOCK_COMMENT_MODE,
-	      NUMBERS,
-	      STRINGS,
+	    contains: EXPRESSION_CONTAINS.concat([
 	      PREPROCESSOR,
 	      {
 	        begin: '\\b(deque|list|queue|stack|vector|map|set|bitset|multiset|multimap|unordered_map|unordered_set|unordered_multiset|unordered_multimap|array)\\s*<', end: '>',
@@ -19523,9 +16202,22 @@
 	        keywords: CPP_KEYWORDS
 	      },
 	      {
-	        // Expression keywords prevent 'keyword Name(...) or else if(...)' from
-	        // being recognized as a function definition
-	        beginKeywords: 'new throw return else',
+	        // This mode covers expression context where we can't expect a function
+	        // definition and shouldn't highlight anything that looks like one:
+	        // `return some()`, `else if()`, `(x*sum(1, 2))`
+	        variants: [
+	          {begin: /=/, end: /;/},
+	          {begin: /\(/, end: /\)/},
+	          {beginKeywords: 'new throw return else', end: /;/}
+	        ],
+	        keywords: CPP_KEYWORDS,
+	        contains: EXPRESSION_CONTAINS.concat([
+	          {
+	            begin: /\(/, end: /\)/,
+	            contains: EXPRESSION_CONTAINS.concat(['self']),
+	            relevance: 0
+	          }
+	        ]),
 	        relevance: 0
 	      },
 	      {
@@ -19558,12 +16250,12 @@
 	          PREPROCESSOR
 	        ]
 	      }
-	    ]
+	    ])
 	  };
 	};
 
 /***/ },
-/* 76 */
+/* 59 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19661,7 +16353,7 @@
 	};
 
 /***/ },
-/* 77 */
+/* 60 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19724,6 +16416,7 @@
 	        className: 'regexp',
 	        contains: [hljs.BACKSLASH_ESCAPE, SUBST],
 	        variants: [
+	          {begin: '//[a-z]*', relevance: 0},
 	          {begin: '/', end: '/[a-z]*'},
 	          {begin: '%r\\(', end: '\\)', contains: recursiveParen('\\(', '\\)')},
 	          {begin: '%r\\[', end: '\\]', contains: recursiveParen('\\[', '\\]')},
@@ -19756,7 +16449,9 @@
 	  var ATTRIBUTE = {
 	    className: 'meta',
 	    begin: '@\\[', end: '\\]',
-	    relevance: 5
+	    contains: [
+	      hljs.inherit(hljs.QUOTE_STRING_MODE, {className: 'meta-string'})
+	    ]
 	  };
 	  var CRYSTAL_DEFAULT_CONTAINS = [
 	    EXPANSION,
@@ -19829,7 +16524,6 @@
 	    }
 	  ];
 	  SUBST.contains = CRYSTAL_DEFAULT_CONTAINS;
-	  ATTRIBUTE.contains = CRYSTAL_DEFAULT_CONTAINS;
 	  EXPANSION.contains = CRYSTAL_DEFAULT_CONTAINS.slice(1); // without EXPANSION
 
 	  return {
@@ -19841,23 +16535,27 @@
 	};
 
 /***/ },
-/* 78 */
+/* 61 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
-	  var KEYWORDS =
-	    // Normal keywords.
-	    'abstract as base bool break byte case catch char checked const continue decimal dynamic ' +
-	    'default delegate do double else enum event explicit extern false finally fixed float ' +
-	    'for foreach goto if implicit in int interface internal is lock long null when ' +
-	    'object operator out override params private protected public readonly ref sbyte ' +
-	    'sealed short sizeof stackalloc static string struct switch this true try typeof ' +
-	    'uint ulong unchecked unsafe ushort using virtual volatile void while async ' +
-	    'protected public private internal ' +
-	    // Contextual keywords.
-	    'ascending descending from get group into join let orderby partial select set value var ' +
-	    'where yield';
-	  var GENERIC_IDENT_RE = hljs.IDENT_RE + '(<' + hljs.IDENT_RE + '>)?';
+	  var KEYWORDS = {
+	    keyword:
+	      // Normal keywords.
+	      'abstract as base bool break byte case catch char checked const continue decimal dynamic ' +
+	      'default delegate do double else enum event explicit extern finally fixed float ' +
+	      'for foreach goto if implicit in int interface internal is lock long when ' +
+	      'object operator out override params private protected public readonly ref sbyte ' +
+	      'sealed short sizeof stackalloc static string struct switch this try typeof ' +
+	      'uint ulong unchecked unsafe ushort using virtual volatile void while async ' +
+	      'protected public private internal ' +
+	      // Contextual keywords.
+	      'ascending descending from get group into join let orderby partial select set value var ' +
+	      'where yield',
+	    literal:
+	      'null false true'
+	  };
+	  var TYPE_IDENT_RE = hljs.IDENT_RE + '(<' + hljs.IDENT_RE + '>)?(\\[\\])?';
 	  return {
 	    aliases: ['csharp'],
 	    keywords: KEYWORDS,
@@ -19927,7 +16625,7 @@
 	      },
 	      {
 	        className: 'function',
-	        begin: '(' + GENERIC_IDENT_RE + '\\s+)+' + hljs.IDENT_RE + '\\s*\\(', returnBegin: true, end: /[{;=]/,
+	        begin: '(' + TYPE_IDENT_RE + '\\s+)+' + hljs.IDENT_RE + '\\s*\\(', returnBegin: true, end: /[{;=]/,
 	        excludeEnd: true,
 	        keywords: KEYWORDS,
 	        contains: [
@@ -19959,7 +16657,33 @@
 	};
 
 /***/ },
-/* 79 */
+/* 62 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    case_insensitive: false,
+	    lexemes: '[a-zA-Z][a-zA-Z0-9_-]*',
+	    keywords: {
+	      keyword: 'base-uri child-src connect-src default-src font-src form-action' +
+	        ' frame-ancestors frame-src img-src media-src object-src plugin-types' +
+	        ' report-uri sandbox script-src style-src', 
+	    },
+	    contains: [
+	    {
+	      className: 'string',
+	      begin: "'", end: "'"
+	    },
+	    {
+	      className: 'attribute',
+	      begin: '^Content', end: ':', excludeEnd: true,
+	    },
+	    ]
+	  };
+	};
+
+/***/ },
+/* 63 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -19974,11 +16698,18 @@
 	          endsWithParent: true, excludeEnd: true,
 	          contains: [
 	            {
-	              begin: /[\w-]+\s*\(/, returnBegin: true,
+	              begin: /[\w-]+\(/, returnBegin: true,
 	              contains: [
 	                {
 	                  className: 'built_in',
 	                  begin: /[\w-]+/
+	                },
+	                {
+	                  begin: /\(/, end: /\)/,
+	                  contains: [
+	                    hljs.APOS_STRING_MODE,
+	                    hljs.QUOTE_STRING_MODE
+	                  ]
 	                }
 	              ]
 	            },
@@ -20016,7 +16747,7 @@
 	      },
 	      {
 	        className: 'selector-pseudo',
-	        begin: /:(:)?[a-zA-Z0-9\_\-\+\(\)"']+/
+	        begin: /:(:)?[a-zA-Z0-9\_\-\+\(\)"'.]+/
 	      },
 	      {
 	        begin: '@(font-face|page)',
@@ -20028,10 +16759,11 @@
 	                                 // because it doesn’t let it to be parsed as
 	                                 // a rule set but instead drops parser into
 	                                 // the default mode which is how it should be.
+	        illegal: /:/, // break on Less variables @var: ...
 	        contains: [
 	          {
 	            className: 'keyword',
-	            begin: /\S+/
+	            begin: /\w+/
 	          },
 	          {
 	            begin: /\s/, endsWithParent: true, excludeEnd: true,
@@ -20060,7 +16792,7 @@
 	};
 
 /***/ },
-/* 80 */
+/* 64 */
 /***/ function(module, exports) {
 
 	module.exports = /**
@@ -20322,7 +17054,7 @@
 	};
 
 /***/ },
-/* 81 */
+/* 65 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20372,9 +17104,15 @@
 	      {
 	        className: 'code',
 	        variants: [
-	          { begin: '`.+?`' },
-	          { begin: '^( {4}|\t)', end: '$'
-	          , relevance: 0
+	          {
+	            begin: '^```\w*\s*$', end: '^```\s*$'
+	          },
+	          {
+	            begin: '`.+?`'
+	          },
+	          {
+	            begin: '^( {4}|\t)', end: '$',
+	            relevance: 0
 	          }
 	        ]
 	      },
@@ -20427,7 +17165,7 @@
 	};
 
 /***/ },
-/* 82 */
+/* 66 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -20479,8 +17217,8 @@
 	  ];
 
 	  var KEYWORDS = {
-	    keyword: 'assert break case catch class const continue default do else enum extends false final finally for if ' +
-	      'in is new null rethrow return super switch this throw true try var void while with ' +
+	    keyword: 'assert async await break case catch class const continue default do else enum extends false final ' +
+	      'finally for if in is new null rethrow return super switch sync this throw true try var void while with yield ' +
 	      'abstract as dynamic export external factory get implements import library operator part set static typedef',
 	    built_in:
 	      // dart:core
@@ -20532,7 +17270,7 @@
 	};
 
 /***/ },
-/* 83 */
+/* 67 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20590,6 +17328,7 @@
 	    ].concat(COMMENT_MODES)
 	  };
 	  return {
+	    aliases: ['dpr', 'dfm', 'pas', 'pascal', 'freepascal', 'lazarus', 'lpr', 'lfm'],
 	    case_insensitive: true,
 	    keywords: KEYWORDS,
 	    illegal: /"|\$[G-Zg-z]|\/\*|<\/|\|/,
@@ -20603,7 +17342,7 @@
 	};
 
 /***/ },
-/* 84 */
+/* 68 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20647,7 +17386,7 @@
 	};
 
 /***/ },
-/* 85 */
+/* 69 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20715,7 +17454,7 @@
 	};
 
 /***/ },
-/* 86 */
+/* 70 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20748,7 +17487,7 @@
 	};
 
 /***/ },
-/* 87 */
+/* 71 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20781,12 +17520,12 @@
 	};
 
 /***/ },
-/* 88 */
+/* 72 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var COMMENT = hljs.COMMENT(
-	    /@?rem\b/, /$/,
+	    /^\s*@?rem\b/, /$/,
 	    {
 	      relevance: 10
 	    }
@@ -20837,7 +17576,135 @@
 	};
 
 /***/ },
-/* 89 */
+/* 73 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var STRINGS = {
+	    className: 'string',
+	    variants: [
+	      hljs.inherit(hljs.QUOTE_STRING_MODE, { begin: '((u8?|U)|L)?"' }),
+	      {
+	        begin: '(u8?|U)?R"', end: '"',
+	        contains: [hljs.BACKSLASH_ESCAPE]
+	      },
+	      {
+	        begin: '\'\\\\?.', end: '\'',
+	        illegal: '.'
+	      }
+	    ]
+	  };
+
+	  var NUMBERS = {
+	    className: 'number',
+	    variants: [
+	      { begin: '\\b(\\d+(\\.\\d*)?|\\.\\d+)(u|U|l|L|ul|UL|f|F)' },
+	      { begin: hljs.C_NUMBER_RE }
+	    ],
+	    relevance: 0
+	  };
+
+	  var PREPROCESSOR = {
+	    className: 'meta',
+	    begin: '#', end: '$',
+	    keywords: {'meta-keyword': 'if else elif endif define undef ifdef ifndef'},
+	    contains: [
+	      {
+	        begin: /\\\n/, relevance: 0
+	      },
+	      {
+	        beginKeywords: 'include', end: '$',
+	        keywords: {'meta-keyword': 'include'},
+	        contains: [
+	          hljs.inherit(STRINGS, {className: 'meta-string'}),
+	          {
+	            className: 'meta-string',
+	            begin: '<', end: '>',
+	            illegal: '\\n',
+	          }
+	        ]
+	      },
+	      STRINGS,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE
+	    ]
+	  };
+
+	  var DTS_REFERENCE = {
+	    className: 'variable',
+	    begin: '\\&[a-z\\d_]*\\b'
+	  };
+
+	  var DTS_KEYWORD = {
+	    className: 'meta-keyword',
+	    begin: '/[a-z][a-z\\d-]*/'
+	  };
+
+	  var DTS_LABEL = {
+	    className: 'symbol',
+	    begin: '^\\s*[a-zA-Z_][a-zA-Z\\d_]*:',
+	  };
+
+	  var DTS_CELL_PROPERTY = {
+	    className: 'params',
+	    begin: '<',
+	    end: '>',
+	    contains: [
+	      NUMBERS,
+	      DTS_REFERENCE,
+	    ],
+	  };
+
+	  var DTS_NODE = {
+	    className: 'class',
+	    begin: /[a-zA-Z_][a-zA-Z\d_@]*\s{/,
+	    end: /[{;=]/,
+	    returnBegin: true,
+	    excludeEnd: true,
+	  };
+
+	  var DTS_ROOT_NODE = {
+	    className: 'class',
+	    begin: '/\\s*{',
+	    end: '};',
+	    relevance: 10,
+	    contains: [
+	      DTS_REFERENCE,
+	      DTS_KEYWORD,
+	      DTS_LABEL,
+	      DTS_NODE,
+	      DTS_CELL_PROPERTY,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      NUMBERS,
+	      STRINGS,
+	    ],
+	  };
+
+	  return {
+	    keywords: "",
+	    contains: [
+	      DTS_ROOT_NODE,
+	      DTS_REFERENCE,
+	      DTS_KEYWORD,
+	      DTS_LABEL,
+	      DTS_NODE,
+	      DTS_CELL_PROPERTY,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      NUMBERS,
+	      STRINGS,
+	      PREPROCESSOR,
+	      {
+	        begin: hljs.IDENT_RE + '::',
+	        keywords: "",
+	      },
+	    ]
+	  };
+	};
+
+/***/ },
+/* 74 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20873,7 +17740,7 @@
 	};
 
 /***/ },
-/* 90 */
+/* 75 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -20922,7 +17789,7 @@
 	    FUNCTION,
 	    {
 	      className: 'symbol',
-	      begin: ':',
+	      begin: ':(?!\\s)',
 	      contains: [STRING, {begin: ELIXIR_METHOD_RE}],
 	      relevance: 0
 	    },
@@ -20974,7 +17841,7 @@
 	};
 
 /***/ },
-/* 91 */
+/* 76 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21061,15 +17928,19 @@
 	};
 
 /***/ },
-/* 92 */
+/* 77 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var RUBY_METHOD_RE = '[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\]=?';
-	  var RUBY_KEYWORDS =
-	    'and false then defined module in return redo if BEGIN retry end for true self when ' +
-	    'next until do begin unless END rescue nil else break undef not super class case ' +
-	    'require yield alias while ensure elsif or include attr_reader attr_writer attr_accessor';
+	  var RUBY_KEYWORDS = {
+	    keyword:
+	      'and then defined module in return redo if BEGIN retry end for self when ' +
+	      'next until do begin unless END rescue else break undef not super class case ' +
+	      'require yield alias while ensure elsif or include attr_reader attr_writer attr_accessor',
+	    literal:
+	      'true false nil'
+	  };
 	  var YARDOCTAG = {
 	    className: 'doctag',
 	    begin: '@[A-Za-z]+'
@@ -21154,13 +18025,17 @@
 	      ].concat(COMMENT_MODES)
 	    },
 	    {
+	      // swallow namespace qualifiers before symbols
+	      begin: hljs.IDENT_RE + '::'
+	    },
+	    {
 	      className: 'symbol',
 	      begin: hljs.UNDERSCORE_IDENT_RE + '(\\!|\\?)?:',
 	      relevance: 0
 	    },
 	    {
 	      className: 'symbol',
-	      begin: ':',
+	      begin: ':(?!\\s)',
 	      contains: [STRING, {begin: RUBY_METHOD_RE}],
 	      relevance: 0
 	    },
@@ -21171,6 +18046,11 @@
 	    },
 	    {
 	      begin: '(\\$\\W)|((\\$|\\@\\@?)(\\w+))' // variables
+	    },
+	    {
+	      className: 'params',
+	      begin: /\|/, end: /\|/,
+	      keywords: RUBY_KEYWORDS
 	    },
 	    { // regexp container
 	      begin: '(' + hljs.RE_STARTERS_RE + ')\\s*',
@@ -21225,7 +18105,7 @@
 	};
 
 /***/ },
-/* 93 */
+/* 78 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21244,7 +18124,7 @@
 	};
 
 /***/ },
-/* 94 */
+/* 79 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21294,7 +18174,7 @@
 	};
 
 /***/ },
-/* 95 */
+/* 80 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21444,7 +18324,7 @@
 	};
 
 /***/ },
-/* 96 */
+/* 81 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21477,7 +18357,7 @@
 	};
 
 /***/ },
-/* 97 */
+/* 82 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21552,7 +18432,7 @@
 	};
 
 /***/ },
-/* 98 */
+/* 83 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21615,47 +18495,390 @@
 	};
 
 /***/ },
-/* 99 */
+/* 84 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
-	  var KEYWORDS =
-	    'abort acronym acronyms alias all and assign binary card diag display else1 eps eq equation equations file files ' +
-	    'for1 free ge gt if inf integer le loop lt maximizing minimizing model models na ne negative no not option ' +
-	    'options or ord parameter parameters positive prod putpage puttl repeat sameas scalar scalars semicont semiint ' +
-	    'set1 sets smax smin solve sos1 sos2 sum system table then until using variable variables while1 xor yes';
+	  var KEYWORDS = {
+	    'keyword':
+	      'abort acronym acronyms alias all and assign binary card diag display ' +
+	      'else eq file files for free ge gt if integer le loop lt maximizing ' +
+	      'minimizing model models ne negative no not option options or ord ' +
+	      'positive prod put putpage puttl repeat sameas semicont semiint smax ' +
+	      'smin solve sos1 sos2 sum system table then until using while xor yes',
+	    'literal': 'eps inf na',
+	    'built-in':
+	      'abs arccos arcsin arctan arctan2 Beta betaReg binomial ceil centropy ' +
+	      'cos cosh cvPower div div0 eDist entropy errorf execSeed exp fact ' +
+	      'floor frac gamma gammaReg log logBeta logGamma log10 log2 mapVal max ' +
+	      'min mod ncpCM ncpF ncpVUpow ncpVUsin normal pi poly power ' +
+	      'randBinomial randLinear randTriangle round rPower sigmoid sign ' +
+	      'signPower sin sinh slexp sllog10 slrec sqexp sqlog10 sqr sqrec sqrt ' +
+	      'tan tanh trunc uniform uniformInt vcPower bool_and bool_eqv bool_imp ' +
+	      'bool_not bool_or bool_xor ifThen rel_eq rel_ge rel_gt rel_le rel_lt ' +
+	      'rel_ne gday gdow ghour gleap gmillisec gminute gmonth gsecond gyear ' +
+	      'jdate jnow jstart jtime errorLevel execError gamsRelease gamsVersion ' +
+	      'handleCollect handleDelete handleStatus handleSubmit heapFree ' +
+	      'heapLimit heapSize jobHandle jobKill jobStatus jobTerminate ' +
+	      'licenseLevel licenseStatus maxExecError sleep timeClose timeComp ' +
+	      'timeElapsed timeExec timeStart'
+	  };
+	  var PARAMS = {
+	    className: 'params',
+	    begin: /\(/, end: /\)/,
+	    excludeBegin: true,
+	    excludeEnd: true,
+	  };
+	  var SYMBOLS = {
+	    className: 'symbol',
+	    variants: [
+	      {begin: /\=[lgenxc]=/},
+	      {begin: /\$/},
+	    ]
+	  };
+	  var QSTR = { // One-line quoted comment string
+	    className: 'comment',
+	    variants: [
+	      {begin: '\'', end: '\''},
+	      {begin: '"', end: '"'},
+	    ],
+	    illegal: '\\n',
+	    contains: [hljs.BACKSLASH_ESCAPE]
+	  };
+	  var ASSIGNMENT = {
+	    begin: '/',
+	    end: '/',
+	    keywords: KEYWORDS,
+	    contains: [
+	      QSTR,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      hljs.APOS_STRING_MODE,
+	      hljs.C_NUMBER_MODE,
+	    ],
+	  };
+	  var DESCTEXT = { // Parameter/set/variable description text
+	    begin: /[a-z][a-z0-9_]*(\([a-z0-9_, ]*\))?[ \t]+/,
+	    excludeBegin: true,
+	    end: '$',
+	    endsWithParent: true,
+	    contains: [
+	      QSTR,
+	      ASSIGNMENT,
+	      {
+	        className: 'comment',
+	        begin: /([ ]*[a-z0-9&#*=?@>\\<:\-,()$\[\]_.{}!+%^]+)+/,
+	      },
+	    ],
+	  };
 
 	  return {
 	    aliases: ['gms'],
 	    case_insensitive: true,
 	    keywords: KEYWORDS,
 	    contains: [
+	      hljs.COMMENT(/^\$ontext/, /^\$offtext/),
 	      {
-	        beginKeywords: 'sets parameters variables equations',
-	        end: ';',
+	        className: 'meta',
+	        begin: '^\\$[a-z0-9]+',
+	        end: '$',
+	        returnBegin: true,
 	        contains: [
 	          {
-	            begin: '/',
-	            end: '/',
-	            contains: [hljs.NUMBER_MODE]
+	            className: 'meta-keyword',
+	            begin: '^\\$[a-z0-9]+',
 	          }
 	        ]
 	      },
+	      hljs.COMMENT('^\\*', '$'),
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      hljs.APOS_STRING_MODE,
+	      // Declarations
+	      {
+	        beginKeywords:
+	          'set sets parameter parameters variable variables ' +
+	          'scalar scalars equation equations',
+	        end: ';',
+	        contains: [
+	          hljs.COMMENT('^\\*', '$'),
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          hljs.QUOTE_STRING_MODE,
+	          hljs.APOS_STRING_MODE,
+	          ASSIGNMENT,
+	          DESCTEXT,
+	        ]
+	      },
+	      { // table environment
+	        beginKeywords: 'table',
+	        end: ';',
+	        returnBegin: true,
+	        contains: [
+	          { // table header row
+	            beginKeywords: 'table',
+	            end: '$',
+	            contains: [DESCTEXT],
+	          },
+	          hljs.COMMENT('^\\*', '$'),
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          hljs.QUOTE_STRING_MODE,
+	          hljs.APOS_STRING_MODE,
+	          hljs.C_NUMBER_MODE,
+	          // Table does not contain DESCTEXT or ASSIGNMENT
+	        ]
+	      },
+	      // Function definitions
+	      {
+	        className: 'function',
+	        begin: /^[a-z][a-z0-9_,\-+' ()$]+\.{2}/,
+	        returnBegin: true,
+	        contains: [
+	              { // Function title
+	                className: 'title',
+	                begin: /^[a-z][a-z0-9_]+/,
+	              },
+	              PARAMS,
+	              SYMBOLS,
+	            ],
+	      },
+	      hljs.C_NUMBER_MODE,
+	      SYMBOLS,
+	    ]
+	  };
+	};
+
+/***/ },
+/* 85 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var KEYWORDS = {
+	    keyword: 'and bool break call callexe checkinterrupt clear clearg closeall cls comlog compile ' +
+	              'continue create debug declare delete disable dlibrary dllcall do dos ed edit else ' +
+	              'elseif enable end endfor endif endp endo errorlog errorlogat expr external fn ' +
+	              'for format goto gosub graph if keyword let lib library line load loadarray loadexe ' +
+	              'loadf loadk loadm loadp loads loadx local locate loopnextindex lprint lpwidth lshow ' +
+	              'matrix msym ndpclex new not open or output outwidth plot plotsym pop prcsn print ' +
+	              'printdos proc push retp return rndcon rndmod rndmult rndseed run save saveall screen ' +
+	              'scroll setarray show sparse stop string struct system trace trap threadfor ' +
+	              'threadendfor threadbegin threadjoin threadstat threadend until use while winprint',
+	    built_in: 'abs acf aconcat aeye amax amean AmericanBinomCall AmericanBinomCall_Greeks AmericanBinomCall_ImpVol ' +
+	              'AmericanBinomPut AmericanBinomPut_Greeks AmericanBinomPut_ImpVol AmericanBSCall AmericanBSCall_Greeks ' +
+	              'AmericanBSCall_ImpVol AmericanBSPut AmericanBSPut_Greeks AmericanBSPut_ImpVol amin amult annotationGetDefaults ' +
+	              'annotationSetBkd annotationSetFont annotationSetLineColor annotationSetLineStyle annotationSetLineThickness ' +
+	              'annualTradingDays arccos arcsin areshape arrayalloc arrayindex arrayinit arraytomat asciiload asclabel astd ' +
+	              'astds asum atan atan2 atranspose axmargin balance band bandchol bandcholsol bandltsol bandrv bandsolpd bar ' +
+	              'base10 begwind besselj bessely beta box boxcox cdfBeta cdfBetaInv cdfBinomial cdfBinomialInv cdfBvn cdfBvn2 ' +
+	              'cdfBvn2e cdfCauchy cdfCauchyInv cdfChic cdfChii cdfChinc cdfChincInv cdfExp cdfExpInv cdfFc cdfFnc cdfFncInv ' +
+	              'cdfGam cdfGenPareto cdfHyperGeo cdfLaplace cdfLaplaceInv cdfLogistic cdfLogisticInv cdfmControlCreate cdfMvn ' +
+	              'cdfMvn2e cdfMvnce cdfMvne cdfMvt2e cdfMvtce cdfMvte cdfN cdfN2 cdfNc cdfNegBinomial cdfNegBinomialInv cdfNi ' +
+	              'cdfPoisson cdfPoissonInv cdfRayleigh cdfRayleighInv cdfTc cdfTci cdfTnc cdfTvn cdfWeibull cdfWeibullInv cdir ' +
+	              'ceil ChangeDir chdir chiBarSquare chol choldn cholsol cholup chrs close code cols colsf combinate combinated ' +
+	              'complex con cond conj cons ConScore contour conv convertsatostr convertstrtosa corrm corrms corrvc corrx corrxs ' +
+	              'cos cosh counts countwts crossprd crout croutp csrcol csrlin csvReadM csvReadSA cumprodc cumsumc curve cvtos ' +
+	              'datacreate datacreatecomplex datalist dataload dataloop dataopen datasave date datestr datestring datestrymd ' +
+	              'dayinyr dayofweek dbAddDatabase dbClose dbCommit dbCreateQuery dbExecQuery dbGetConnectOptions dbGetDatabaseName ' +
+	              'dbGetDriverName dbGetDrivers dbGetHostName dbGetLastErrorNum dbGetLastErrorText dbGetNumericalPrecPolicy ' +
+	              'dbGetPassword dbGetPort dbGetTableHeaders dbGetTables dbGetUserName dbHasFeature dbIsDriverAvailable dbIsOpen ' +
+	              'dbIsOpenError dbOpen dbQueryBindValue dbQueryClear dbQueryCols dbQueryExecPrepared dbQueryFetchAllM dbQueryFetchAllSA ' +
+	              'dbQueryFetchOneM dbQueryFetchOneSA dbQueryFinish dbQueryGetBoundValue dbQueryGetBoundValues dbQueryGetField ' +
+	              'dbQueryGetLastErrorNum dbQueryGetLastErrorText dbQueryGetLastInsertID dbQueryGetLastQuery dbQueryGetPosition ' +
+	              'dbQueryIsActive dbQueryIsForwardOnly dbQueryIsNull dbQueryIsSelect dbQueryIsValid dbQueryPrepare dbQueryRows ' +
+	              'dbQuerySeek dbQuerySeekFirst dbQuerySeekLast dbQuerySeekNext dbQuerySeekPrevious dbQuerySetForwardOnly ' +
+	              'dbRemoveDatabase dbRollback dbSetConnectOptions dbSetDatabaseName dbSetHostName dbSetNumericalPrecPolicy ' +
+	              'dbSetPort dbSetUserName dbTransaction DeleteFile delif delrows denseToSp denseToSpRE denToZero design det detl ' +
+	              'dfft dffti diag diagrv digamma doswin DOSWinCloseall DOSWinOpen dotfeq dotfeqmt dotfge dotfgemt dotfgt dotfgtmt ' +
+	              'dotfle dotflemt dotflt dotfltmt dotfne dotfnemt draw drop dsCreate dstat dstatmt dstatmtControlCreate dtdate dtday ' +
+	              'dttime dttodtv dttostr dttoutc dtvnormal dtvtodt dtvtoutc dummy dummybr dummydn eig eigh eighv eigv elapsedTradingDays ' +
+	              'endwind envget eof eqSolve eqSolvemt eqSolvemtControlCreate eqSolvemtOutCreate eqSolveset erf erfc erfccplx erfcplx error ' +
+	              'etdays ethsec etstr EuropeanBinomCall EuropeanBinomCall_Greeks EuropeanBinomCall_ImpVol EuropeanBinomPut ' +
+	              'EuropeanBinomPut_Greeks EuropeanBinomPut_ImpVol EuropeanBSCall EuropeanBSCall_Greeks EuropeanBSCall_ImpVol ' +
+	              'EuropeanBSPut EuropeanBSPut_Greeks EuropeanBSPut_ImpVol exctsmpl exec execbg exp extern eye fcheckerr fclearerr feq ' +
+	              'feqmt fflush fft ffti fftm fftmi fftn fge fgemt fgets fgetsa fgetsat fgetst fgt fgtmt fileinfo filesa fle flemt ' +
+	              'floor flt fltmt fmod fne fnemt fonts fopen formatcv formatnv fputs fputst fseek fstrerror ftell ftocv ftos ftostrC ' +
+	              'gamma gammacplx gammaii gausset gdaAppend gdaCreate gdaDStat gdaDStatMat gdaGetIndex gdaGetName gdaGetNames gdaGetOrders ' +
+	              'gdaGetType gdaGetTypes gdaGetVarInfo gdaIsCplx gdaLoad gdaPack gdaRead gdaReadByIndex gdaReadSome gdaReadSparse ' +
+	              'gdaReadStruct gdaReportVarInfo gdaSave gdaUpdate gdaUpdateAndPack gdaVars gdaWrite gdaWrite32 gdaWriteSome getarray ' +
+	              'getdims getf getGAUSShome getmatrix getmatrix4D getname getnamef getNextTradingDay getNextWeekDay getnr getorders ' +
+	              'getpath getPreviousTradingDay getPreviousWeekDay getRow getscalar3D getscalar4D getTrRow getwind glm gradcplx gradMT ' +
+	              'gradMTm gradMTT gradMTTm gradp graphprt graphset hasimag header headermt hess hessMT hessMTg hessMTgw hessMTm ' +
+	              'hessMTmw hessMTT hessMTTg hessMTTgw hessMTTm hessMTw hessp hist histf histp hsec imag indcv indexcat indices indices2 ' +
+	              'indicesf indicesfn indnv indsav indx integrate1d integrateControlCreate intgrat2 intgrat3 inthp1 inthp2 inthp3 inthp4 ' +
+	              'inthpControlCreate intquad1 intquad2 intquad3 intrleav intrleavsa intrsect intsimp inv invpd invswp iscplx iscplxf ' +
+	              'isden isinfnanmiss ismiss key keyav keyw lag lag1 lagn lapEighb lapEighi lapEighvb lapEighvi lapgEig lapgEigh lapgEighv ' +
+	              'lapgEigv lapgSchur lapgSvdcst lapgSvds lapgSvdst lapSvdcusv lapSvds lapSvdusv ldlp ldlsol linSolve listwise ln lncdfbvn ' +
+	              'lncdfbvn2 lncdfmvn lncdfn lncdfn2 lncdfnc lnfact lngammacplx lnpdfmvn lnpdfmvt lnpdfn lnpdft loadd loadstruct loadwind ' +
+	              'loess loessmt loessmtControlCreate log loglog logx logy lower lowmat lowmat1 ltrisol lu lusol machEpsilon make makevars ' +
+	              'makewind margin matalloc matinit mattoarray maxbytes maxc maxindc maxv maxvec mbesselei mbesselei0 mbesselei1 mbesseli ' +
+	              'mbesseli0 mbesseli1 meanc median mergeby mergevar minc minindc minv miss missex missrv moment momentd movingave ' +
+	              'movingaveExpwgt movingaveWgt nextindex nextn nextnevn nextwind ntos null null1 numCombinations ols olsmt olsmtControlCreate ' +
+	              'olsqr olsqr2 olsqrmt ones optn optnevn orth outtyp pacf packedToSp packr parse pause pdfCauchy pdfChi pdfExp pdfGenPareto ' +
+	              'pdfHyperGeo pdfLaplace pdfLogistic pdfn pdfPoisson pdfRayleigh pdfWeibull pi pinv pinvmt plotAddArrow plotAddBar plotAddBox ' +
+	              'plotAddHist plotAddHistF plotAddHistP plotAddPolar plotAddScatter plotAddShape plotAddTextbox plotAddTS plotAddXY plotArea ' +
+	              'plotBar plotBox plotClearLayout plotContour plotCustomLayout plotGetDefaults plotHist plotHistF plotHistP plotLayout ' +
+	              'plotLogLog plotLogX plotLogY plotOpenWindow plotPolar plotSave plotScatter plotSetAxesPen plotSetBar plotSetBarFill ' +
+	              'plotSetBarStacked plotSetBkdColor plotSetFill plotSetGrid plotSetLegend plotSetLineColor plotSetLineStyle plotSetLineSymbol ' +
+	              'plotSetLineThickness plotSetNewWindow plotSetTitle plotSetWhichYAxis plotSetXAxisShow plotSetXLabel plotSetXRange ' +
+	              'plotSetXTicInterval plotSetXTicLabel plotSetYAxisShow plotSetYLabel plotSetYRange plotSetZAxisShow plotSetZLabel ' +
+	              'plotSurface plotTS plotXY polar polychar polyeval polygamma polyint polymake polymat polymroot polymult polyroot ' +
+	              'pqgwin previousindex princomp printfm printfmt prodc psi putarray putf putvals pvCreate pvGetIndex pvGetParNames ' +
+	              'pvGetParVector pvLength pvList pvPack pvPacki pvPackm pvPackmi pvPacks pvPacksi pvPacksm pvPacksmi pvPutParVector ' +
+	              'pvTest pvUnpack QNewton QNewtonmt QNewtonmtControlCreate QNewtonmtOutCreate QNewtonSet QProg QProgmt QProgmtInCreate ' +
+	              'qqr qqre qqrep qr qre qrep qrsol qrtsol qtyr qtyre qtyrep quantile quantiled qyr qyre qyrep qz rank rankindx readr ' +
+	              'real reclassify reclassifyCuts recode recserar recsercp recserrc rerun rescale reshape rets rev rfft rffti rfftip rfftn ' +
+	              'rfftnp rfftp rndBernoulli rndBeta rndBinomial rndCauchy rndChiSquare rndCon rndCreateState rndExp rndGamma rndGeo rndGumbel ' +
+	              'rndHyperGeo rndi rndKMbeta rndKMgam rndKMi rndKMn rndKMnb rndKMp rndKMu rndKMvm rndLaplace rndLCbeta rndLCgam rndLCi rndLCn ' +
+	              'rndLCnb rndLCp rndLCu rndLCvm rndLogNorm rndMTu rndMVn rndMVt rndn rndnb rndNegBinomial rndp rndPoisson rndRayleigh ' +
+	              'rndStateSkip rndu rndvm rndWeibull rndWishart rotater round rows rowsf rref sampleData satostrC saved saveStruct savewind ' +
+	              'scale scale3d scalerr scalinfnanmiss scalmiss schtoc schur searchsourcepath seekr select selif seqa seqm setdif setdifsa ' +
+	              'setvars setvwrmode setwind shell shiftr sin singleindex sinh sleep solpd sortc sortcc sortd sorthc sorthcc sortind ' +
+	              'sortindc sortmc sortr sortrc spBiconjGradSol spChol spConjGradSol spCreate spDenseSubmat spDiagRvMat spEigv spEye spLDL ' +
+	              'spline spLU spNumNZE spOnes spreadSheetReadM spreadSheetReadSA spreadSheetWrite spScale spSubmat spToDense spTrTDense ' +
+	              'spTScalar spZeros sqpSolve sqpSolveMT sqpSolveMTControlCreate sqpSolveMTlagrangeCreate sqpSolveMToutCreate sqpSolveSet ' +
+	              'sqrt statements stdc stdsc stocv stof strcombine strindx strlen strput strrindx strsect strsplit strsplitPad strtodt ' +
+	              'strtof strtofcplx strtriml strtrimr strtrunc strtruncl strtruncpad strtruncr submat subscat substute subvec sumc sumr ' +
+	              'surface svd svd1 svd2 svdcusv svds svdusv sysstate tab tan tanh tempname threadBegin threadEnd threadEndFor threadFor ' +
+	              'threadJoin threadStat time timedt timestr timeutc title tkf2eps tkf2ps tocart todaydt toeplitz token topolar trapchk ' +
+	              'trigamma trimr trunc type typecv typef union unionsa uniqindx uniqindxsa unique uniquesa upmat upmat1 upper utctodt ' +
+	              'utctodtv utrisol vals varCovMS varCovXS varget vargetl varmall varmares varput varputl vartypef vcm vcms vcx vcxs ' +
+	              'vec vech vecr vector vget view viewxyz vlist vnamecv volume vput vread vtypecv wait waitc walkindex where window ' +
+	              'writer xlabel xlsGetSheetCount xlsGetSheetSize xlsGetSheetTypes xlsMakeRange xlsReadM xlsReadSA xlsWrite xlsWriteM ' +
+	              'xlsWriteSA xpnd xtics xy xyz ylabel ytics zeros zeta zlabel ztics',
+	    literal: 'DB_AFTER_LAST_ROW DB_ALL_TABLES DB_BATCH_OPERATIONS DB_BEFORE_FIRST_ROW DB_BLOB DB_EVENT_NOTIFICATIONS ' +
+	             'DB_FINISH_QUERY DB_HIGH_PRECISION DB_LAST_INSERT_ID DB_LOW_PRECISION_DOUBLE DB_LOW_PRECISION_INT32 ' +
+	             'DB_LOW_PRECISION_INT64 DB_LOW_PRECISION_NUMBERS DB_MULTIPLE_RESULT_SETS DB_NAMED_PLACEHOLDERS ' +
+	             'DB_POSITIONAL_PLACEHOLDERS DB_PREPARED_QUERIES DB_QUERY_SIZE DB_SIMPLE_LOCKING DB_SYSTEM_TABLES DB_TABLES ' +
+	             'DB_TRANSACTIONS DB_UNICODE DB_VIEWS'
+	  };
+
+	  var PREPROCESSOR =
+	  {
+	    className: 'meta',
+	    begin: '#', end: '$',
+	    keywords: {'meta-keyword': 'define definecs|10 undef ifdef ifndef iflight ifdllcall ifmac ifos2win ifunix else endif lineson linesoff srcfile srcline'},
+	    contains: [
+	      {
+	        begin: /\\\n/, relevance: 0
+	      },
+	      {
+	        beginKeywords: 'include', end: '$',
+	        keywords: {'meta-keyword': 'include'},
+	        contains: [
+	          {
+	            className: 'meta-string',
+	            begin: '"', end: '"',
+	            illegal: '\\n'
+	          }
+	        ]
+	      },
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE
+	    ]
+	  };
+
+	  var FUNCTION_TITLE = hljs.UNDERSCORE_IDENT_RE + '\\s*\\(?';
+	  var PARSE_PARAMS = [
+	    {
+	      className: 'params',
+	      begin: /\(/, end: /\)/,
+	      keywords: KEYWORDS,
+	      relevance: 0,
+	      contains: [
+	        hljs.C_NUMBER_MODE,
+	        hljs.C_LINE_COMMENT_MODE,
+	        hljs.C_BLOCK_COMMENT_MODE
+	      ]
+	    }
+	  ];
+
+	  return {
+	    aliases: ['gss'],
+	    case_insensitive: true, // language is case-insensitive
+	    keywords: KEYWORDS,
+	    illegal: '(\\{[%#]|[%#]\\})',
+	    contains: [
+	      hljs.C_NUMBER_MODE,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      hljs.COMMENT('@', '@'),
+	      PREPROCESSOR,
 	      {
 	        className: 'string',
-	        begin: '\\*{3}', end: '\\*{3}'
+	        begin: '"', end: '"',
+	        contains: [hljs.BACKSLASH_ESCAPE]
 	      },
-	      hljs.NUMBER_MODE,
 	      {
-	        className: 'number',
-	        begin: '\\$[a-zA-Z0-9]+'
+	        className: 'function',
+	        beginKeywords: 'proc keyword',
+	        end: ';',
+	        excludeEnd: true,
+	        keywords: KEYWORDS,
+	        contains: [
+	          {
+	            begin: FUNCTION_TITLE, returnBegin: true,
+	            contains: [hljs.UNDERSCORE_TITLE_MODE],
+	            relevance: 0
+	          },
+	          hljs.C_NUMBER_MODE,
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          PREPROCESSOR
+	        ].concat(PARSE_PARAMS)
+	      },
+	      {
+	        className: 'function',
+	        beginKeywords: 'fn',
+	        end: ';',
+	        excludeEnd: true,
+	        keywords: KEYWORDS,
+	        contains: [
+	          {
+	            begin: FUNCTION_TITLE + hljs.IDENT_RE + '\\)?\\s*\\=\\s*', returnBegin: true,
+	            contains: [hljs.UNDERSCORE_TITLE_MODE],
+	            relevance: 0
+	          },
+	          hljs.C_NUMBER_MODE,
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE
+	        ].concat(PARSE_PARAMS)
+	      },
+	      {
+	        className: 'function',
+	        begin: '\\bexternal (proc|keyword|fn)\\s+',
+	        end: ';',
+	        excludeEnd: true,
+	        keywords: KEYWORDS,
+	        contains: [
+	          {
+	            begin: FUNCTION_TITLE, returnBegin: true,
+	            contains: [hljs.UNDERSCORE_TITLE_MODE],
+	            relevance: 0
+	          },
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE
+	        ]
+	      },
+	      {
+	        className: 'function',
+	        begin: '\\bexternal (matrix|string|array|sparse matrix|struct ' + hljs.IDENT_RE + ')\\s+',
+	        end: ';',
+	        excludeEnd: true,
+	        keywords: KEYWORDS,
+	        contains: [
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE
+	        ]
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 100 */
+/* 86 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21726,7 +18949,7 @@
 	};
 
 /***/ },
-/* 101 */
+/* 87 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -21735,8 +18958,9 @@
 	    keywords: 'Feature Background Ability Business\ Need Scenario Scenarios Scenario\ Outline Scenario\ Template Examples Given And Then But When',
 	    contains: [
 	      {
-	        className: 'keyword',
-	        begin: '\\*'
+	        className: 'symbol',
+	        begin: '\\*',
+	        relevance: 0
 	      },
 	      {
 	        className: 'meta',
@@ -21766,7 +18990,7 @@
 	};
 
 /***/ },
-/* 102 */
+/* 88 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21887,7 +19111,7 @@
 	};
 
 /***/ },
-/* 103 */
+/* 89 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21929,7 +19153,7 @@
 	};
 
 /***/ },
-/* 104 */
+/* 90 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21956,7 +19180,7 @@
 	};
 
 /***/ },
-/* 105 */
+/* 91 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -21995,7 +19219,7 @@
 	};
 
 /***/ },
-/* 106 */
+/* 92 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22066,7 +19290,7 @@
 	                illegal: ':',
 	                contains: [
 	                    {beginKeywords: 'extends implements'},
-	                    hljs.UNDERSCORE_TITLE_MODE,
+	                    hljs.UNDERSCORE_TITLE_MODE
 	                ]
 	            },
 	            hljs.C_NUMBER_MODE,
@@ -22086,14 +19310,14 @@
 	                // highlight labeled statements
 	                className: 'symbol', begin: '^\\s*[A-Za-z0-9_$]+:',
 	                relevance: 0
-	            },
+	            }
 	        ],
 	        illegal: /#|<\//
 	    }
 	};
 
 /***/ },
-/* 107 */
+/* 93 */
 /***/ function(module, exports) {
 
 	module.exports = // TODO support filter tags like :javascript, support inline HTML
@@ -22204,7 +19428,7 @@
 	};
 
 /***/ },
-/* 108 */
+/* 94 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22242,7 +19466,7 @@
 	};
 
 /***/ },
-/* 109 */
+/* 95 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22368,7 +19592,7 @@
 	};
 
 /***/ },
-/* 110 */
+/* 96 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22430,12 +19654,13 @@
 	};
 
 /***/ },
-/* 111 */
+/* 97 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    case_insensitive: true,
+	    lexemes: /[\w\._]+/,
 	    keywords: 'goto gosub return break repeat loop continue wait await dim sdim foreach dimtype dup dupptr end stop newmod delmod mref run exgoto on mcall assert logmes newlab resume yield onexit onerror onkey onclick oncmd exist delete mkdir chdir dirlist bload bsave bcopy memfile if else poke wpoke lpoke getstr chdpm memexpand memcpy memset notesel noteadd notedel noteload notesave randomize noteunsel noteget split strrep setease button chgdisp exec dialog mmload mmplay mmstop mci pset pget syscolor mes print title pos circle cls font sysfont objsize picload color palcolor palette redraw width gsel gcopy gzoom gmode bmpsave hsvcolor getkey listbox chkbox combox input mesbox buffer screen bgscr mouse objsel groll line clrobj boxf objprm objmode stick grect grotate gsquare gradf objimage objskip objenable celload celdiv celput newcom querycom delcom cnvstow comres axobj winobj sendmsg comevent comevarg sarrayconv callfunc cnvwtos comevdisp libptr system hspstat hspver stat cnt err strsize looplev sublev iparam wparam lparam refstr refdval int rnd strlen length length2 length3 length4 vartype gettime peek wpeek lpeek varptr varuse noteinfo instr abs limit getease str strmid strf getpath strtrim sin cos tan atan sqrt double absf expf logf limitf powf geteasef mousex mousey mousew hwnd hinstance hdc ginfo objinfo dirinfo sysinfo thismod __hspver__ __hsp30__ __date__ __time__ __line__ __file__ _debug __hspdef__ and or xor not screen_normal screen_palette screen_hide screen_fixedsize screen_tool screen_frame gmode_gdi gmode_mem gmode_rgb0 gmode_alpha gmode_rgb0alpha gmode_add gmode_sub gmode_pixela ginfo_mx ginfo_my ginfo_act ginfo_sel ginfo_wx1 ginfo_wy1 ginfo_wx2 ginfo_wy2 ginfo_vx ginfo_vy ginfo_sizex ginfo_sizey ginfo_winx ginfo_winy ginfo_mesx ginfo_mesy ginfo_r ginfo_g ginfo_b ginfo_paluse ginfo_dispx ginfo_dispy ginfo_cx ginfo_cy ginfo_intid ginfo_newid ginfo_sx ginfo_sy objinfo_mode objinfo_bmscr objinfo_hwnd notemax notesize dir_cur dir_exe dir_win dir_sys dir_cmdline dir_desktop dir_mydoc dir_tv font_normal font_bold font_italic font_underline font_strikeout font_antialias objmode_normal objmode_guifont objmode_usefont gsquare_grad msgothic msmincho do until while wend for next _break _continue switch case default swbreak swend ddim ldim alloc m_pi rad2deg deg2rad ease_linear ease_quad_in ease_quad_out ease_quad_inout ease_cubic_in ease_cubic_out ease_cubic_inout ease_quartic_in ease_quartic_out ease_quartic_inout ease_bounce_in ease_bounce_out ease_bounce_inout ease_shake_in ease_shake_out ease_shake_inout ease_loop',
 	    contains: [
 	      hljs.C_LINE_COMMENT_MODE,
@@ -22450,7 +19675,7 @@
 	        contains: [hljs.BACKSLASH_ESCAPE]
 	      },
 
-	      hljs.COMMENT(';', '$'),
+	      hljs.COMMENT(';', '$', {relevance: 0}),
 
 	      {
 	        // pre-processor
@@ -22479,7 +19704,82 @@
 	};
 
 /***/ },
-/* 112 */
+/* 98 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var BUILT_INS = 'action collection component concat debugger each each-in else get hash if input link-to loc log mut outlet partial query-params render textarea unbound unless with yield view';
+
+	  var ATTR_ASSIGNMENT = {
+	    illegal: /\}\}/,
+	    begin: /[a-zA-Z0-9_]+=/,
+	    returnBegin: true,
+	    relevance: 0,
+	    contains: [
+	      {
+	        className: 'attr', begin: /[a-zA-Z0-9_]+/
+	      }
+	    ]
+	  };
+
+	  var SUB_EXPR = {
+	    illegal: /\}\}/,
+	    begin: /\)/, end: /\)/,
+	    contains: [
+	      {
+	        begin: /[a-zA-Z\.\-]+/,
+	        keywords: {built_in: BUILT_INS},
+	        starts: {
+	          endsWithParent: true, relevance: 0,
+	          contains: [
+	            hljs.QUOTE_STRING_MODE,
+	          ]
+	        }
+	      }
+	    ]
+	  };
+
+	  var TAG_INNARDS = {
+	    endsWithParent: true, relevance: 0,
+	    keywords: {keyword: 'as', built_in: BUILT_INS},
+	    contains: [
+	      hljs.QUOTE_STRING_MODE,
+	      ATTR_ASSIGNMENT,
+	      hljs.NUMBER_MODE
+	    ]
+	  };
+
+	  return {
+	    case_insensitive: true,
+	    subLanguage: 'xml',
+	    contains: [
+	      hljs.COMMENT('{{!(--)?', '(--)?}}'),
+	      {
+	        className: 'template-tag',
+	        begin: /\{\{[#\/]/, end: /\}\}/,
+	        contains: [
+	          {
+	            className: 'name',
+	            begin: /[a-zA-Z\.\-]+/,
+	            keywords: {'builtin-name': BUILT_INS},
+	            starts: TAG_INNARDS
+	          }
+	        ]
+	      },
+	      {
+	        className: 'template-variable',
+	        begin: /\{\{[a-zA-Z][a-zA-Z\-]+/, end: /\}\}/,
+	        keywords: {keyword: 'as', built_in: BUILT_INS},
+	        contains: [
+	          hljs.QUOTE_STRING_MODE
+	        ]
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 99 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22524,7 +19824,7 @@
 	};
 
 /***/ },
-/* 113 */
+/* 100 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22585,7 +19885,7 @@
 	};
 
 /***/ },
-/* 114 */
+/* 101 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22655,7 +19955,7 @@
 	};
 
 /***/ },
-/* 115 */
+/* 102 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22735,16 +20035,17 @@
 	};
 
 /***/ },
-/* 116 */
+/* 103 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
-	  var GENERIC_IDENT_RE = hljs.UNDERSCORE_IDENT_RE + '(<(' + hljs.UNDERSCORE_IDENT_RE + '|\\s*,\\s*)+>)?';
+	  var GENERIC_IDENT_RE = hljs.UNDERSCORE_IDENT_RE + '(<' + hljs.UNDERSCORE_IDENT_RE + '(\\s*,\\s*' + hljs.UNDERSCORE_IDENT_RE + ')*>)?';
 	  var KEYWORDS =
 	    'false synchronized int abstract float private char boolean static null if const ' +
 	    'for true while long strictfp finally protected import native final void ' +
 	    'enum else break transient catch instanceof byte super volatile case assert short ' +
-	    'package default double public try this switch continue throws protected public private';
+	    'package default double public try this switch continue throws protected public private ' +
+	    'module requires exports';
 
 	  // https://docs.oracle.com/javase/7/docs/technotes/guides/language/underscores-literals.html
 	  var JAVA_NUMBER_RE = '\\b' +
@@ -22845,17 +20146,17 @@
 	};
 
 /***/ },
-/* 117 */
+/* 104 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
-	    aliases: ['js'],
+	    aliases: ['js', 'jsx'],
 	    keywords: {
 	      keyword:
 	        'in of if for while finally var new function do return void else break catch ' +
 	        'instanceof with throw case default try this switch continue typeof delete ' +
-	        'let yield const export super debugger as async await ' +
+	        'let yield const export super debugger as async await static ' +
 	        // ECMAScript 6 modules import
 	        'import from as'
 	      ,
@@ -22876,6 +20177,10 @@
 	        className: 'meta',
 	        relevance: 10,
 	        begin: /^\s*['"]use (strict|asm)['"]/
+	      },
+	      {
+	        className: 'meta',
+	        begin: /^#!/, end: /$/
 	      },
 	      hljs.APOS_STRING_MODE,
 	      hljs.QUOTE_STRING_MODE,
@@ -22909,9 +20214,12 @@
 	          hljs.C_BLOCK_COMMENT_MODE,
 	          hljs.REGEXP_MODE,
 	          { // E4X / JSX
-	            begin: /</, end: />\s*[);\]]/,
-	            relevance: 0,
-	            subLanguage: 'xml'
+	            begin: /</, end: /(\/\w+|\w+\/)>/,
+	            subLanguage: 'xml',
+	            contains: [
+	              {begin: /<\w+\s*\/>/, skip: true},
+	              {begin: /<\w+/, end: /(\/\w+|\w+\/)>/, skip: true, contains: ['self']}
+	            ]
 	          }
 	        ],
 	        relevance: 0
@@ -22937,9 +20245,7 @@
 	      {
 	        begin: /\$[(.]/ // relevance booster for a pattern common to JS libs: `$(something)` and `$.something`
 	      },
-	      {
-	        begin: '\\.' + hljs.IDENT_RE, relevance: 0 // hack: prevents detection of keywords after dots
-	      },
+	      hljs.METHOD_GUARD,
 	      { // ES6 class
 	        className: 'class',
 	        beginKeywords: 'class', end: /[{;=]/, excludeEnd: true,
@@ -22953,12 +20259,12 @@
 	        beginKeywords: 'constructor', end: /\{/, excludeEnd: true
 	      }
 	    ],
-	    illegal: /#/
+	    illegal: /#(?!!)/
 	  };
 	};
 
 /***/ },
-/* 118 */
+/* 105 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -22977,11 +20283,11 @@
 	    contains: [
 	      {
 	        className: 'attr',
-	        begin: '\\s*"', end: '"\\s*:\\s*', excludeBegin: true, excludeEnd: true,
+	        begin: /"/, end: /"/,
 	        contains: [hljs.BACKSLASH_ESCAPE],
 	        illegal: '\\n',
-	        starts: VALUE_CONTAINER
-	      }
+	      },
+	      hljs.inherit(VALUE_CONTAINER, {begin: /:/})
 	    ],
 	    illegal: '\\S'
 	  };
@@ -22999,7 +20305,7 @@
 	};
 
 /***/ },
-/* 119 */
+/* 106 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23181,20 +20487,87 @@
 	};
 
 /***/ },
-/* 120 */
+/* 107 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
-	  var KEYWORDS = 'val var get set class trait object open private protected public ' +
-	    'final enum if else do while for when break continue throw try catch finally ' +
-	    'import package is as in return fun override default companion reified inline volatile transient native ' +
-	    'Byte Short Char Int Long Boolean Float Double Void Unit Nothing';
+	  var KEYWORDS = {
+	    keyword:
+	      'abstract as val var vararg get set class object open private protected public noinline ' +
+	      'crossinline dynamic final enum if else do while for when throw try catch finally ' +
+	      'import package is in fun override companion reified inline ' +
+	      'interface annotation data sealed internal infix operator out by constructor super ' +
+	      // to be deleted soon
+	      'trait volatile transient native default',
+	    built_in:
+	      'Byte Short Char Int Long Boolean Float Double Void Unit Nothing',
+	    literal:
+	      'true false null'
+	  };
+	  var KEYWORDS_WITH_LABEL = {
+	    className: 'keyword',
+	    begin: /\b(break|continue|return|this)\b/,
+	    starts: {
+	      contains: [
+	        {
+	          className: 'symbol',
+	          begin: /@\w+/
+	        }
+	      ]
+	    }
+	  };
+	  var LABEL = {
+	    className: 'symbol', begin: hljs.UNDERSCORE_IDENT_RE + '@'
+	  };
+
+	  // for string templates
+	  var SUBST = {
+	    className: 'subst',
+	    variants: [
+	      {begin: '\\$' + hljs.UNDERSCORE_IDENT_RE},
+	      {begin: '\\${', end: '}', contains: [hljs.APOS_STRING_MODE, hljs.C_NUMBER_MODE]}
+	    ]
+	  };
+	  var STRING = {
+	    className: 'string',
+	    variants: [
+	      {
+	        begin: '"""', end: '"""',
+	        contains: [SUBST]
+	      },
+	      // Can't use built-in modes easily, as we want to use STRING in the meta
+	      // context as 'meta-string' and there's no syntax to remove explicitly set
+	      // classNames in built-in modes.
+	      {
+	        begin: '\'', end: '\'',
+	        illegal: /\n/,
+	        contains: [hljs.BACKSLASH_ESCAPE]
+	      },
+	      {
+	        begin: '"', end: '"',
+	        illegal: /\n/,
+	        contains: [hljs.BACKSLASH_ESCAPE, SUBST]
+	      }
+	    ]
+	  };
+
+	  var ANNOTATION_USE_SITE = {
+	    className: 'meta', begin: '@(?:file|property|field|get|set|receiver|param|setparam|delegate)\\s*:(?:\\s*' + hljs.UNDERSCORE_IDENT_RE + ')?'
+	  };
+	  var ANNOTATION = {
+	    className: 'meta', begin: '@' + hljs.UNDERSCORE_IDENT_RE,
+	    contains: [
+	      {
+	        begin: /\(/, end: /\)/,
+	        contains: [
+	          hljs.inherit(STRING, {className: 'meta-string'})
+	        ]
+	      }
+	    ]
+	  };
 
 	  return {
-	    keywords: {
-	      keyword: KEYWORDS,
-	      literal: 'true false null'
-	    },
+	    keywords: KEYWORDS,
 	    contains : [
 	      hljs.COMMENT(
 	        '/\\*\\*',
@@ -23209,13 +20582,10 @@
 	      ),
 	      hljs.C_LINE_COMMENT_MODE,
 	      hljs.C_BLOCK_COMMENT_MODE,
-	      {
-	        className: 'type',
-	        begin: /</, end: />/,
-	        returnBegin: true,
-	        excludeEnd: false,
-	        relevance: 0
-	      },
+	      KEYWORDS_WITH_LABEL,
+	      LABEL,
+	      ANNOTATION_USE_SITE,
+	      ANNOTATION,
 	      {
 	        className: 'function',
 	        beginKeywords: 'fun', end: '[(]|$',
@@ -23238,27 +20608,37 @@
 	          {
 	            className: 'params',
 	            begin: /\(/, end: /\)/,
+	            endsParent: true,
 	            keywords: KEYWORDS,
 	            relevance: 0,
-	            illegal: /\([^\(,\s:]+,/,
 	            contains: [
 	              {
-	                className: 'type',
-	                begin: /:\s*/, end: /\s*[=\)]/, excludeBegin: true, returnEnd: true,
+	                begin: /:/, end: /[=,\/]/, endsWithParent: true,
+	                contains: [
+	                  {className: 'type', begin: hljs.UNDERSCORE_IDENT_RE},
+	                  hljs.C_LINE_COMMENT_MODE,
+	                  hljs.C_BLOCK_COMMENT_MODE
+	                ],
 	                relevance: 0
-	              }
+	              },
+	              hljs.C_LINE_COMMENT_MODE,
+	              hljs.C_BLOCK_COMMENT_MODE,
+	              ANNOTATION_USE_SITE,
+	              ANNOTATION,
+	              STRING,
+	              hljs.C_NUMBER_MODE
 	            ]
 	          },
-	          hljs.C_LINE_COMMENT_MODE,
 	          hljs.C_BLOCK_COMMENT_MODE
 	        ]
 	      },
 	      {
 	        className: 'class',
-	        beginKeywords: 'class trait', end: /[:\{(]|$/,
+	        beginKeywords: 'class interface trait', end: /[:\{(]|$/, // remove 'trait' when removed from KEYWORDS
 	        excludeEnd: true,
 	        illegal: 'extends implements',
 	        contains: [
+	          {beginKeywords: 'public protected internal private constructor'},
 	          hljs.UNDERSCORE_TITLE_MODE,
 	          {
 	            className: 'type',
@@ -23268,13 +20648,12 @@
 	          {
 	            className: 'type',
 	            begin: /[,:]\s*/, end: /[<\(,]|$/, excludeBegin: true, returnEnd: true
-	          }
+	          },
+	          ANNOTATION_USE_SITE,
+	          ANNOTATION
 	        ]
 	      },
-	      {
-	        className: 'variable', beginKeywords: 'var val', end: /\s*[=:$]/, excludeEnd: true
-	      },
-	      hljs.QUOTE_STRING_MODE,
+	      STRING,
 	      {
 	        className: 'meta',
 	        begin: "^#!/usr/bin/env", end: '$',
@@ -23286,7 +20665,7 @@
 	};
 
 /***/ },
-/* 121 */
+/* 108 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23458,7 +20837,7 @@
 	};
 
 /***/ },
-/* 122 */
+/* 109 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23520,11 +20899,19 @@
 	  /* Rule-Level Modes */
 
 	  var RULE_MODE = {
-	    className: 'attribute',
-	    begin: INTERP_IDENT_RE, end: ':', excludeEnd: true,
-	    contains: [hljs.C_LINE_COMMENT_MODE, hljs.C_BLOCK_COMMENT_MODE],
-	    illegal: /\S/,
-	    starts: {end: '[;}]', returnEnd: true, contains: VALUE, illegal: '[<=$]'}
+	    begin: INTERP_IDENT_RE + '\\s*:', returnBegin: true, end: '[;}]',
+	    relevance: 0,
+	    contains: [
+	      {
+	        className: 'attribute',
+	        begin: INTERP_IDENT_RE, end: ':', excludeEnd: true,
+	        starts: {
+	          endsWithParent: true, illegal: '[<=$]',
+	          relevance: 0,
+	          contains: VALUE
+	        }
+	      }
+	    ]
 	  };
 
 	  var AT_RULE_MODE = {
@@ -23552,7 +20939,7 @@
 	    // then fall into the scary lookahead-discriminator variant.
 	    // this mode also handles mixin definitions and calls
 	    variants: [{
-	      begin: '[\\.#:&\\[]', end: '[;{}]'  // mixin calls end with ';'
+	      begin: '[\\.#:&\\[>]', end: '[;{}]'  // mixin calls end with ';'
 	      }, {
 	      begin: INTERP_IDENT_RE + '[^;]*{',
 	      end: '{'
@@ -23571,6 +20958,7 @@
 	      IDENT_MODE('selector-class', '\\.' + INTERP_IDENT_RE, 0),
 	      IDENT_MODE('selector-tag',  '&', 0),
 	      {className: 'selector-attr', begin: '\\[', end: '\\]'},
+	      {className: 'selector-pseudo', begin: /:(:)?[a-zA-Z0-9\_\-\+\(\)"'.]+/},
 	      {begin: '\\(', end: '\\)', contains: VALUE_WITH_RULESETS}, // argument list of parametric mixins
 	      {begin: '!important'} // eat !important after mixin call or it will be colored as tag
 	    ]
@@ -23581,8 +20969,8 @@
 	    hljs.C_BLOCK_COMMENT_MODE,
 	    AT_RULE_MODE,
 	    VAR_RULE_MODE,
-	    SELECTOR_MODE,
-	    RULE_MODE
+	    RULE_MODE,
+	    SELECTOR_MODE
 	  );
 
 	  return {
@@ -23593,7 +20981,7 @@
 	};
 
 /***/ },
-/* 123 */
+/* 110 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23700,7 +21088,7 @@
 	};
 
 /***/ },
-/* 124 */
+/* 111 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -23824,7 +21212,8 @@
 	        contains: [
 	          TITLE2,
 	          TITLE1
-	        ]
+	        ],
+	        relevance: 0
 	      },
 	      {
 	        beginKeywords: 'command on', end: '$',
@@ -23855,12 +21244,12 @@
 	      hljs.C_NUMBER_MODE,
 	      TITLE1
 	    ].concat(COMMENT_MODES),
-	    illegal: ';$|^\\[|^='
+	    illegal: ';$|^\\[|^=|&|{'
 	  };
 	};
 
 /***/ },
-/* 125 */
+/* 112 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24013,7 +21402,7 @@
 	};
 
 /***/ },
-/* 126 */
+/* 113 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24073,7 +21462,7 @@
 	};
 
 /***/ },
-/* 127 */
+/* 114 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24122,7 +21511,7 @@
 	};
 
 /***/ },
-/* 128 */
+/* 115 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24184,7 +21573,7 @@
 	};
 
 /***/ },
-/* 129 */
+/* 116 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24276,7 +21665,416 @@
 	};
 
 /***/ },
-/* 130 */
+/* 117 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var KEYWORDS = 'if then else elseif for thru do while unless step in and or not';
+	  var LITERALS = 'true false unknown inf minf ind und %e %i %pi %phi %gamma';
+	  var BUILTIN_FUNCTIONS =
+	        ' abasep abs absint absolute_real_time acos acosh acot acoth acsc acsch activate'
+	      + ' addcol add_edge add_edges addmatrices addrow add_vertex add_vertices adjacency_matrix'
+	      + ' adjoin adjoint af agd airy airy_ai airy_bi airy_dai airy_dbi algsys alg_type'
+	      + ' alias allroots alphacharp alphanumericp amortization %and annuity_fv'
+	      + ' annuity_pv antid antidiff AntiDifference append appendfile apply apply1 apply2'
+	      + ' applyb1 apropos args arit_amortization arithmetic arithsum array arrayapply'
+	      + ' arrayinfo arraymake arraysetapply ascii asec asech asin asinh askinteger'
+	      + ' asksign assoc assoc_legendre_p assoc_legendre_q assume assume_external_byte_order'
+	      + ' asympa at atan atan2 atanh atensimp atom atvalue augcoefmatrix augmented_lagrangian_method'
+	      + ' av average_degree backtrace bars barsplot barsplot_description base64 base64_decode'
+	      + ' bashindices batch batchload bc2 bdvac belln benefit_cost bern bernpoly bernstein_approx'
+	      + ' bernstein_expand bernstein_poly bessel bessel_i bessel_j bessel_k bessel_simplify'
+	      + ' bessel_y beta beta_incomplete beta_incomplete_generalized beta_incomplete_regularized'
+	      + ' bezout bfallroots bffac bf_find_root bf_fmin_cobyla bfhzeta bfloat bfloatp'
+	      + ' bfpsi bfpsi0 bfzeta biconnected_components bimetric binomial bipartition'
+	      + ' block blockmatrixp bode_gain bode_phase bothcoef box boxplot boxplot_description'
+	      + ' break bug_report build_info|10 buildq build_sample burn cabs canform canten'
+	      + ' cardinality carg cartan cartesian_product catch cauchy_matrix cbffac cdf_bernoulli'
+	      + ' cdf_beta cdf_binomial cdf_cauchy cdf_chi2 cdf_continuous_uniform cdf_discrete_uniform'
+	      + ' cdf_exp cdf_f cdf_gamma cdf_general_finite_discrete cdf_geometric cdf_gumbel'
+	      + ' cdf_hypergeometric cdf_laplace cdf_logistic cdf_lognormal cdf_negative_binomial'
+	      + ' cdf_noncentral_chi2 cdf_noncentral_student_t cdf_normal cdf_pareto cdf_poisson'
+	      + ' cdf_rank_sum cdf_rayleigh cdf_signed_rank cdf_student_t cdf_weibull cdisplay'
+	      + ' ceiling central_moment cequal cequalignore cf cfdisrep cfexpand cgeodesic'
+	      + ' cgreaterp cgreaterpignore changename changevar chaosgame charat charfun charfun2'
+	      + ' charlist charp charpoly chdir chebyshev_t chebyshev_u checkdiv check_overlaps'
+	      + ' chinese cholesky christof chromatic_index chromatic_number cint circulant_graph'
+	      + ' clear_edge_weight clear_rules clear_vertex_label clebsch_gordan clebsch_graph'
+	      + ' clessp clesspignore close closefile cmetric coeff coefmatrix cograd col collapse'
+	      + ' collectterms columnop columnspace columnswap columnvector combination combine'
+	      + ' comp2pui compare compfile compile compile_file complement_graph complete_bipartite_graph'
+	      + ' complete_graph complex_number_p components compose_functions concan concat'
+	      + ' conjugate conmetderiv connected_components connect_vertices cons constant'
+	      + ' constantp constituent constvalue cont2part content continuous_freq contortion'
+	      + ' contour_plot contract contract_edge contragrad contrib_ode convert coord'
+	      + ' copy copy_file copy_graph copylist copymatrix cor cos cosh cot coth cov cov1'
+	      + ' covdiff covect covers crc24sum create_graph create_list csc csch csetup cspline'
+	      + ' ctaylor ct_coordsys ctransform ctranspose cube_graph cuboctahedron_graph'
+	      + ' cunlisp cv cycle_digraph cycle_graph cylindrical days360 dblint deactivate'
+	      + ' declare declare_constvalue declare_dimensions declare_fundamental_dimensions'
+	      + ' declare_fundamental_units declare_qty declare_translated declare_unit_conversion'
+	      + ' declare_units declare_weights decsym defcon define define_alt_display define_variable'
+	      + ' defint defmatch defrule defstruct deftaylor degree_sequence del delete deleten'
+	      + ' delta demo demoivre denom depends derivdegree derivlist describe desolve'
+	      + ' determinant dfloat dgauss_a dgauss_b dgeev dgemm dgeqrf dgesv dgesvd diag'
+	      + ' diagmatrix diag_matrix diagmatrixp diameter diff digitcharp dimacs_export'
+	      + ' dimacs_import dimension dimensionless dimensions dimensions_as_list direct'
+	      + ' directory discrete_freq disjoin disjointp disolate disp dispcon dispform'
+	      + ' dispfun dispJordan display disprule dispterms distrib divide divisors divsum'
+	      + ' dkummer_m dkummer_u dlange dodecahedron_graph dotproduct dotsimp dpart'
+	      + ' draw draw2d draw3d drawdf draw_file draw_graph dscalar echelon edge_coloring'
+	      + ' edge_connectivity edges eigens_by_jacobi eigenvalues eigenvectors eighth'
+	      + ' einstein eivals eivects elapsed_real_time elapsed_run_time ele2comp ele2polynome'
+	      + ' ele2pui elem elementp elevation_grid elim elim_allbut eliminate eliminate_using'
+	      + ' ellipse elliptic_e elliptic_ec elliptic_eu elliptic_f elliptic_kc elliptic_pi'
+	      + ' ematrix empty_graph emptyp endcons entermatrix entertensor entier equal equalp'
+	      + ' equiv_classes erf erfc erf_generalized erfi errcatch error errormsg errors'
+	      + ' euler ev eval_string evenp every evolution evolution2d evundiff example exp'
+	      + ' expand expandwrt expandwrt_factored expint expintegral_chi expintegral_ci'
+	      + ' expintegral_e expintegral_e1 expintegral_ei expintegral_e_simplify expintegral_li'
+	      + ' expintegral_shi expintegral_si explicit explose exponentialize express expt'
+	      + ' exsec extdiff extract_linear_equations extremal_subset ezgcd %f f90 facsum'
+	      + ' factcomb factor factorfacsum factorial factorout factorsum facts fast_central_elements'
+	      + ' fast_linsolve fasttimes featurep fernfale fft fib fibtophi fifth filename_merge'
+	      + ' file_search file_type fillarray findde find_root find_root_abs find_root_error'
+	      + ' find_root_rel first fix flatten flength float floatnump floor flower_snark'
+	      + ' flush flush1deriv flushd flushnd flush_output fmin_cobyla forget fortran'
+	      + ' fourcos fourexpand fourier fourier_elim fourint fourintcos fourintsin foursimp'
+	      + ' foursin fourth fposition frame_bracket freeof freshline fresnel_c fresnel_s'
+	      + ' from_adjacency_matrix frucht_graph full_listify fullmap fullmapl fullratsimp'
+	      + ' fullratsubst fullsetify funcsolve fundamental_dimensions fundamental_units'
+	      + ' fundef funmake funp fv g0 g1 gamma gamma_greek gamma_incomplete gamma_incomplete_generalized'
+	      + ' gamma_incomplete_regularized gauss gauss_a gauss_b gaussprob gcd gcdex gcdivide'
+	      + ' gcfac gcfactor gd generalized_lambert_w genfact gen_laguerre genmatrix gensym'
+	      + ' geo_amortization geo_annuity_fv geo_annuity_pv geomap geometric geometric_mean'
+	      + ' geosum get getcurrentdirectory get_edge_weight getenv get_lu_factors get_output_stream_string'
+	      + ' get_pixel get_plot_option get_tex_environment get_tex_environment_default'
+	      + ' get_vertex_label gfactor gfactorsum ggf girth global_variances gn gnuplot_close'
+	      + ' gnuplot_replot gnuplot_reset gnuplot_restart gnuplot_start go Gosper GosperSum'
+	      + ' gr2d gr3d gradef gramschmidt graph6_decode graph6_encode graph6_export graph6_import'
+	      + ' graph_center graph_charpoly graph_eigenvalues graph_flow graph_order graph_periphery'
+	      + ' graph_product graph_size graph_union great_rhombicosidodecahedron_graph great_rhombicuboctahedron_graph'
+	      + ' grid_graph grind grobner_basis grotzch_graph hamilton_cycle hamilton_path'
+	      + ' hankel hankel_1 hankel_2 harmonic harmonic_mean hav heawood_graph hermite'
+	      + ' hessian hgfred hilbertmap hilbert_matrix hipow histogram histogram_description'
+	      + ' hodge horner hypergeometric i0 i1 %ibes ic1 ic2 ic_convert ichr1 ichr2 icosahedron_graph'
+	      + ' icosidodecahedron_graph icurvature ident identfor identity idiff idim idummy'
+	      + ' ieqn %if ifactors iframes ifs igcdex igeodesic_coords ilt image imagpart'
+	      + ' imetric implicit implicit_derivative implicit_plot indexed_tensor indices'
+	      + ' induced_subgraph inferencep inference_result infix info_display init_atensor'
+	      + ' init_ctensor in_neighbors innerproduct inpart inprod inrt integerp integer_partitions'
+	      + ' integrate intersect intersection intervalp intopois intosum invariant1 invariant2'
+	      + ' inverse_fft inverse_jacobi_cd inverse_jacobi_cn inverse_jacobi_cs inverse_jacobi_dc'
+	      + ' inverse_jacobi_dn inverse_jacobi_ds inverse_jacobi_nc inverse_jacobi_nd inverse_jacobi_ns'
+	      + ' inverse_jacobi_sc inverse_jacobi_sd inverse_jacobi_sn invert invert_by_adjoint'
+	      + ' invert_by_lu inv_mod irr is is_biconnected is_bipartite is_connected is_digraph'
+	      + ' is_edge_in_graph is_graph is_graph_or_digraph ishow is_isomorphic isolate'
+	      + ' isomorphism is_planar isqrt isreal_p is_sconnected is_tree is_vertex_in_graph'
+	      + ' items_inference %j j0 j1 jacobi jacobian jacobi_cd jacobi_cn jacobi_cs jacobi_dc'
+	      + ' jacobi_dn jacobi_ds jacobi_nc jacobi_nd jacobi_ns jacobi_p jacobi_sc jacobi_sd'
+	      + ' jacobi_sn JF jn join jordan julia julia_set julia_sin %k kdels kdelta kill'
+	      + ' killcontext kostka kron_delta kronecker_product kummer_m kummer_u kurtosis'
+	      + ' kurtosis_bernoulli kurtosis_beta kurtosis_binomial kurtosis_chi2 kurtosis_continuous_uniform'
+	      + ' kurtosis_discrete_uniform kurtosis_exp kurtosis_f kurtosis_gamma kurtosis_general_finite_discrete'
+	      + ' kurtosis_geometric kurtosis_gumbel kurtosis_hypergeometric kurtosis_laplace'
+	      + ' kurtosis_logistic kurtosis_lognormal kurtosis_negative_binomial kurtosis_noncentral_chi2'
+	      + ' kurtosis_noncentral_student_t kurtosis_normal kurtosis_pareto kurtosis_poisson'
+	      + ' kurtosis_rayleigh kurtosis_student_t kurtosis_weibull label labels lagrange'
+	      + ' laguerre lambda lambert_w laplace laplacian_matrix last lbfgs lc2kdt lcharp'
+	      + ' lc_l lcm lc_u ldefint ldisp ldisplay legendre_p legendre_q leinstein length'
+	      + ' let letrules letsimp levi_civita lfreeof lgtreillis lhs li liediff limit'
+	      + ' Lindstedt linear linearinterpol linear_program linear_regression line_graph'
+	      + ' linsolve listarray list_correlations listify list_matrix_entries list_nc_monomials'
+	      + ' listoftens listofvars listp lmax lmin load loadfile local locate_matrix_entry'
+	      + ' log logcontract log_gamma lopow lorentz_gauge lowercasep lpart lratsubst'
+	      + ' lreduce lriemann lsquares_estimates lsquares_estimates_approximate lsquares_estimates_exact'
+	      + ' lsquares_mse lsquares_residual_mse lsquares_residuals lsum ltreillis lu_backsub'
+	      + ' lucas lu_factor %m macroexpand macroexpand1 make_array makebox makefact makegamma'
+	      + ' make_graph make_level_picture makelist makeOrders make_poly_continent make_poly_country'
+	      + ' make_polygon make_random_state make_rgb_picture makeset make_string_input_stream'
+	      + ' make_string_output_stream make_transform mandelbrot mandelbrot_set map mapatom'
+	      + ' maplist matchdeclare matchfix mat_cond mat_fullunblocker mat_function mathml_display'
+	      + ' mat_norm matrix matrixmap matrixp matrix_size mattrace mat_trace mat_unblocker'
+	      + ' max max_clique max_degree max_flow maximize_lp max_independent_set max_matching'
+	      + ' maybe md5sum mean mean_bernoulli mean_beta mean_binomial mean_chi2 mean_continuous_uniform'
+	      + ' mean_deviation mean_discrete_uniform mean_exp mean_f mean_gamma mean_general_finite_discrete'
+	      + ' mean_geometric mean_gumbel mean_hypergeometric mean_laplace mean_logistic'
+	      + ' mean_lognormal mean_negative_binomial mean_noncentral_chi2 mean_noncentral_student_t'
+	      + ' mean_normal mean_pareto mean_poisson mean_rayleigh mean_student_t mean_weibull'
+	      + ' median median_deviation member mesh metricexpandall mgf1_sha1 min min_degree'
+	      + ' min_edge_cut minfactorial minimalPoly minimize_lp minimum_spanning_tree minor'
+	      + ' minpack_lsquares minpack_solve min_vertex_cover min_vertex_cut mkdir mnewton'
+	      + ' mod mode_declare mode_identity ModeMatrix moebius mon2schur mono monomial_dimensions'
+	      + ' multibernstein_poly multi_display_for_texinfo multi_elem multinomial multinomial_coeff'
+	      + ' multi_orbit multiplot_mode multi_pui multsym multthru mycielski_graph nary'
+	      + ' natural_unit nc_degree ncexpt ncharpoly negative_picture neighbors new newcontext'
+	      + ' newdet new_graph newline newton new_variable next_prime nicedummies niceindices'
+	      + ' ninth nofix nonarray noncentral_moment nonmetricity nonnegintegerp nonscalarp'
+	      + ' nonzeroandfreeof notequal nounify nptetrad npv nroots nterms ntermst'
+	      + ' nthroot nullity nullspace num numbered_boundaries numberp number_to_octets'
+	      + ' num_distinct_partitions numerval numfactor num_partitions nusum nzeta nzetai'
+	      + ' nzetar octets_to_number octets_to_oid odd_girth oddp ode2 ode_check odelin'
+	      + ' oid_to_octets op opena opena_binary openr openr_binary openw openw_binary'
+	      + ' operatorp opsubst optimize %or orbit orbits ordergreat ordergreatp orderless'
+	      + ' orderlessp orthogonal_complement orthopoly_recur orthopoly_weight outermap'
+	      + ' out_neighbors outofpois pade parabolic_cylinder_d parametric parametric_surface'
+	      + ' parg parGosper parse_string parse_timedate part part2cont partfrac partition'
+	      + ' partition_set partpol path_digraph path_graph pathname_directory pathname_name'
+	      + ' pathname_type pdf_bernoulli pdf_beta pdf_binomial pdf_cauchy pdf_chi2 pdf_continuous_uniform'
+	      + ' pdf_discrete_uniform pdf_exp pdf_f pdf_gamma pdf_general_finite_discrete'
+	      + ' pdf_geometric pdf_gumbel pdf_hypergeometric pdf_laplace pdf_logistic pdf_lognormal'
+	      + ' pdf_negative_binomial pdf_noncentral_chi2 pdf_noncentral_student_t pdf_normal'
+	      + ' pdf_pareto pdf_poisson pdf_rank_sum pdf_rayleigh pdf_signed_rank pdf_student_t'
+	      + ' pdf_weibull pearson_skewness permanent permut permutation permutations petersen_graph'
+	      + ' petrov pickapart picture_equalp picturep piechart piechart_description planar_embedding'
+	      + ' playback plog plot2d plot3d plotdf ploteq plsquares pochhammer points poisdiff'
+	      + ' poisexpt poisint poismap poisplus poissimp poissubst poistimes poistrim polar'
+	      + ' polarform polartorect polar_to_xy poly_add poly_buchberger poly_buchberger_criterion'
+	      + ' poly_colon_ideal poly_content polydecomp poly_depends_p poly_elimination_ideal'
+	      + ' poly_exact_divide poly_expand poly_expt poly_gcd polygon poly_grobner poly_grobner_equal'
+	      + ' poly_grobner_member poly_grobner_subsetp poly_ideal_intersection poly_ideal_polysaturation'
+	      + ' poly_ideal_polysaturation1 poly_ideal_saturation poly_ideal_saturation1 poly_lcm'
+	      + ' poly_minimization polymod poly_multiply polynome2ele polynomialp poly_normal_form'
+	      + ' poly_normalize poly_normalize_list poly_polysaturation_extension poly_primitive_part'
+	      + ' poly_pseudo_divide poly_reduced_grobner poly_reduction poly_saturation_extension'
+	      + ' poly_s_polynomial poly_subtract polytocompanion pop postfix potential power_mod'
+	      + ' powerseries powerset prefix prev_prime primep primes principal_components'
+	      + ' print printf printfile print_graph printpois printprops prodrac product properties'
+	      + ' propvars psi psubst ptriangularize pui pui2comp pui2ele pui2polynome pui_direct'
+	      + ' puireduc push put pv qput qrange qty quad_control quad_qag quad_qagi quad_qagp'
+	      + ' quad_qags quad_qawc quad_qawf quad_qawo quad_qaws quadrilateral quantile'
+	      + ' quantile_bernoulli quantile_beta quantile_binomial quantile_cauchy quantile_chi2'
+	      + ' quantile_continuous_uniform quantile_discrete_uniform quantile_exp quantile_f'
+	      + ' quantile_gamma quantile_general_finite_discrete quantile_geometric quantile_gumbel'
+	      + ' quantile_hypergeometric quantile_laplace quantile_logistic quantile_lognormal'
+	      + ' quantile_negative_binomial quantile_noncentral_chi2 quantile_noncentral_student_t'
+	      + ' quantile_normal quantile_pareto quantile_poisson quantile_rayleigh quantile_student_t'
+	      + ' quantile_weibull quartile_skewness quit qunit quotient racah_v racah_w radcan'
+	      + ' radius random random_bernoulli random_beta random_binomial random_bipartite_graph'
+	      + ' random_cauchy random_chi2 random_continuous_uniform random_digraph random_discrete_uniform'
+	      + ' random_exp random_f random_gamma random_general_finite_discrete random_geometric'
+	      + ' random_graph random_graph1 random_gumbel random_hypergeometric random_laplace'
+	      + ' random_logistic random_lognormal random_negative_binomial random_network'
+	      + ' random_noncentral_chi2 random_noncentral_student_t random_normal random_pareto'
+	      + ' random_permutation random_poisson random_rayleigh random_regular_graph random_student_t'
+	      + ' random_tournament random_tree random_weibull range rank rat ratcoef ratdenom'
+	      + ' ratdiff ratdisrep ratexpand ratinterpol rational rationalize ratnumer ratnump'
+	      + ' ratp ratsimp ratsubst ratvars ratweight read read_array read_binary_array'
+	      + ' read_binary_list read_binary_matrix readbyte readchar read_hashed_array readline'
+	      + ' read_list read_matrix read_nested_list readonly read_xpm real_imagpart_to_conjugate'
+	      + ' realpart realroots rearray rectangle rectform rectform_log_if_constant recttopolar'
+	      + ' rediff reduce_consts reduce_order region region_boundaries region_boundaries_plus'
+	      + ' rem remainder remarray rembox remcomps remcon remcoord remfun remfunction'
+	      + ' remlet remove remove_constvalue remove_dimensions remove_edge remove_fundamental_dimensions'
+	      + ' remove_fundamental_units remove_plot_option remove_vertex rempart remrule'
+	      + ' remsym remvalue rename rename_file reset reset_displays residue resolvante'
+	      + ' resolvante_alternee1 resolvante_bipartite resolvante_diedrale resolvante_klein'
+	      + ' resolvante_klein3 resolvante_produit_sym resolvante_unitaire resolvante_vierer'
+	      + ' rest resultant return reveal reverse revert revert2 rgb2level rhs ricci riemann'
+	      + ' rinvariant risch rk rmdir rncombine romberg room rootscontract round row'
+	      + ' rowop rowswap rreduce run_testsuite %s save saving scalarp scaled_bessel_i'
+	      + ' scaled_bessel_i0 scaled_bessel_i1 scalefactors scanmap scatterplot scatterplot_description'
+	      + ' scene schur2comp sconcat scopy scsimp scurvature sdowncase sec sech second'
+	      + ' sequal sequalignore set_alt_display setdifference set_draw_defaults set_edge_weight'
+	      + ' setelmx setequalp setify setp set_partitions set_plot_option set_prompt set_random_state'
+	      + ' set_tex_environment set_tex_environment_default setunits setup_autoload set_up_dot_simplifications'
+	      + ' set_vertex_label seventh sexplode sf sha1sum sha256sum shortest_path shortest_weighted_path'
+	      + ' show showcomps showratvars sierpinskiale sierpinskimap sign signum similaritytransform'
+	      + ' simp_inequality simplify_sum simplode simpmetderiv simtran sin sinh sinsert'
+	      + ' sinvertcase sixth skewness skewness_bernoulli skewness_beta skewness_binomial'
+	      + ' skewness_chi2 skewness_continuous_uniform skewness_discrete_uniform skewness_exp'
+	      + ' skewness_f skewness_gamma skewness_general_finite_discrete skewness_geometric'
+	      + ' skewness_gumbel skewness_hypergeometric skewness_laplace skewness_logistic'
+	      + ' skewness_lognormal skewness_negative_binomial skewness_noncentral_chi2 skewness_noncentral_student_t'
+	      + ' skewness_normal skewness_pareto skewness_poisson skewness_rayleigh skewness_student_t'
+	      + ' skewness_weibull slength smake small_rhombicosidodecahedron_graph small_rhombicuboctahedron_graph'
+	      + ' smax smin smismatch snowmap snub_cube_graph snub_dodecahedron_graph solve'
+	      + ' solve_rec solve_rec_rat some somrac sort sparse6_decode sparse6_encode sparse6_export'
+	      + ' sparse6_import specint spherical spherical_bessel_j spherical_bessel_y spherical_hankel1'
+	      + ' spherical_hankel2 spherical_harmonic spherical_to_xyz splice split sposition'
+	      + ' sprint sqfr sqrt sqrtdenest sremove sremovefirst sreverse ssearch ssort sstatus'
+	      + ' ssubst ssubstfirst staircase standardize standardize_inverse_trig starplot'
+	      + ' starplot_description status std std1 std_bernoulli std_beta std_binomial'
+	      + ' std_chi2 std_continuous_uniform std_discrete_uniform std_exp std_f std_gamma'
+	      + ' std_general_finite_discrete std_geometric std_gumbel std_hypergeometric std_laplace'
+	      + ' std_logistic std_lognormal std_negative_binomial std_noncentral_chi2 std_noncentral_student_t'
+	      + ' std_normal std_pareto std_poisson std_rayleigh std_student_t std_weibull'
+	      + ' stemplot stirling stirling1 stirling2 strim striml strimr string stringout'
+	      + ' stringp strong_components struve_h struve_l sublis sublist sublist_indices'
+	      + ' submatrix subsample subset subsetp subst substinpart subst_parallel substpart'
+	      + ' substring subvar subvarp sum sumcontract summand_to_rec supcase supcontext'
+	      + ' symbolp symmdifference symmetricp system take_channel take_inference tan'
+	      + ' tanh taylor taylorinfo taylorp taylor_simplifier taytorat tcl_output tcontract'
+	      + ' tellrat tellsimp tellsimpafter tentex tenth test_mean test_means_difference'
+	      + ' test_normality test_proportion test_proportions_difference test_rank_sum'
+	      + ' test_sign test_signed_rank test_variance test_variance_ratio tex tex1 tex_display'
+	      + ' texput %th third throw time timedate timer timer_info tldefint tlimit todd_coxeter'
+	      + ' toeplitz tokens to_lisp topological_sort to_poly to_poly_solve totaldisrep'
+	      + ' totalfourier totient tpartpol trace tracematrix trace_options transform_sample'
+	      + ' translate translate_file transpose treefale tree_reduce treillis treinat'
+	      + ' triangle triangularize trigexpand trigrat trigreduce trigsimp trunc truncate'
+	      + ' truncated_cube_graph truncated_dodecahedron_graph truncated_icosahedron_graph'
+	      + ' truncated_tetrahedron_graph tr_warnings_get tube tutte_graph ueivects uforget'
+	      + ' ultraspherical underlying_graph undiff union unique uniteigenvectors unitp'
+	      + ' units unit_step unitvector unorder unsum untellrat untimer'
+	      + ' untrace uppercasep uricci uriemann uvect vandermonde_matrix var var1 var_bernoulli'
+	      + ' var_beta var_binomial var_chi2 var_continuous_uniform var_discrete_uniform'
+	      + ' var_exp var_f var_gamma var_general_finite_discrete var_geometric var_gumbel'
+	      + ' var_hypergeometric var_laplace var_logistic var_lognormal var_negative_binomial'
+	      + ' var_noncentral_chi2 var_noncentral_student_t var_normal var_pareto var_poisson'
+	      + ' var_rayleigh var_student_t var_weibull vector vectorpotential vectorsimp'
+	      + ' verbify vers vertex_coloring vertex_connectivity vertex_degree vertex_distance'
+	      + ' vertex_eccentricity vertex_in_degree vertex_out_degree vertices vertices_to_cycle'
+	      + ' vertices_to_path %w weyl wheel_graph wiener_index wigner_3j wigner_6j'
+	      + ' wigner_9j with_stdout write_binary_data writebyte write_data writefile wronskian'
+	      + ' xreduce xthru %y Zeilberger zeroequiv zerofor zeromatrix zeromatrixp zeta'
+	      + ' zgeev zheev zlange zn_add_table zn_carmichael_lambda zn_characteristic_factors'
+	      + ' zn_determinant zn_factor_generators zn_invert_by_lu zn_log zn_mult_table'
+	      + ' absboxchar activecontexts adapt_depth additive adim aform algebraic'
+	      + ' algepsilon algexact aliases allbut all_dotsimp_denoms allocation allsym alphabetic'
+	      + ' animation antisymmetric arrays askexp assume_pos assume_pos_pred assumescalar'
+	      + ' asymbol atomgrad atrig1 axes axis_3d axis_bottom axis_left axis_right axis_top'
+	      + ' azimuth background background_color backsubst berlefact bernstein_explicit'
+	      + ' besselexpand beta_args_sum_to_integer beta_expand bftorat bftrunc bindtest'
+	      + ' border boundaries_array box boxchar breakup %c capping cauchysum cbrange'
+	      + ' cbtics center cflength cframe_flag cnonmet_flag color color_bar color_bar_tics'
+	      + ' colorbox columns commutative complex cone context contexts contour contour_levels'
+	      + ' cosnpiflag ctaypov ctaypt ctayswitch ctayvar ct_coords ctorsion_flag ctrgsimp'
+	      + ' cube current_let_rule_package cylinder data_file_name debugmode decreasing'
+	      + ' default_let_rule_package delay dependencies derivabbrev derivsubst detout'
+	      + ' diagmetric diff dim dimensions dispflag display2d|10 display_format_internal'
+	      + ' distribute_over doallmxops domain domxexpt domxmxops domxnctimes dontfactor'
+	      + ' doscmxops doscmxplus dot0nscsimp dot0simp dot1simp dotassoc dotconstrules'
+	      + ' dotdistrib dotexptsimp dotident dotscrules draw_graph_program draw_realpart'
+	      + ' edge_color edge_coloring edge_partition edge_type edge_width %edispflag'
+	      + ' elevation %emode endphi endtheta engineering_format_floats enhanced3d %enumer'
+	      + ' epsilon_lp erfflag erf_representation errormsg error_size error_syms error_type'
+	      + ' %e_to_numlog eval even evenfun evflag evfun ev_point expandwrt_denom expintexpand'
+	      + ' expintrep expon expop exptdispflag exptisolate exptsubst facexpand facsum_combine'
+	      + ' factlim factorflag factorial_expand factors_only fb feature features'
+	      + ' file_name file_output_append file_search_demo file_search_lisp file_search_maxima|10'
+	      + ' file_search_tests file_search_usage file_type_lisp file_type_maxima|10 fill_color'
+	      + ' fill_density filled_func fixed_vertices flipflag float2bf font font_size'
+	      + ' fortindent fortspaces fpprec fpprintprec functions gamma_expand gammalim'
+	      + ' gdet genindex gensumnum GGFCFMAX GGFINFINITY globalsolve gnuplot_command'
+	      + ' gnuplot_curve_styles gnuplot_curve_titles gnuplot_default_term_command gnuplot_dumb_term_command'
+	      + ' gnuplot_file_args gnuplot_file_name gnuplot_out_file gnuplot_pdf_term_command'
+	      + ' gnuplot_pm3d gnuplot_png_term_command gnuplot_postamble gnuplot_preamble'
+	      + ' gnuplot_ps_term_command gnuplot_svg_term_command gnuplot_term gnuplot_view_args'
+	      + ' Gosper_in_Zeilberger gradefs grid grid2d grind halfangles head_angle head_both'
+	      + ' head_length head_type height hypergeometric_representation %iargs ibase'
+	      + ' icc1 icc2 icounter idummyx ieqnprint ifb ifc1 ifc2 ifg ifgi ifr iframe_bracket_form'
+	      + ' ifri igeowedge_flag ikt1 ikt2 imaginary inchar increasing infeval'
+	      + ' infinity inflag infolists inm inmc1 inmc2 intanalysis integer integervalued'
+	      + ' integrate_use_rootsof integration_constant integration_constant_counter interpolate_color'
+	      + ' intfaclim ip_grid ip_grid_in irrational isolate_wrt_times iterations itr'
+	      + ' julia_parameter %k1 %k2 keepfloat key key_pos kinvariant kt label label_alignment'
+	      + ' label_orientation labels lassociative lbfgs_ncorrections lbfgs_nfeval_max'
+	      + ' leftjust legend letrat let_rule_packages lfg lg lhospitallim limsubst linear'
+	      + ' linear_solver linechar linel|10 linenum line_type linewidth line_width linsolve_params'
+	      + ' linsolvewarn lispdisp listarith listconstvars listdummyvars lmxchar load_pathname'
+	      + ' loadprint logabs logarc logcb logconcoeffp logexpand lognegint logsimp logx'
+	      + ' logx_secondary logy logy_secondary logz lriem m1pbranch macroexpansion macros'
+	      + ' mainvar manual_demo maperror mapprint matrix_element_add matrix_element_mult'
+	      + ' matrix_element_transpose maxapplydepth maxapplyheight maxima_tempdir|10 maxima_userdir|10'
+	      + ' maxnegex MAX_ORD maxposex maxpsifracdenom maxpsifracnum maxpsinegint maxpsiposint'
+	      + ' maxtayorder mesh_lines_color method mod_big_prime mode_check_errorp'
+	      + ' mode_checkp mode_check_warnp mod_test mod_threshold modular_linear_solver'
+	      + ' modulus multiplicative multiplicities myoptions nary negdistrib negsumdispflag'
+	      + ' newline newtonepsilon newtonmaxiter nextlayerfactor niceindicespref nm nmc'
+	      + ' noeval nolabels nonegative_lp noninteger nonscalar noun noundisp nouns np'
+	      + ' npi nticks ntrig numer numer_pbranch obase odd oddfun opacity opproperties'
+	      + ' opsubst optimprefix optionset orientation origin orthopoly_returns_intervals'
+	      + ' outative outchar packagefile palette partswitch pdf_file pfeformat phiresolution'
+	      + ' %piargs piece pivot_count_sx pivot_max_sx plot_format plot_options plot_realpart'
+	      + ' png_file pochhammer_max_index points pointsize point_size points_joined point_type'
+	      + ' poislim poisson poly_coefficient_ring poly_elimination_order polyfactor poly_grobner_algorithm'
+	      + ' poly_grobner_debug poly_monomial_order poly_primary_elimination_order poly_return_term_list'
+	      + ' poly_secondary_elimination_order poly_top_reduction_only posfun position'
+	      + ' powerdisp pred prederror primep_number_of_tests product_use_gamma program'
+	      + ' programmode promote_float_to_bigfloat prompt proportional_axes props psexpand'
+	      + ' ps_file radexpand radius radsubstflag rassociative ratalgdenom ratchristof'
+	      + ' ratdenomdivide rateinstein ratepsilon ratfac rational ratmx ratprint ratriemann'
+	      + ' ratsimpexpons ratvarswitch ratweights ratweyl ratwtlvl real realonly redraw'
+	      + ' refcheck resolution restart resultant ric riem rmxchar %rnum_list rombergabs'
+	      + ' rombergit rombergmin rombergtol rootsconmode rootsepsilon run_viewer same_xy'
+	      + ' same_xyz savedef savefactors scalar scalarmatrixp scale scale_lp setcheck'
+	      + ' setcheckbreak setval show_edge_color show_edges show_edge_type show_edge_width'
+	      + ' show_id show_label showtime show_vertex_color show_vertex_size show_vertex_type'
+	      + ' show_vertices show_weight simp simplified_output simplify_products simpproduct'
+	      + ' simpsum sinnpiflag solvedecomposes solveexplicit solvefactors solvenullwarn'
+	      + ' solveradcan solvetrigwarn space sparse sphere spring_embedding_depth sqrtdispflag'
+	      + ' stardisp startphi starttheta stats_numer stringdisp structures style sublis_apply_lambda'
+	      + ' subnumsimp sumexpand sumsplitfact surface surface_hide svg_file symmetric'
+	      + ' tab taylordepth taylor_logexpand taylor_order_coefficients taylor_truncate_polynomials'
+	      + ' tensorkill terminal testsuite_files thetaresolution timer_devalue title tlimswitch'
+	      + ' tr track transcompile transform transform_xy translate_fast_arrays transparent'
+	      + ' transrun tr_array_as_ref tr_bound_function_applyp tr_file_tty_messagesp tr_float_can_branch_complex'
+	      + ' tr_function_call_default trigexpandplus trigexpandtimes triginverses trigsign'
+	      + ' trivial_solutions tr_numer tr_optimize_max_loop tr_semicompile tr_state_vars'
+	      + ' tr_warn_bad_function_calls tr_warn_fexpr tr_warn_meval tr_warn_mode'
+	      + ' tr_warn_undeclared tr_warn_undefined_variable tstep ttyoff tube_extremes'
+	      + ' ufg ug %unitexpand unit_vectors uric uriem use_fast_arrays user_preamble'
+	      + ' usersetunits values vect_cross verbose vertex_color vertex_coloring vertex_partition'
+	      + ' vertex_size vertex_type view warnings weyl width windowname windowtitle wired_surface'
+	      + ' wireframe xaxis xaxis_color xaxis_secondary xaxis_type xaxis_width xlabel'
+	      + ' xlabel_secondary xlength xrange xrange_secondary xtics xtics_axis xtics_rotate'
+	      + ' xtics_rotate_secondary xtics_secondary xtics_secondary_axis xu_grid x_voxel'
+	      + ' xy_file xyplane xy_scale yaxis yaxis_color yaxis_secondary yaxis_type yaxis_width'
+	      + ' ylabel ylabel_secondary ylength yrange yrange_secondary ytics ytics_axis'
+	      + ' ytics_rotate ytics_rotate_secondary ytics_secondary ytics_secondary_axis'
+	      + ' yv_grid y_voxel yx_ratio zaxis zaxis_color zaxis_type zaxis_width zeroa zerob'
+	      + ' zerobern zeta%pi zlabel zlabel_rotate zlength zmin zn_primroot_limit zn_primroot_pretest';
+	  var SYMBOLS = '_ __ %|0 %%|0';
+
+	  return {
+	    lexemes: '[A-Za-z_%][0-9A-Za-z_%]*',
+	    keywords: {
+	      keyword: KEYWORDS,
+	      literal: LITERALS,
+	      built_in: BUILTIN_FUNCTIONS,
+	      symbol: SYMBOLS,
+	    },
+	    contains: [
+	      {
+	        className: 'comment',
+	        begin: '/\\*',
+	        end: '\\*/',
+	        contains: ['self']
+	      },
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        className: 'number',
+	        relevance: 0,
+	        variants: [
+	          {
+	            // float number w/ exponent
+	            // hmm, I wonder if we ought to include other exponent markers?
+	            begin: '\\b(\\d+|\\d+\\.|\\.\\d+|\\d+\\.\\d+)[Ee][-+]?\\d+\\b',
+	          },
+	          {
+	            // bigfloat number
+	            begin: '\\b(\\d+|\\d+\\.|\\.\\d+|\\d+\\.\\d+)[Bb][-+]?\\d+\\b',
+	            relevance: 10
+	          },
+	          {
+	            // float number w/out exponent
+	            // Doesn't seem to recognize floats which start with '.'
+	            begin: '\\b(\\.\\d+|\\d+\\.\\d+)\\b',
+	          },
+	          {
+	            // integer in base up to 36
+	            // Doesn't seem to recognize integers which end with '.'
+	            begin: '\\b(\\d+|0[0-9A-Za-z]+)\\.?\\b',
+	          }
+	        ]
+	      }
+	    ]
+	  }
+	};
+
+/***/ },
+/* 118 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24505,7 +22303,7 @@
 	};
 
 /***/ },
-/* 131 */
+/* 119 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24591,7 +22389,7 @@
 	};
 
 /***/ },
-/* 132 */
+/* 120 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24624,7 +22422,7 @@
 	            // 32-bit integer instructions
 	            'addi?u?|andi?|b(al)?|beql?|bgez(al)?l?|bgtzl?|blezl?|bltz(al)?l?|' +
 	            'bnel?|cl[oz]|divu?|ext|ins|j(al)?|jalr(\.hb)?|jr(\.hb)?|lbu?|lhu?|' +
-	            'll|lui|lw[lr]?|maddu?|mfhi|mflo|movn|movz|msubu?|mthi|mtlo|mul|' +
+	            'll|lui|lw[lr]?|maddu?|mfhi|mflo|movn|movz|move|msubu?|mthi|mtlo|mul|' +
 	            'multu?|nop|nor|ori?|rotrv?|sb|sc|se[bh]|sh|sllv?|slti?u?|srav?|' +
 	            'srlv?|subu?|sw[lr]?|xori?|wsbh|' +
 	            // floating-point instructions
@@ -24681,7 +22479,7 @@
 	};
 
 /***/ },
-/* 133 */
+/* 121 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24704,7 +22502,7 @@
 	};
 
 /***/ },
-/* 134 */
+/* 122 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24857,14 +22655,15 @@
 	  METHOD.contains = PERL_DEFAULT_CONTAINS;
 
 	  return {
-	    aliases: ['pl'],
+	    aliases: ['pl', 'pm'],
+	    lexemes: /[\w\.]+/,
 	    keywords: PERL_KEYWORDS,
 	    contains: PERL_DEFAULT_CONTAINS
 	  };
 	};
 
 /***/ },
-/* 135 */
+/* 123 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24893,7 +22692,7 @@
 	};
 
 /***/ },
-/* 136 */
+/* 124 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -24972,7 +22771,123 @@
 	};
 
 /***/ },
-/* 137 */
+/* 125 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var KEYWORDS = {
+	    keyword:
+	      // Moonscript keywords
+	      'if then not for in while do return else elseif break continue switch and or ' +
+	      'unless when class extends super local import export from using',
+	    literal:
+	      'true false nil',
+	    built_in:
+	      '_G _VERSION assert collectgarbage dofile error getfenv getmetatable ipairs load ' +
+	      'loadfile loadstring module next pairs pcall print rawequal rawget rawset require ' +
+	      'select setfenv setmetatable tonumber tostring type unpack xpcall coroutine debug ' +
+	      'io math os package string table'
+	  };
+	  var JS_IDENT_RE = '[A-Za-z$_][0-9A-Za-z$_]*';
+	  var SUBST = {
+	    className: 'subst',
+	    begin: /#\{/, end: /}/,
+	    keywords: KEYWORDS
+	  };
+	  var EXPRESSIONS = [
+	    hljs.inherit(hljs.C_NUMBER_MODE,
+	      {starts: {end: '(\\s*/)?', relevance: 0}}), // a number tries to eat the following slash to prevent treating it as a regexp
+	    {
+	      className: 'string',
+	      variants: [
+	        {
+	          begin: /'/, end: /'/,
+	          contains: [hljs.BACKSLASH_ESCAPE]
+	        },
+	        {
+	          begin: /"/, end: /"/,
+	          contains: [hljs.BACKSLASH_ESCAPE, SUBST]
+	        }
+	      ]
+	    },
+	    {
+	      className: 'built_in',
+	      begin: '@__' + hljs.IDENT_RE
+	    },
+	    {
+	      begin: '@' + hljs.IDENT_RE // relevance booster on par with CoffeeScript
+	    },
+	    {
+	      begin: hljs.IDENT_RE + '\\\\' + hljs.IDENT_RE // inst\method
+	    }
+	  ];
+	  SUBST.contains = EXPRESSIONS;
+
+	  var TITLE = hljs.inherit(hljs.TITLE_MODE, {begin: JS_IDENT_RE});
+	  var PARAMS_RE = '(\\(.*\\))?\\s*\\B[-=]>';
+	  var PARAMS = {
+	    className: 'params',
+	    begin: '\\([^\\(]', returnBegin: true,
+	    /* We need another contained nameless mode to not have every nested
+	    pair of parens to be called "params" */
+	    contains: [{
+	      begin: /\(/, end: /\)/,
+	      keywords: KEYWORDS,
+	      contains: ['self'].concat(EXPRESSIONS)
+	    }]
+	  };
+
+	  return {
+	    aliases: ['moon'],
+	    keywords: KEYWORDS,
+	    illegal: /\/\*/,
+	    contains: EXPRESSIONS.concat([
+	      hljs.COMMENT('--', '$'),
+	      {
+	        className: 'function',  // function: -> =>
+	        begin: '^\\s*' + JS_IDENT_RE + '\\s*=\\s*' + PARAMS_RE, end: '[-=]>',
+	        returnBegin: true,
+	        contains: [TITLE, PARAMS]
+	      },
+	      {
+	        begin: /[\(,:=]\s*/, // anonymous function start
+	        relevance: 0,
+	        contains: [
+	          {
+	            className: 'function',
+	            begin: PARAMS_RE, end: '[-=]>',
+	            returnBegin: true,
+	            contains: [PARAMS]
+	          }
+	        ]
+	      },
+	      {
+	        className: 'class',
+	        beginKeywords: 'class',
+	        end: '$',
+	        illegal: /[:="\[\]]/,
+	        contains: [
+	          {
+	            beginKeywords: 'extends',
+	            endsWithParent: true,
+	            illegal: /[:="\[\]]/,
+	            contains: [TITLE]
+	          },
+	          TITLE
+	        ]
+	      },
+	      {
+	        className: 'name',    // table
+	        begin: JS_IDENT_RE + ':', end: ':',
+	        returnBegin: true, returnEnd: true,
+	        relevance: 0
+	      }
+	    ])
+	  };
+	};
+
+/***/ },
+/* 126 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25069,15 +22984,28 @@
 	};
 
 /***/ },
-/* 138 */
+/* 127 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    aliases: ['nim'],
 	    keywords: {
-	      keyword: 'addr and as asm bind block break|0 case|0 cast const|0 continue|0 converter discard distinct|10 div do elif else|0 end|0 enum|0 except export finally for from generic if|0 import|0 in include|0 interface is isnot|10 iterator|10 let|0 macro method|10 mixin mod nil not notin|10 object|0 of or out proc|10 ptr raise ref|10 return shl shr static template try|0 tuple type|0 using|0 var|0 when while|0 with without xor yield',
-	      literal: 'shared guarded stdin stdout stderr result|10 true false'
+	      keyword:
+	        'addr and as asm bind block break case cast const continue converter ' +
+	        'discard distinct div do elif else end enum except export finally ' +
+	        'for from generic if import in include interface is isnot iterator ' +
+	        'let macro method mixin mod nil not notin object of or out proc ptr ' +
+	        'raise ref return shl shr static template try tuple type using var ' +
+	        'when while with without xor yield',
+	      literal:
+	        'shared guarded stdin stdout stderr result true false',
+	      built_in:
+	        'int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 float ' +
+	        'float32 float64 bool char string cstring pointer expr stmt void ' +
+	        'auto any range array openarray varargs seq set clong culong cchar ' +
+	        'cschar cshort cint csize clonglong cfloat cdouble clongdouble ' +
+	        'cuchar cushort cuint culonglong cstringarray semistatic'
 	    },
 	    contains: [ {
 	        className: 'meta', // Actually pragma
@@ -25100,9 +23028,6 @@
 	        begin: /\b[A-Z]\w+\b/,
 	        relevance: 0
 	      }, {
-	        className: 'built_in',
-	        begin: /\b(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float|float32|float64|bool|char|string|cstring|pointer|expr|stmt|void|auto|any|range|array|openarray|varargs|seq|set|clong|culong|cchar|cschar|cshort|cint|csize|clonglong|cfloat|cdouble|clongdouble|cuchar|cushort|cuint|culonglong|cstringarray|semistatic)\b/
-	      }, {
 	        className: 'number',
 	        relevance: 0,
 	        variants: [
@@ -25118,7 +23043,7 @@
 	};
 
 /***/ },
-/* 139 */
+/* 128 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25171,7 +23096,7 @@
 	};
 
 /***/ },
-/* 140 */
+/* 129 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25261,7 +23186,7 @@
 	};
 
 /***/ },
-/* 141 */
+/* 130 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25343,7 +23268,7 @@
 	};
 
 /***/ },
-/* 142 */
+/* 131 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25418,7 +23343,7 @@
 	};
 
 /***/ },
-/* 143 */
+/* 132 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25479,7 +23404,7 @@
 	};
 
 /***/ },
-/* 144 */
+/* 133 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25530,6 +23455,7 @@
 	  };
 	  return {
 	    case_insensitive: true,
+	    lexemes: /\.?\w+/,
 	    keywords: OXYGENE_KEYWORDS,
 	    illegal: '("|\\$[G-Zg-z]|\\/\\*|</|=>|->)',
 	    contains: [
@@ -25552,7 +23478,7 @@
 	};
 
 /***/ },
-/* 145 */
+/* 134 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25604,7 +23530,7 @@
 	};
 
 /***/ },
-/* 146 */
+/* 135 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25614,7 +23540,7 @@
 	  };
 	  var TABLE = {
 	    className: 'variable',
-	    begin: /</, end: />/
+	    begin: /<(?!\/)/, end: />/
 	  };
 	  var QUOTE_STRING = {
 	    className: 'string',
@@ -25660,7 +23586,7 @@
 	};
 
 /***/ },
-/* 147 */
+/* 136 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25698,8 +23624,8 @@
 	      'trait goto instanceof insteadof __DIR__ __NAMESPACE__ ' +
 	      'yield finally',
 	    contains: [
-	      hljs.C_LINE_COMMENT_MODE,
 	      hljs.HASH_COMMENT_MODE,
+	      hljs.COMMENT('//', '$', {contains: [PREPROCESSOR]}),
 	      hljs.COMMENT(
 	        '/\\*',
 	        '\\*/',
@@ -25708,8 +23634,7 @@
 	            {
 	              className: 'doctag',
 	              begin: '@[A-Za-z]+'
-	            },
-	            PREPROCESSOR
+	            }
 	          ]
 	        }
 	      ),
@@ -25789,7 +23714,7 @@
 	};
 
 /***/ },
-/* 148 */
+/* 137 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25845,7 +23770,7 @@
 	};
 
 /***/ },
-/* 149 */
+/* 138 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25897,7 +23822,7 @@
 	};
 
 /***/ },
-/* 150 */
+/* 139 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -25931,7 +23856,7 @@
 	};
 
 /***/ },
-/* 151 */
+/* 140 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26023,7 +23948,7 @@
 	};
 
 /***/ },
-/* 152 */
+/* 141 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26063,7 +23988,7 @@
 	};
 
 /***/ },
-/* 153 */
+/* 142 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26182,7 +24107,7 @@
 	};
 
 /***/ },
-/* 154 */
+/* 143 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26257,7 +24182,14 @@
 	        ],
 	        end: /:/,
 	        illegal: /[${=;\n,]/,
-	        contains: [hljs.UNDERSCORE_TITLE_MODE, PARAMS]
+	        contains: [
+	          hljs.UNDERSCORE_TITLE_MODE,
+	          PARAMS,
+	          {
+	            begin: /->/, endsWithParent: true,
+	            keywords: 'None'
+	          }
+	        ]
 	      },
 	      {
 	        className: 'meta',
@@ -26271,7 +24203,7 @@
 	};
 
 /***/ },
-/* 155 */
+/* 144 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26298,7 +24230,180 @@
 	};
 
 /***/ },
-/* 156 */
+/* 145 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var KEYWORDS = {
+	      keyword:
+	        'in of on if for while finally var new function do return void else break catch ' +
+	        'instanceof with throw case default try this switch continue typeof delete ' +
+	        'let yield const export super debugger as async await import',
+	      literal:
+	        'true false null undefined NaN Infinity',
+	      built_in:
+	        'eval isFinite isNaN parseFloat parseInt decodeURI decodeURIComponent ' +
+	        'encodeURI encodeURIComponent escape unescape Object Function Boolean Error ' +
+	        'EvalError InternalError RangeError ReferenceError StopIteration SyntaxError ' +
+	        'TypeError URIError Number Math Date String RegExp Array Float32Array ' +
+	        'Float64Array Int16Array Int32Array Int8Array Uint16Array Uint32Array ' +
+	        'Uint8Array Uint8ClampedArray ArrayBuffer DataView JSON Intl arguments require ' +
+	        'module console window document Symbol Set Map WeakSet WeakMap Proxy Reflect ' +
+	        'Behavior bool color coordinate date double enumeration font geocircle georectangle ' +
+	        'geoshape int list matrix4x4 parent point quaternion real rect ' +
+	        'size string url var variant vector2d vector3d vector4d' +
+	        'Promise'
+	    };
+
+	  var QML_IDENT_RE = '[a-zA-Z_][a-zA-Z0-9\\._]*';
+
+	  // Isolate property statements. Ends at a :, =, ;, ,, a comment or end of line.
+	  // Use property class.
+	  var PROPERTY = {
+	      className: 'keyword',
+	      begin: '\\bproperty\\b',
+	      starts: {
+	        className: 'string',
+	        end: '(:|=|;|,|//|/\\*|$)',
+	        returnEnd: true
+	      }
+	  };
+
+	  // Isolate signal statements. Ends at a ) a comment or end of line.
+	  // Use property class.
+	  var SIGNAL = {
+	      className: 'keyword',
+	      begin: '\\bsignal\\b',
+	      starts: {
+	        className: 'string',
+	        end: '(\\(|:|=|;|,|//|/\\*|$)',
+	        returnEnd: true
+	      }
+	  };
+
+	  // id: is special in QML. When we see id: we want to mark the id: as attribute and
+	  // emphasize the token following.
+	  var ID_ID = {
+	      className: 'attribute',
+	      begin: '\\bid\\s*:',
+	      starts: {
+	        className: 'string',
+	        end: QML_IDENT_RE,
+	        returnEnd: false
+	      }
+	  };
+
+	  // Find QML object attribute. An attribute is a QML identifier followed by :.
+	  // Unfortunately it's hard to know where it ends, as it may contain scalars,
+	  // objects, object definitions, or javascript. The true end is either when the parent
+	  // ends or the next attribute is detected.
+	  var QML_ATTRIBUTE = {
+	    begin: QML_IDENT_RE + '\\s*:',
+	    returnBegin: true,
+	    contains: [
+	      {
+	        className: 'attribute',
+	        begin: QML_IDENT_RE,
+	        end: '\\s*:',
+	        excludeEnd: true,
+	        relevance: 0
+	      }
+	    ],
+	    relevance: 0
+	  };
+
+	  // Find QML object. A QML object is a QML identifier followed by { and ends at the matching }.
+	  // All we really care about is finding IDENT followed by { and just mark up the IDENT and ignore the {.
+	  var QML_OBJECT = {
+	    begin: QML_IDENT_RE + '\\s*{', end: '{',
+	    returnBegin: true,
+	    relevance: 0,
+	    contains: [
+	      hljs.inherit(hljs.TITLE_MODE, {begin: QML_IDENT_RE})
+	    ]
+	  };
+
+	  return {
+	    aliases: ['qt'],
+	    case_insensitive: false,
+	    keywords: KEYWORDS,
+	    contains: [
+	      {
+	        className: 'meta',
+	        begin: /^\s*['"]use (strict|asm)['"]/
+	      },
+	      hljs.APOS_STRING_MODE,
+	      hljs.QUOTE_STRING_MODE,
+	      { // template string
+	        className: 'string',
+	        begin: '`', end: '`',
+	        contains: [
+	          hljs.BACKSLASH_ESCAPE,
+	          {
+	            className: 'subst',
+	            begin: '\\$\\{', end: '\\}'
+	          }
+	        ]
+	      },
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      {
+	        className: 'number',
+	        variants: [
+	          { begin: '\\b(0[bB][01]+)' },
+	          { begin: '\\b(0[oO][0-7]+)' },
+	          { begin: hljs.C_NUMBER_RE }
+	        ],
+	        relevance: 0
+	      },
+	      { // "value" container
+	        begin: '(' + hljs.RE_STARTERS_RE + '|\\b(case|return|throw)\\b)\\s*',
+	        keywords: 'return throw case',
+	        contains: [
+	          hljs.C_LINE_COMMENT_MODE,
+	          hljs.C_BLOCK_COMMENT_MODE,
+	          hljs.REGEXP_MODE,
+	          { // E4X / JSX
+	            begin: /</, end: />\s*[);\]]/,
+	            relevance: 0,
+	            subLanguage: 'xml'
+	          }
+	        ],
+	        relevance: 0
+	      },
+	      SIGNAL,
+	      PROPERTY,
+	      {
+	        className: 'function',
+	        beginKeywords: 'function', end: /\{/, excludeEnd: true,
+	        contains: [
+	          hljs.inherit(hljs.TITLE_MODE, {begin: /[A-Za-z$_][0-9A-Za-z$_]*/}),
+	          {
+	            className: 'params',
+	            begin: /\(/, end: /\)/,
+	            excludeBegin: true,
+	            excludeEnd: true,
+	            contains: [
+	              hljs.C_LINE_COMMENT_MODE,
+	              hljs.C_BLOCK_COMMENT_MODE
+	            ]
+	          }
+	        ],
+	        illegal: /\[|%/
+	      },
+	      {
+	        begin: '\\.' + hljs.IDENT_RE, relevance: 0 // hack: prevents detection of keywords after dots
+	      },
+	      ID_ID,
+	      QML_ATTRIBUTE,
+	      QML_OBJECT
+	    ],
+	    illegal: /#/
+	  };
+	};
+
+/***/ },
+/* 146 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26372,7 +24477,7 @@
 	};
 
 /***/ },
-/* 157 */
+/* 147 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26403,7 +24508,7 @@
 	};
 
 /***/ },
-/* 158 */
+/* 148 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26474,7 +24579,7 @@
 	};
 
 /***/ },
-/* 159 */
+/* 149 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26514,7 +24619,7 @@
 	};
 
 /***/ },
-/* 160 */
+/* 150 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26579,39 +24684,41 @@
 	};
 
 /***/ },
-/* 161 */
+/* 151 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var NUM_SUFFIX = '([uif](8|16|32|64|size))\?';
 	  var BLOCK_COMMENT = hljs.inherit(hljs.C_BLOCK_COMMENT_MODE);
 	  BLOCK_COMMENT.contains.push('self');
+	  var KEYWORDS =
+	    'alignof as be box break const continue crate do else enum extern ' +
+	    'false fn for if impl in let loop match mod mut offsetof once priv ' +
+	    'proc pub pure ref return self Self sizeof static struct super trait true ' +
+	    'type typeof unsafe unsized use virtual while where yield move ' +
+	    'int i8 i16 i32 i64 ' +
+	    'uint u8 u32 u64 ' +
+	    'float f32 f64 ' +
+	    'str char bool'
 	  var BUILTINS =
 	    // prelude
 	    'Copy Send Sized Sync Drop Fn FnMut FnOnce drop Box ToOwned Clone ' +
 	    'PartialEq PartialOrd Eq Ord AsRef AsMut Into From Default Iterator ' +
 	    'Extend IntoIterator DoubleEndedIterator ExactSizeIterator Option ' +
-	    'Some None Result Ok Err SliceConcatExt String ToString Vec ' +
+	    'Result SliceConcatExt String ToString Vec ' +
 	    // macros
 	    'assert! assert_eq! bitflags! bytes! cfg! col! concat! concat_idents! ' +
 	    'debug_assert! debug_assert_eq! env! panic! file! format! format_args! ' +
 	    'include_bin! include_str! line! local_data_key! module_path! ' +
 	    'option_env! print! println! select! stringify! try! unimplemented! ' +
-	    'unreachable! vec! write! writeln!';
+	    'unreachable! vec! write! writeln! macro_rules!';
 	  return {
 	    aliases: ['rs'],
 	    keywords: {
 	      keyword:
-	        'alignof as be box break const continue crate do else enum extern ' +
-	        'false fn for if impl in let loop match mod mut offsetof once priv ' +
-	        'proc pub pure ref return self Self sizeof static struct super trait true ' +
-	        'type typeof unsafe unsized use virtual while where yield ' +
-	        'int i8 i16 i32 i64 ' +
-	        'uint u8 u32 u64 ' +
-	        'float f32 f64 ' +
-	        'str char bool',
+	        KEYWORDS,
 	      literal:
-	        'true false',
+	        'true false Some None Ok Err',
 	      built_in:
 	        BUILTINS
 	    },
@@ -26620,12 +24727,12 @@
 	    contains: [
 	      hljs.C_LINE_COMMENT_MODE,
 	      BLOCK_COMMENT,
-	      hljs.inherit(hljs.QUOTE_STRING_MODE, {illegal: null}),
+	      hljs.inherit(hljs.QUOTE_STRING_MODE, {begin: /b?"/, illegal: null}),
 	      {
 	        className: 'string',
 	        variants: [
 	           { begin: /r(#*)".*?"\1(?!#)/ },
-	           { begin: /'\\?(x\w{2}|u\w{4}|U\w{8}|.)'/ },
+	           { begin: /b?'\\?(x\w{2}|u\w{4}|U\w{8}|.)'/ }
 	        ]
 	      },
 	      {
@@ -26651,17 +24758,25 @@
 	      },
 	      {
 	        className: 'meta',
-	        begin: '#\\!?\\[', end: '\\]'
+	        begin: '#\\!?\\[', end: '\\]',
+	        contains: [
+	          {
+	            className: 'meta-string',
+	            begin: /"/, end: /"/
+	          }
+	        ]
 	      },
 	      {
 	        className: 'class',
-	        beginKeywords: 'type', end: '(=|<)',
-	        contains: [hljs.UNDERSCORE_TITLE_MODE],
+	        beginKeywords: 'type', end: ';',
+	        contains: [
+	          hljs.inherit(hljs.UNDERSCORE_TITLE_MODE, {endsParent: true})
+	        ],
 	        illegal: '\\S'
 	      },
 	      {
 	        className: 'class',
-	        beginKeywords: 'trait enum', end: '{',
+	        beginKeywords: 'trait enum struct', end: '{',
 	        contains: [
 	          hljs.inherit(hljs.UNDERSCORE_TITLE_MODE, {endsParent: true})
 	        ],
@@ -26672,6 +24787,11 @@
 	        keywords: {built_in: BUILTINS}
 	      },
 	      {
+	        className: 'params',
+	        begin: /\|/, end: /\|/,
+	        keywords: KEYWORDS
+	      },
+	      {
 	        begin: '->'
 	      }
 	    ]
@@ -26679,7 +24799,7 @@
 	};
 
 /***/ },
-/* 162 */
+/* 152 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26798,7 +24918,7 @@
 	};
 
 /***/ },
-/* 163 */
+/* 153 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26898,32 +25018,52 @@
 	    relevance: 0
 	  };
 
+	  var QUOTED_LIST = {
+	    begin: /'/,
+	    contains: [
+	      {
+	        begin: '\\(', end: '\\)',
+	        contains: ['self', LITERAL, STRING, NUMBER, IDENT, QUOTED_IDENT]
+	      }
+	    ]
+	  };
+
+	  var NAME = {
+	    className: 'name',
+	    begin: SCHEME_IDENT_RE,
+	    lexemes: SCHEME_IDENT_RE,
+	    keywords: BUILTINS
+	  };
+
+	  var LAMBDA = {
+	    begin: /lambda/, endsWithParent: true, returnBegin: true,
+	    contains: [
+	      NAME,
+	      {
+	        begin: /\(/, end: /\)/, endsParent: true,
+	        contains: [IDENT],
+	      }
+	    ]
+	  };
+
 	  var LIST = {
 	    variants: [
 	      { begin: '\\(', end: '\\)' },
 	      { begin: '\\[', end: '\\]' }
 	    ],
-	    contains: [
-	      {
-	        className: 'name',
-	        begin: SCHEME_IDENT_RE,
-	        lexemes: SCHEME_IDENT_RE,
-	        keywords: BUILTINS
-	      },
-	      BODY
-	    ]
+	    contains: [LAMBDA, NAME, BODY]
 	  };
 
-	  BODY.contains = [LITERAL, NUMBER, STRING, IDENT, QUOTED_IDENT, LIST].concat(COMMENT_MODES);
+	  BODY.contains = [LITERAL, NUMBER, STRING, IDENT, QUOTED_IDENT, QUOTED_LIST, LIST].concat(COMMENT_MODES);
 
 	  return {
 	    illegal: /\S/,
-	    contains: [SHEBANG, NUMBER, STRING, QUOTED_IDENT, LIST].concat(COMMENT_MODES)
+	    contains: [SHEBANG, NUMBER, STRING, QUOTED_IDENT, QUOTED_LIST, LIST].concat(COMMENT_MODES)
 	  };
 	};
 
 /***/ },
-/* 164 */
+/* 154 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -26981,7 +25121,7 @@
 	};
 
 /***/ },
-/* 165 */
+/* 155 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27083,7 +25223,7 @@
 	};
 
 /***/ },
-/* 166 */
+/* 156 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27143,7 +25283,7 @@
 	};
 
 /***/ },
-/* 167 */
+/* 157 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27197,7 +25337,7 @@
 	};
 
 /***/ },
-/* 168 */
+/* 158 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27221,7 +25361,8 @@
 	    contains: [
 	      {
 	        className: 'literal',
-	        begin: '\\[(\\|\\|)?\\]|\\(\\)'
+	        begin: /\[(\|\|)?\]|\(\)/,
+	        relevance: 0
 	      },
 	      hljs.COMMENT(
 	        '\\(\\*',
@@ -27266,7 +25407,7 @@
 	};
 
 /***/ },
-/* 169 */
+/* 159 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27367,14 +25508,14 @@
 	};
 
 /***/ },
-/* 170 */
+/* 160 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var COMMENT_MODE = hljs.COMMENT('--', '$');
 	  return {
 	    case_insensitive: true,
-	    illegal: /[<>{}*]/,
+	    illegal: /[<>{}*#]/,
 	    contains: [
 	      {
 	        beginKeywords:
@@ -27384,6 +25525,7 @@
 	          'unlock purge reset change stop analyze cache flush optimize repair kill ' +
 	          'install uninstall checksum restore check backup revoke',
 	        end: /;/, endsWithParent: true,
+	        lexemes: /[\w\.]+/,
 	        keywords: {
 	          keyword:
 	            'abort abs absolute acc acce accep accept access accessed accessible account acos action activate add ' +
@@ -27394,7 +25536,7 @@
 	            'authors auto autoallocate autodblink autoextend automatic availability avg backup badfile basicfile ' +
 	            'before begin beginning benchmark between bfile bfile_base big bigfile bin binary_double binary_float ' +
 	            'binlog bit_and bit_count bit_length bit_or bit_xor bitmap blob_base block blocksize body both bound ' +
-	            'buffer_cache buffer_pool build bulk by byte byteordermark bytes c cache caching call calling cancel ' +
+	            'buffer_cache buffer_pool build bulk by byte byteordermark bytes cache caching call calling cancel ' +
 	            'capacity cascade cascaded case cast catalog category ceil ceiling chain change changed char_base ' +
 	            'char_length character_length characters characterset charindex charset charsetform charsetid check ' +
 	            'checksum checksum_agg child choose chr chunk class cleanup clear client clob clob_base clone close ' +
@@ -27406,7 +25548,7 @@
 	            'contributors controlfile conv convert convert_tz corr corr_k corr_s corresponding corruption cos cost ' +
 	            'count count_big counted covar_pop covar_samp cpu_per_call cpu_per_session crc32 create creation ' +
 	            'critical cross cube cume_dist curdate current current_date current_time current_timestamp current_user ' +
-	            'cursor curtime customdatum cycle d data database databases datafile datafiles datalength date_add ' +
+	            'cursor curtime customdatum cycle data database databases datafile datafiles datalength date_add ' +
 	            'date_cache date_format date_sub dateadd datediff datefromparts datename datepart datetime2fromparts ' +
 	            'day day_to_second dayname dayofmonth dayofweek dayofyear days db_role_change dbtimezone ddl deallocate ' +
 	            'declare decode decompose decrement decrypt deduplicate def defa defau defaul default defaults ' +
@@ -27414,34 +25556,34 @@
 	            'depth dequeue des_decrypt des_encrypt des_key_file desc descr descri describ describe descriptor ' +
 	            'deterministic diagnostics difference dimension direct_load directory disable disable_all ' +
 	            'disallow disassociate discardfile disconnect diskgroup distinct distinctrow distribute distributed div ' +
-	            'do document domain dotnet double downgrade drop dumpfile duplicate duration e each edition editionable ' +
+	            'do document domain dotnet double downgrade drop dumpfile duplicate duration each edition editionable ' +
 	            'editions element ellipsis else elsif elt empty enable enable_all enclosed encode encoding encrypt ' +
 	            'end end-exec endian enforced engine engines enqueue enterprise entityescaping eomonth error errors ' +
 	            'escaped evalname evaluate event eventdata events except exception exceptions exchange exclude excluding ' +
 	            'execu execut execute exempt exists exit exp expire explain export export_set extended extent external ' +
-	            'external_1 external_2 externally extract f failed failed_login_attempts failover failure far fast ' +
+	            'external_1 external_2 externally extract failed failed_login_attempts failover failure far fast ' +
 	            'feature_set feature_value fetch field fields file file_name_convert filesystem_like_logging final ' +
 	            'finish first first_value fixed flash_cache flashback floor flush following follows for forall force ' +
 	            'form forma format found found_rows freelist freelists freepools fresh from from_base64 from_days ' +
-	            'ftp full function g general generated get get_format get_lock getdate getutcdate global global_name ' +
+	            'ftp full function general generated get get_format get_lock getdate getutcdate global global_name ' +
 	            'globally go goto grant grants greatest group group_concat group_id grouping grouping_id groups ' +
 	            'gtid_subtract guarantee guard handler hash hashkeys having hea head headi headin heading heap help hex ' +
-	            'hierarchy high high_priority hosts hour http i id ident_current ident_incr ident_seed identified ' +
+	            'hierarchy high high_priority hosts hour http id ident_current ident_incr ident_seed identified ' +
 	            'identity idle_time if ifnull ignore iif ilike ilm immediate import in include including increment ' +
 	            'index indexes indexing indextype indicator indices inet6_aton inet6_ntoa inet_aton inet_ntoa infile ' +
 	            'initial initialized initially initrans inmemory inner innodb input insert install instance instantiable ' +
 	            'instr interface interleaved intersect into invalidate invisible is is_free_lock is_ipv4 is_ipv4_compat ' +
 	            'is_not is_not_null is_used_lock isdate isnull isolation iterate java join json json_exists ' +
-	            'k keep keep_duplicates key keys kill l language large last last_day last_insert_id last_value lax lcase ' +
+	            'keep keep_duplicates key keys kill language large last last_day last_insert_id last_value lax lcase ' +
 	            'lead leading least leaves left len lenght length less level levels library like like2 like4 likec limit ' +
 	            'lines link list listagg little ln load load_file lob lobs local localtime localtimestamp locate ' +
 	            'locator lock locked log log10 log2 logfile logfiles logging logical logical_reads_per_call ' +
-	            'logoff logon logs long loop low low_priority lower lpad lrtrim ltrim m main make_set makedate maketime ' +
+	            'logoff logon logs long loop low low_priority lower lpad lrtrim ltrim main make_set makedate maketime ' +
 	            'managed management manual map mapping mask master master_pos_wait match matched materialized max ' +
 	            'maxextents maximize maxinstances maxlen maxlogfiles maxloghistory maxlogmembers maxsize maxtrans ' +
 	            'md5 measures median medium member memcompress memory merge microsecond mid migration min minextents ' +
 	            'minimum mining minus minute minvalue missing mod mode model modification modify module monitoring month ' +
-	            'months mount move movement multiset mutex n name name_const names nan national native natural nav nchar ' +
+	            'months mount move movement multiset mutex name name_const names nan national native natural nav nchar ' +
 	            'nclob nested never new newline next nextval no no_write_to_binlog noarchivelog noaudit nobadfile ' +
 	            'nocheck nocompress nocopy nocycle nodelay nodiscardfile noentityescaping noguarantee nokeep nologfile ' +
 	            'nomapping nomaxvalue nominimize nominvalue nomonitoring none noneditionable nonschema noorder ' +
@@ -27451,7 +25593,7 @@
 	            'ociref ocirefcursor ocirowid ocistring ocitype oct octet_length of off offline offset oid oidindex old ' +
 	            'on online only opaque open operations operator optimal optimize option optionally or oracle oracle_date ' +
 	            'oradata ord ordaudio orddicom orddoc order ordimage ordinality ordvideo organization orlany orlvary ' +
-	            'out outer outfile outline output over overflow overriding p package pad parallel parallel_enable ' +
+	            'out outer outfile outline output over overflow overriding package pad parallel parallel_enable ' +
 	            'parameters parent parse partial partition partitions pascal passing password password_grace_time ' +
 	            'password_lock_time password_reuse_max password_reuse_time password_verify_function patch path patindex ' +
 	            'pctincrease pctthreshold pctused pctversion percent percent_rank percentile_cont percentile_disc ' +
@@ -27481,7 +25623,7 @@
 	            'stop storage store stored str str_to_date straight_join strcmp strict string struct stuff style subdate ' +
 	            'subpartition subpartitions substitutable substr substring subtime subtring_index subtype success sum ' +
 	            'suspend switch switchoffset switchover sync synchronous synonym sys sys_xmlagg sysasm sysaux sysdate ' +
-	            'sysdatetimeoffset sysdba sysoper system system_user sysutcdatetime t table tables tablespace tan tdo ' +
+	            'sysdatetimeoffset sysdba sysoper system system_user sysutcdatetime table tables tablespace tan tdo ' +
 	            'template temporary terminated tertiary_weights test than then thread through tier ties time time_format ' +
 	            'time_zone timediff timefromparts timeout timestamp timestampadd timestampdiff timezone_abbr ' +
 	            'timezone_minute timezone_region to to_base64 to_date to_days to_seconds todatetimeoffset trace tracking ' +
@@ -27530,7 +25672,94 @@
 	};
 
 /***/ },
-/* 171 */
+/* 161 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  return {
+	    contains: [
+	      hljs.HASH_COMMENT_MODE,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      {
+	        begin: hljs.UNDERSCORE_IDENT_RE,
+	        lexemes: hljs.UNDERSCORE_IDENT_RE,
+	        keywords: {
+	          // Stan's keywords
+	          name:
+	            'for in while repeat until if then else',
+	          // Stan's probablity distributions (less beta and gamma, as commonly
+	          // used for parameter names). So far, _log and _rng variants are not
+	          // included
+	          symbol:
+	            'bernoulli bernoulli_logit binomial binomial_logit '               +
+	            'beta_binomial hypergeometric categorical categorical_logit '      +
+	            'ordered_logistic neg_binomial neg_binomial_2 '                    +
+	            'neg_binomial_2_log poisson poisson_log multinomial normal '       +
+	            'exp_mod_normal skew_normal student_t cauchy double_exponential '  +
+	            'logistic gumbel lognormal chi_square inv_chi_square '             +
+	            'scaled_inv_chi_square exponential inv_gamma weibull frechet '     +
+	            'rayleigh wiener pareto pareto_type_2 von_mises uniform '          +
+	            'multi_normal multi_normal_prec multi_normal_cholesky multi_gp '   +
+	            'multi_gp_cholesky multi_student_t gaussian_dlm_obs dirichlet '    +
+	            'lkj_corr lkj_corr_cholesky wishart inv_wishart',
+	          // Stan's data types
+	          'selector-tag':
+	            'int real vector simplex unit_vector ordered positive_ordered '    +
+	            'row_vector matrix cholesky_factor_corr cholesky_factor_cov '      +
+	            'corr_matrix cov_matrix',
+	          // Stan's model blocks
+	          title:
+	            'functions model data parameters quantities transformed '          +
+	            'generated',
+	          literal:
+	            'true false'
+	        },
+	        relevance: 0
+	      },
+	      // The below is all taken from the R language definition
+	      {
+	        // hex value
+	        className: 'number',
+	        begin: "0[xX][0-9a-fA-F]+[Li]?\\b",
+	        relevance: 0
+	      },
+	      {
+	        // hex value
+	        className: 'number',
+	        begin: "0[xX][0-9a-fA-F]+[Li]?\\b",
+	        relevance: 0
+	      },
+	      {
+	        // explicit integer
+	        className: 'number',
+	        begin: "\\d+(?:[eE][+\\-]?\\d*)?L\\b",
+	        relevance: 0
+	      },
+	      {
+	        // number with trailing decimal
+	        className: 'number',
+	        begin: "\\d+\\.(?!\\d)(?:i\\b)?",
+	        relevance: 0
+	      },
+	      {
+	        // number
+	        className: 'number',
+	        begin: "\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d*)?i?\\b",
+	        relevance: 0
+	      },
+	      {
+	        // number with leading decimal
+	        className: 'number',
+	        begin: "\\.\\d+(?:[eE][+\\-]?\\d*)?i?\\b",
+	        relevance: 0
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 162 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27572,7 +25801,7 @@
 	};
 
 /***/ },
-/* 172 */
+/* 163 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27623,7 +25852,7 @@
 	};
 
 /***/ },
-/* 173 */
+/* 164 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -27952,13 +26181,12 @@
 
 	  // illegals
 	  var ILLEGAL = [
-	    '\\{',
-	    '\\}',
 	    '\\?',
 	    '(\\bReturn\\b)', // monkey
 	    '(\\bEnd\\b)', // monkey
 	    '(\\bend\\b)', // vbscript
-	    ';', // sql
+	    '(\\bdef\\b)', // gradle
+	    ';', // a whole lot of languages
 	    '#\\s', // markdown
 	    '\\*\\s', // markdown
 	    '===\\s', // markdown
@@ -27969,8 +26197,8 @@
 	  return {
 	    aliases: ['styl'],
 	    case_insensitive: false,
-	    illegal: '(' + ILLEGAL.join('|') + ')',
 	    keywords: 'if else for in',
+	    illegal: '(' + ILLEGAL.join('|') + ')',
 	    contains: [
 
 	      // strings
@@ -28060,14 +26288,29 @@
 	      //  - must have whitespace after it
 	      {
 	        className: 'attribute',
-	        begin: '\\b(' + ATTRIBUTES.reverse().join('|') + ')\\b'
+	        begin: '\\b(' + ATTRIBUTES.reverse().join('|') + ')\\b',
+	        starts: {
+	          // value container
+	          end: /;|$/,
+	          contains: [
+	            HEX_COLOR,
+	            VARIABLE,
+	            hljs.APOS_STRING_MODE,
+	            hljs.QUOTE_STRING_MODE,
+	            hljs.CSS_NUMBER_MODE,
+	            hljs.NUMBER_MODE,
+	            hljs.C_BLOCK_COMMENT_MODE
+	          ],
+	          illegal: /\./,
+	          relevance: 0
+	        }
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 174 */
+/* 165 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28190,7 +26433,55 @@
 	};
 
 /***/ },
-/* 175 */
+/* 166 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+
+	  var COMMENT = {
+	    className: 'comment',
+	    begin: /\$noop\(/,
+	    end: /\)/,
+	    contains: [{
+	      begin: /\(/,
+	      end: /\)/,
+	      contains: ['self', {
+	        begin: /\\./
+	      }]
+	    }],
+	    relevance: 10
+	  };
+
+	  var FUNCTION = {
+	    className: 'keyword',
+	    begin: /\$(?!noop)[a-zA-Z][_a-zA-Z0-9]*/,
+	    end: /\(/,
+	    excludeEnd: true
+	  };
+
+	  var VARIABLE = {
+	    className: 'variable',
+	    begin: /%[_a-zA-Z0-9:]*/,
+	    end: '%'
+	  };
+
+	  var ESCAPE_SEQUENCE = {
+	    className: 'symbol',
+	    begin: /\\./
+	  };
+
+	  return {
+	    contains: [
+	      COMMENT,
+	      FUNCTION,
+	      VARIABLE,
+	      ESCAPE_SEQUENCE
+	    ]
+	  };
+	};
+
+/***/ },
+/* 167 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28255,7 +26546,7 @@
 	};
 
 /***/ },
-/* 176 */
+/* 168 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28321,7 +26612,7 @@
 	};
 
 /***/ },
-/* 177 */
+/* 169 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28360,7 +26651,7 @@
 	};
 
 /***/ },
-/* 178 */
+/* 170 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28448,7 +26739,7 @@
 	};
 
 /***/ },
-/* 179 */
+/* 171 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28518,7 +26809,7 @@
 	};
 
 /***/ },
-/* 180 */
+/* 172 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28626,7 +26917,7 @@
 	};
 
 /***/ },
-/* 181 */
+/* 173 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28639,22 +26930,22 @@
 	        // Reference types
 	        'weak unowned owned ' +
 	        // Modifiers
-	        'async signal static abstract interface override ' +
+	        'async signal static abstract interface override virtual delegate ' +
 	        // Control Structures
-	        'while do for foreach else switch case break default return try catch ' +
+	        'if while do for foreach else switch case break default return try catch ' +
 	        // Visibility
 	        'public private protected internal ' +
 	        // Other
 	        'using new this get set const stdout stdin stderr var',
 	      built_in:
-	        'DBus GLib CCode Gee Object',
+	        'DBus GLib CCode Gee Object Gtk Posix',
 	      literal:
 	        'false true null'
 	    },
 	    contains: [
 	      {
 	        className: 'class',
-	        beginKeywords: 'class interface delegate namespace', end: '{', excludeEnd: true,
+	        beginKeywords: 'class interface namespace', end: '{', excludeEnd: true,
 	        illegal: '[^,:\\n\\s\\.]',
 	        contains: [
 	          hljs.UNDERSCORE_TITLE_MODE
@@ -28680,7 +26971,7 @@
 	};
 
 /***/ },
-/* 182 */
+/* 174 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28740,7 +27031,7 @@
 	};
 
 /***/ },
-/* 183 */
+/* 175 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28783,7 +27074,7 @@
 	};
 
 /***/ },
-/* 184 */
+/* 176 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28799,13 +27090,13 @@
 	};
 
 /***/ },
-/* 185 */
+/* 177 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    aliases: ['v'],
-	    case_insensitive: true,
+	    case_insensitive: false,
 	    keywords: {
 	      keyword:
 	        'always and assign begin buf bufif0 bufif1 case casex casez cmos deassign ' +
@@ -28827,7 +27118,7 @@
 	      hljs.QUOTE_STRING_MODE,
 	      {
 	        className: 'number',
-	        begin: '\\b(\\d+\'(b|h|o|d|B|H|O|D))?[0-9xzXZ]+',
+	        begin: '(\\b((\\d\'(b|h|o|d|B|H|O|D))[0-9xzXZa-fA-F\_]+))|(\\B((\'(b|h|o|d|B|H|O|D))[0-9xzXZa-fA-F\_]+))|(\\b([0-9xzXZ\_])+)',
 	        contains: [hljs.BACKSLASH_ESCAPE],
 	        relevance: 0
 	      },
@@ -28841,7 +27132,7 @@
 	};
 
 /***/ },
-/* 186 */
+/* 178 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28901,21 +27192,21 @@
 	};
 
 /***/ },
-/* 187 */
+/* 179 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  return {
 	    lexemes: /[!#@\w]+/,
 	    keywords: {
-	      keyword: //ex command
+	      keyword:
 	        // express version except: ! & * < = > !! # @ @@
 	        'N|0 P|0 X|0 a|0 ab abc abo al am an|0 ar arga argd arge argdo argg argl argu as au aug aun b|0 bN ba bad bd be bel bf bl bm bn bo bp br brea breaka breakd breakl bro bufdo buffers bun bw c|0 cN cNf ca cabc caddb cad caddf cal cat cb cc ccl cd ce cex cf cfir cgetb cgete cg changes chd che checkt cl cla clo cm cmapc cme cn cnew cnf cno cnorea cnoreme co col colo com comc comp con conf cope '+
-	        'cp cpf cq cr cs cst cu cuna cunme cw d|0 delm deb debugg delc delf dif diffg diffo diffp diffpu diffs diffthis dig di dl dell dj dli do doautoa dp dr ds dsp e|0 ea ec echoe echoh echom echon el elsei em en endfo endf endt endw ene ex exe exi exu f|0 files filet fin fina fini fir fix fo foldc foldd folddoc foldo for fu g|0 go gr grepa gu gv ha h|0 helpf helpg helpt hi hid his i|0 ia iabc if ij il im imapc '+
-	        'ime ino inorea inoreme int is isp iu iuna iunme j|0 ju k|0 keepa kee keepj lN lNf l|0 lad laddb laddf la lan lat lb lc lch lcl lcs le lefta let lex lf lfir lgetb lgete lg lgr lgrepa lh ll lla lli lmak lm lmapc lne lnew lnf ln loadk lo loc lockv lol lope lp lpf lr ls lt lu lua luad luaf lv lvimgrepa lw m|0 ma mak map mapc marks mat me menut mes mk mks mksp mkv mkvie mod mz mzf nbc nb nbs n|0 new nm nmapc nme nn nnoreme noa no noh norea noreme norm nu nun nunme ol o|0 om omapc ome on ono onoreme opt ou ounme ow p|0 '+
-	        'profd prof pro promptr pc ped pe perld po popu pp pre prev ps pt ptN ptf ptj ptl ptn ptp ptr pts pu pw py3 python3 py3d py3f py pyd pyf q|0 quita qa r|0 rec red redi redr redraws reg res ret retu rew ri rightb rub rubyd rubyf rund ru rv s|0 sN san sa sal sav sb sbN sba sbf sbl sbm sbn sbp sbr scrip scripte scs se setf setg setl sf sfir sh sim sig sil sl sla sm smap smapc sme sn sni sno snor snoreme sor '+
-	        'so spelld spe spelli spellr spellu spellw sp spr sre st sta startg startr star stopi stj sts sun sunm sunme sus sv sw sy synti sync t|0 tN tabN tabc tabdo tabe tabf tabfir tabl tabm tabnew '+
-	        'tabn tabo tabp tabr tabs tab ta tags tc tcld tclf te tf th tj tl tm tn to tp tr try ts tu u|0 undoj undol una unh unl unlo unm unme uns up v|0 ve verb vert vim vimgrepa vi viu vie vm vmapc vme vne vn vnoreme vs vu vunme windo w|0 wN wa wh wi winc winp wn wp wq wqa ws wu wv x|0 xa xmapc xm xme xn xnoreme xu xunme y|0 z|0 ~ '+
+	        'cp cpf cq cr cs cst cu cuna cunme cw delm deb debugg delc delf dif diffg diffo diffp diffpu diffs diffthis dig di dl dell dj dli do doautoa dp dr ds dsp e|0 ea ec echoe echoh echom echon el elsei em en endfo endf endt endw ene ex exe exi exu f|0 files filet fin fina fini fir fix fo foldc foldd folddoc foldo for fu go gr grepa gu gv ha helpf helpg helpt hi hid his ia iabc if ij il im imapc '+
+	        'ime ino inorea inoreme int is isp iu iuna iunme j|0 ju k|0 keepa kee keepj lN lNf l|0 lad laddb laddf la lan lat lb lc lch lcl lcs le lefta let lex lf lfir lgetb lgete lg lgr lgrepa lh ll lla lli lmak lm lmapc lne lnew lnf ln loadk lo loc lockv lol lope lp lpf lr ls lt lu lua luad luaf lv lvimgrepa lw m|0 ma mak map mapc marks mat me menut mes mk mks mksp mkv mkvie mod mz mzf nbc nb nbs new nm nmapc nme nn nnoreme noa no noh norea noreme norm nu nun nunme ol o|0 om omapc ome on ono onoreme opt ou ounme ow p|0 '+
+	        'profd prof pro promptr pc ped pe perld po popu pp pre prev ps pt ptN ptf ptj ptl ptn ptp ptr pts pu pw py3 python3 py3d py3f py pyd pyf quita qa rec red redi redr redraws reg res ret retu rew ri rightb rub rubyd rubyf rund ru rv sN san sa sal sav sb sbN sba sbf sbl sbm sbn sbp sbr scrip scripte scs se setf setg setl sf sfir sh sim sig sil sl sla sm smap smapc sme sn sni sno snor snoreme sor '+
+	        'so spelld spe spelli spellr spellu spellw sp spr sre st sta startg startr star stopi stj sts sun sunm sunme sus sv sw sy synti sync tN tabN tabc tabdo tabe tabf tabfir tabl tabm tabnew '+
+	        'tabn tabo tabp tabr tabs tab ta tags tc tcld tclf te tf th tj tl tm tn to tp tr try ts tu u|0 undoj undol una unh unl unlo unm unme uns up ve verb vert vim vimgrepa vi viu vie vm vmapc vme vne vn vnoreme vs vu vunme windo w|0 wN wa wh wi winc winp wn wp wq wqa ws wu wv x|0 xa xmapc xm xme xn xnoreme xu xunme y|0 z|0 ~ '+
 	        // full version
 	        'Next Print append abbreviate abclear aboveleft all amenu anoremenu args argadd argdelete argedit argglobal arglocal argument ascii autocmd augroup aunmenu buffer bNext ball badd bdelete behave belowright bfirst blast bmodified bnext botright bprevious brewind break breakadd breakdel breaklist browse bunload '+
 	        'bwipeout change cNext cNfile cabbrev cabclear caddbuffer caddexpr caddfile call catch cbuffer cclose center cexpr cfile cfirst cgetbuffer cgetexpr cgetfile chdir checkpath checktime clist clast close cmap cmapclear cmenu cnext cnewer cnfile cnoremap cnoreabbrev cnoremenu copy colder colorscheme command comclear compiler continue confirm copen cprevious cpfile cquit crewind cscope cstag cunmap '+
@@ -28929,24 +27220,63 @@
 	        'startinsert stopinsert stjump stselect sunhide sunmap sunmenu suspend sview swapname syntax syntime syncbind tNext tabNext tabclose tabedit tabfind tabfirst tablast tabmove tabnext tabonly tabprevious tabrewind tag tcl tcldo tclfile tearoff tfirst throw tjump tlast tmenu tnext topleft tprevious '+'trewind tselect tunmenu undo undojoin undolist unabbreviate unhide unlet unlockvar unmap unmenu unsilent update vglobal version verbose vertical vimgrep vimgrepadd visual viusage view vmap vmapclear vmenu vnew '+
 	        'vnoremap vnoremenu vsplit vunmap vunmenu write wNext wall while winsize wincmd winpos wnext wprevious wqall wsverb wundo wviminfo xit xall xmapclear xmap xmenu xnoremap xnoremenu xunmap xunmenu yank',
 	      built_in: //built in func
-	        'abs acos add and append argc argidx argv asin atan atan2 browse browsedir bufexists buflisted bufloaded bufname bufnr bufwinnr byte2line byteidx call ceil changenr char2nr cindent clearmatches col complete complete_add complete_check confirm copy cos cosh count cscope_connection cursor '+
-	        'deepcopy delete did_filetype diff_filler diff_hlID empty escape eval eventhandler executable exists exp expand extend feedkeys filereadable filewritable filter finddir findfile float2nr floor fmod fnameescape fnamemodify foldclosed foldclosedend foldlevel foldtext foldtextresult foreground function '+
-	        'garbagecollect get getbufline getbufvar getchar getcharmod getcmdline getcmdpos getcmdtype getcwd getfontname getfperm getfsize getftime getftype getline getloclist getmatches getpid getpos getqflist getreg getregtype gettabvar gettabwinvar getwinposx getwinposy getwinvar glob globpath has has_key '+
-	        'haslocaldir hasmapto histadd histdel histget histnr hlexists hlID hostname iconv indent index input inputdialog inputlist inputrestore inputsave inputsecret insert invert isdirectory islocked items join keys len libcall libcallnr line line2byte lispindent localtime log log10 luaeval map maparg mapcheck '+
-	        'match matchadd matcharg matchdelete matchend matchlist matchstr max min mkdir mode mzeval nextnonblank nr2char or pathshorten pow prevnonblank printf pumvisible py3eval pyeval range readfile reltime reltimestr remote_expr remote_foreground remote_peek remote_read remote_send remove rename repeat '+
-	        'resolve reverse round screenattr screenchar screencol screenrow search searchdecl searchpair searchpairpos searchpos server2client serverlist setbufvar setcmdpos setline setloclist setmatches setpos setqflist setreg settabvar settabwinvar setwinvar sha256 shellescape shiftwidth simplify sin '+
-	        'sinh sort soundfold spellbadword spellsuggest split sqrt str2float str2nr strchars strdisplaywidth strftime stridx string strlen strpart strridx strtrans strwidth submatch substitute synconcealed synID synIDattr '+
-	        'synIDtrans synstack system tabpagebuflist tabpagenr tabpagewinnr tagfiles taglist tan tanh tempname tolower toupper tr trunc type undofile undotree values virtcol visualmode wildmenumode winbufnr wincol winheight winline winnr winrestcmd winrestview winsaveview winwidth writefile xor'
+	        'synIDtrans atan2 range matcharg did_filetype asin feedkeys xor argv ' +
+	        'complete_check add getwinposx getqflist getwinposy screencol ' +
+	        'clearmatches empty extend getcmdpos mzeval garbagecollect setreg ' +
+	        'ceil sqrt diff_hlID inputsecret get getfperm getpid filewritable ' +
+	        'shiftwidth max sinh isdirectory synID system inputrestore winline ' +
+	        'atan visualmode inputlist tabpagewinnr round getregtype mapcheck ' +
+	        'hasmapto histdel argidx findfile sha256 exists toupper getcmdline ' +
+	        'taglist string getmatches bufnr strftime winwidth bufexists ' +
+	        'strtrans tabpagebuflist setcmdpos remote_read printf setloclist ' +
+	        'getpos getline bufwinnr float2nr len getcmdtype diff_filler luaeval ' +
+	        'resolve libcallnr foldclosedend reverse filter has_key bufname ' +
+	        'str2float strlen setline getcharmod setbufvar index searchpos ' +
+	        'shellescape undofile foldclosed setqflist buflisted strchars str2nr ' +
+	        'virtcol floor remove undotree remote_expr winheight gettabwinvar ' +
+	        'reltime cursor tabpagenr finddir localtime acos getloclist search ' +
+	        'tanh matchend rename gettabvar strdisplaywidth type abs py3eval ' +
+	        'setwinvar tolower wildmenumode log10 spellsuggest bufloaded ' +
+	        'synconcealed nextnonblank server2client complete settabwinvar ' +
+	        'executable input wincol setmatches getftype hlID inputsave ' +
+	        'searchpair or screenrow line settabvar histadd deepcopy strpart ' +
+	        'remote_peek and eval getftime submatch screenchar winsaveview ' +
+	        'matchadd mkdir screenattr getfontname libcall reltimestr getfsize ' +
+	        'winnr invert pow getbufline byte2line soundfold repeat fnameescape ' +
+	        'tagfiles sin strwidth spellbadword trunc maparg log lispindent ' +
+	        'hostname setpos globpath remote_foreground getchar synIDattr ' +
+	        'fnamemodify cscope_connection stridx winbufnr indent min ' +
+	        'complete_add nr2char searchpairpos inputdialog values matchlist ' +
+	        'items hlexists strridx browsedir expand fmod pathshorten line2byte ' +
+	        'argc count getwinvar glob foldtextresult getreg foreground cosh ' +
+	        'matchdelete has char2nr simplify histget searchdecl iconv ' +
+	        'winrestcmd pumvisible writefile foldlevel haslocaldir keys cos ' +
+	        'matchstr foldtext histnr tan tempname getcwd byteidx getbufvar ' +
+	        'islocked escape eventhandler remote_send serverlist winrestview ' +
+	        'synstack pyeval prevnonblank readfile cindent filereadable changenr ' +
+	        'exp'
 	    },
-	    illegal: /[{:]/,
+	    illegal: /;/,
 	    contains: [
 	      hljs.NUMBER_MODE,
 	      hljs.APOS_STRING_MODE,
+
+	      /*
+	      A double quote can start either a string or a line comment. Strings are
+	      ended before the end of a line by another double quote and can contain
+	      escaped double-quotes and post-escaped line breaks.
+
+	      Also, any double quote at the beginning of a line is a comment but we
+	      don't handle that properly at the moment: any double quote inside will
+	      turn them into a string. Handling it properly will require a smarter
+	      parser.
+	      */
 	      {
 	        className: 'string',
-	        // quote with escape, comment as quote
-	        begin: /"((\\")|[^"\n])*("|\n)/
+	        begin: /"(\\"|\n\\|[^"\n])*"/
 	      },
+	      hljs.COMMENT('"', '$'),
+
 	      {
 	        className: 'variable',
 	        begin: /[bwtglsav]:[\w\d_]*/
@@ -28962,13 +27292,17 @@
 	            begin: '\\(', end: '\\)'
 	          }
 	        ]
+	      },
+	      {
+	        className: 'symbol',
+	        begin: /<[\w-]+>/
 	      }
 	    ]
 	  };
 	};
 
 /***/ },
-/* 188 */
+/* 180 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29106,7 +27440,7 @@
 	};
 
 /***/ },
-/* 189 */
+/* 181 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29183,7 +27517,7 @@
 	};
 
 /***/ },
-/* 190 */
+/* 182 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29196,8 +27530,7 @@
 	    'replace value rename copy modify update';
 	  var LITERAL = 'false true xs:string xs:integer element item xs:date xs:datetime xs:float xs:double xs:decimal QName xs:anyURI xs:long xs:int xs:short xs:byte attribute';
 	  var VAR = {
-	    begin: /\$[a-zA-Z0-9\-]+/,
-	    relevance: 5
+	    begin: /\$[a-zA-Z0-9\-]+/
 	  };
 
 	  var NUMBER = {
@@ -29259,7 +27592,7 @@
 	};
 
 /***/ },
-/* 191 */
+/* 183 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29347,7 +27680,7 @@
 	};
 
 /***/ },
-/* 192 */
+/* 184 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29458,7 +27791,7 @@
 	};
 
 /***/ },
-/* 193 */
+/* 185 */
 /***/ function(module, exports) {
 
 	(function() {

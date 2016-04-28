@@ -1,12 +1,10 @@
 <template lang="jade">
-section.menu(:class='{show: isShowMenu}')
+section.side-nav(:class='{show: isShowMenu}')
     info
-    tools
-    article-list(:articles='articles')
 </template>
 
 <style lang="stylus">
-.menu
+.side-nav
     user-select none
     transition all .2s
     width 18rem
@@ -33,18 +31,13 @@ section.menu(:class='{show: isShowMenu}')
 
 <script>
 import Info from './info.vue'
-import ArticleList from './article-list.vue'
-import Tools from './tools.vue'
-import baseData from '../store/base.js'
 export default {
     components: {
-        info: Info,
-        articleList: ArticleList,
-        tools: Tools
+        info: Info
     },
     computed: {
         isShowMenu () {
-            return baseData.state.menu
+            return true
         }
     }
 }

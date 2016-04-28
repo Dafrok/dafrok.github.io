@@ -1,16 +1,14 @@
-var gulp=require('gulp')
-var webpack=require('webpack-stream')
-var jade=require('gulp-jade')
-var stylus=require('gulp-stylus')
+var gulp = require('gulp')
+var webpack = require('webpack-stream')
+var pug = require('gulp-pug')
 var plumber=require('gulp-plumber')
 var uglify=require('gulp-uglify')
 var browserSync=require('browser-sync')
 
 var paths={
     dev:{
-        jade:'src/jade/**/*.jade',
+        pug:'src/pug/**/*.pug',
         js:'src/js/**',
-        stylus:'src/stylus/**',
         store:'src/store/**',
         vue:'src/vue/**',
         css:'src/resource/css/**'
@@ -29,8 +27,8 @@ gulp.task('browser-sync',function(){
             // index: '/html/index.html'
         }
     })
-    gulp.watch(paths.dev.jade,['jade'])
-    gulp.watch([paths.dev.js,paths.dev.store,paths.dev.stylus,paths.dev.vue],['webpack'])
+    gulp.watch(paths.dev.pug, ['pug'])
+    gulp.watch([paths.dev.js, paths.dev.store, paths.dev.vue],['webpack'])
     gulp.watch(['dist/**'],['reload'])
 })
 
@@ -43,10 +41,10 @@ gulp.task('css',function(){
         .pipe(gulp.dest(paths.build.css))
 })
 
-gulp.task('jade',function(){
-    return gulp.src(paths.dev.jade)
+gulp.task('pug',function(){
+    return gulp.src(paths.dev.pug)
         .pipe(plumber())
-        .pipe(jade())
+        .pipe(pug())
         .pipe(gulp.dest(paths.build.html))
 })
 
@@ -60,7 +58,7 @@ gulp.task('webpack',function(){
             },
             module:{
                 loaders:[
-                    {test: /\.js?$/, exclude: /node_modules/, loader: 'babel-loader'},
+                    {test: /\.js?$/, exclude: /node_modules/, loader: 'babel'},
                     {test: /\.vue?$/, exclude: /node_modules/, loader: 'vue'}
                 ]
             }
@@ -68,4 +66,4 @@ gulp.task('webpack',function(){
     .pipe(gulp.dest(paths.build.js))
 })
 
-gulp.task('default',['browser-sync','webpack','jade','css'])
+gulp.task('default',['browser-sync','webpack','pug','css'])
