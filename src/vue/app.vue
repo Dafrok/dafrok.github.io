@@ -6,6 +6,7 @@ section.body(@click="closeNav")
 
 <style lang="stylus">
 *
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
     font-family Arial
     appearance none
     border-radius 0
@@ -22,6 +23,9 @@ ul,ol
     margin 0
 li
     list-style none
+a
+    color inherit
+    text-decoration none
 .body
     position fixed
     top 0

@@ -8,11 +8,7 @@ section.info
 
 <style lang="stylus">
 .info
-    position absolute
     overflow hidden
-    top 0
-    left 0
-    right 0
     height 6rem
     .avartar
         position absolute

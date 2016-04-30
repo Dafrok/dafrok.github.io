@@ -30,11 +30,10 @@ header.appbar
         left .5rem
         margin auto
         border-radius .3rem
-        background-size cover
-        transition all .3s
+        transition all .3s .05s
         cursor pointer
         &.active
-            left 14.75rem
+            left 11.75rem
             z-index 2
             background #69c
             transform rotate(180deg)
