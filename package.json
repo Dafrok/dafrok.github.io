@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "autoprefixer": "^6.0.3",
+    "fastclick": "^1.0.6",
     "fetch-polyfill": "^0.8.2",
     "github-markdown-css": "^2.1.1",
     "hash-sum": "^1.0.2",
