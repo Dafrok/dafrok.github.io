@@ -1,5 +1,5 @@
 <template lang="jade">
-section.body
+section.body(@click="closeNav")
     appbar
     side-nav
 </template>
@@ -33,7 +33,7 @@ li
 
 <script>
 import config from '../js/config.js'
-import StoreBase from '../store/base.js'
+import BaseStore from '../store/base.js'
 import SideNav from './util/side-nav.vue'
 import Appbar from './util/appbar.vue'
 
@@ -46,6 +46,9 @@ export default {
         sideNav: SideNav
     },
     methods: {
+        closeNav () {
+            BaseStore.actions.toggleMenu(false)
+        }
     },
     compiled () {
     }

@@ -8,7 +8,7 @@ const state = {
         owner: {}
     },
     count: 0,
-    title: 'Blog',
+    title: 'Dafrok Scope',
     menu: false
 }
 

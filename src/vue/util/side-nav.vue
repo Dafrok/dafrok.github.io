@@ -1,5 +1,5 @@
 <template lang="jade">
-section.side-nav(:class='{show: isShowMenu}')
+section.side-nav(@click.stop="", :class='{show: isShowMenu}')
     info
     navigator
 </template>
@@ -8,16 +8,16 @@ section.side-nav(:class='{show: isShowMenu}')
 .side-nav
     user-select none
     transition all .2s
-    min-width 18rem
-    width 18rem
+    min-width 16rem
+    width 16rem
     top 0
     bottom 0
-    background #333
+    background #69c
     color white
     position fixed
     left 0
     overflow hidden
-    box-shadow 0 0 .5rem black
+    /*box-shadow 0 0 .5rem black*/
     max-width 80%
     z-index 1
     transform translate(-100%, 0)
