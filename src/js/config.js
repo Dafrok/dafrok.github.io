@@ -13,9 +13,9 @@
 const username = 'dafrok'
 const repo = 'dafrok.github.io'
 const apiUrl = 'https://api.github.com'
-const repoUrl = apiUrl + '/repos/' + username + '/' + repo
-const searchUrl = apiUrl + '/search/issues'
-const issueUrl = searchUrl + '?q=repo:' + username + '/' + repo
+const repoUrl = `${apiUrl}/repos/${username}/${repo}`
+const searchUrl = `${apiUrl}/search/issues`
+const issueUrl = `${searchUrl}?q=repo:${username}/${repo}+author:${username}+is:open`
 
 export default {
     username: username,

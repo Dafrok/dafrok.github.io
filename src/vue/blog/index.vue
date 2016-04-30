@@ -31,7 +31,6 @@ export default {
                     this.articles = []
                 }
                 this.ready = true
-                console.log(this.ready)
             })
     },
     computed: {
