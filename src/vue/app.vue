@@ -2,6 +2,7 @@
 section.body(@click="closeNav")
     appbar
     side-nav
+    page
 </template>
 
 <style lang="stylus">
@@ -40,6 +41,7 @@ import config from '../js/config.js'
 import BaseStore from '../store/base.js'
 import SideNav from './util/side-nav.vue'
 import Appbar from './util/appbar.vue'
+import Page from './util/page.vue'
 
 const repoUrl = config.repoUrl
 const issueUrl = config.issueUrl
@@ -47,7 +49,8 @@ const issueUrl = config.issueUrl
 export default {
     components: {
         appbar: Appbar,
-        sideNav: SideNav
+        sideNav: SideNav,
+        page: Page
     },
     methods: {
         closeNav () {

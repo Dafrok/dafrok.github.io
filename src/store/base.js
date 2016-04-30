@@ -9,7 +9,7 @@ const state = {
     },
     count: 0,
     title: 'Dafrok Scope',
-    menu: true
+    menu: false
 }
 
 const mutations = {
