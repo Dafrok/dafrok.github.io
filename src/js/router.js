@@ -6,7 +6,6 @@ import Blog from '../vue/blog/index.vue'
 import Friends from '../vue/friends/index.vue'
 Vue.use(VueRouter)
 
-console.log(Blog)
 let router = new VueRouter()
 
 router.map({
