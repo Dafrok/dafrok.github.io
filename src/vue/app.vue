@@ -1,5 +1,5 @@
 <template lang="jade">
-section.body(@click="closeNav")
+section.body(@click="closeMenu")
     appbar
     side-nav
     page
@@ -53,7 +53,7 @@ export default {
         page: Page
     },
     methods: {
-        closeNav () {
+        closeMenu () {
             BaseStore.actions.toggleMenu(false)
         }
     },
