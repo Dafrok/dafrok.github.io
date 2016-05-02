@@ -3,17 +3,17 @@ section Blog
     loading(:is-loading="!ready")
     span(v-text="articleId")
     ul
-        li(v-for="article in articles")
-            a(v-text="article.title")
-            span(v-text="created_at")
+        list-item(v-for="article in articles", :title="article.title", :date="article.created_at", :summary="article.body", :id="article.id")
 </template>
 
 <script>
 import Loading from '../util/loading.vue'
+import ListItem from './list-item.vue'
 import config from '../../js/config.js'
 export default {
     components: {
-        loading: Loading
+        loading: Loading,
+        listItem: ListItem
     },
     data () {
         return {
