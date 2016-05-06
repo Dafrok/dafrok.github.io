@@ -10,6 +10,9 @@ Vue.use(VueRouter)
 let router = new VueRouter()
 
 router.map({
+    '/': {
+        component: About
+    },
     '/about': {
         component: About
     },
