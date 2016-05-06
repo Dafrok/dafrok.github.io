@@ -15123,7 +15123,7 @@
 
 
 	// module
-	exports.push([module.id, ".side-nav {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.35s;\n  transition: all 0.35s;\n  min-width: 13rem;\n  width: 13rem;\n  top: 0;\n  bottom: 0;\n  background: #69c;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: hidden;\n/*box-shadow 0 0 .5rem black*/\n  max-width: 80%;\n  z-index: 1;\n  -webkit-transform: translate(-100%, 0);\n          transform: translate(-100%, 0);\n}\n.show {\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
+	exports.push([module.id, ".side-nav {\n  -webkit-user-select: none;\n     -moz-user-select: none;\n      -ms-user-select: none;\n          user-select: none;\n  -webkit-transition: all 0.35s;\n  transition: all 0.35s;\n  min-width: 13rem;\n  width: 13rem;\n  top: 0;\n  bottom: 0;\n  background: #69c;\n  color: #fff;\n  position: fixed;\n  left: 0;\n  overflow: auto;\n/*box-shadow 0 0 .5rem black*/\n  max-width: 80%;\n  z-index: 1;\n  -webkit-transform: translate(-100%, 0);\n          transform: translate(-100%, 0);\n}\n.show {\n  -webkit-transform: translate(0, 0);\n          transform: translate(0, 0);\n  box-shadow: 0 0 0.5rem #000;\n}\n", ""]);
 
 	// exports
 
@@ -15436,7 +15436,7 @@
 
 
 	// module
-	exports.push([module.id, "header.appbar[_v-f9fddb06] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 3.5rem;\n  line-height: 3.5rem;\n  text-align: center;\n  background: #333;\n  color: #fff;\n}\nheader.appbar h2[_v-f9fddb06] {\n  position: absolute;\n  left: 4rem;\n  top: 0;\n  bottom: 0;\n  right: 4rem;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\nheader.appbar a[_v-f9fddb06] {\n  position: absolute;\n  height: 2.5rem;\n  width: 2.5rem;\n  top: 0;\n  bottom: 0;\n  left: 0.5rem;\n  margin: auto;\n  border-radius: 0.3rem;\n  -webkit-transition: all 0.3s 0.05s;\n  transition: all 0.3s 0.05s;\n  cursor: pointer;\n  z-index: 10;\n  -webkit-transform: translateZ(10px);\n          transform: translateZ(10px);\n}\nheader.appbar a.active[_v-f9fddb06] {\n  left: 11.75rem;\n  z-index: 2;\n  background: #69c;\n  -webkit-transform: rotate(180deg);\n          transform: rotate(180deg);\n  border-radius: 100%;\n}\nheader.appbar a.active[_v-f9fddb06]:hover,\nheader.appbar a.active[_v-f9fddb06]:active {\n  box-shadow: none;\n/*background lighten(#69c, 20%)*/\n}\nheader.appbar a.active[_v-f9fddb06]::before {\n  -webkit-transform: rotate(45deg);\n          transform: rotate(45deg);\n  box-shadow: none;\n}\nheader.appbar a.active[_v-f9fddb06]::after {\n  -webkit-transform: rotate(-45deg);\n          transform: rotate(-45deg);\n  box-shadow: none;\n}\nheader.appbar a[_v-f9fddb06]:hover,\nheader.appbar a[_v-f9fddb06]:active {\n  box-shadow: 0 0 1px 1px #c0c0c0;\n}\nheader.appbar a[_v-f9fddb06]::before,\nheader.appbar a[_v-f9fddb06]::after {\n  -webkit-transition: all 0.5s;\n  transition: all 0.5s;\n  position: absolute;\n  width: 50%;\n  content: '';\n  background: #fff;\n  height: 0.1rem;\n  top: 50%;\n  left: 25%;\n  box-shadow: 0 0.4rem 0 #fff, 0 -0.4rem 0 #fff;\n}\n", ""]);
+	exports.push([module.id, "header.appbar[_v-f9fddb06] {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  height: 3.5rem;\n  line-height: 3.5rem;\n  text-align: center;\n  background: #333;\n  color: #fff;\n}\nheader.appbar h2[_v-f9fddb06] {\n  position: absolute;\n  left: 4rem;\n  top: 0;\n  bottom: 0;\n  right: 4rem;\n  white-space: nowrap;\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\nheader.appbar a[_v-f9fddb06] {\n  position: absolute;\n  height: 2.5rem;\n  width: 2.5rem;\n  top: 0;\n  bottom: 0;\n  margin: auto;\n  border-radius: 0.3rem;\n  -webkit-transition: all 0.3s 0.05s;\n  transition: all 0.3s 0.05s;\n  cursor: pointer;\n  z-index: 10;\n  -webkit-transform: translateZ(10px);\n          transform: translateZ(10px);\n}\nheader.appbar a.left[_v-f9fddb06] {\n  left: 0.5rem;\n}\nheader.appbar a.left[_v-f9fddb06]::before,\nheader.appbar a.left[_v-f9fddb06]::after {\n  position: absolute;\n  display: block;\n  content: '';\n  top: 0.75rem;\n  left: 0.75rem;\n  width: 1rem;\n  height: 1rem;\n  -webkit-transform: rotate(-45deg);\n          transform: rotate(-45deg);\n  box-shadow: -2px -2px 1px 0px #fff;\n}\nheader.appbar a.right[_v-f9fddb06] {\n  right: 0.5rem;\n}\nheader.appbar a.right.active[_v-f9fddb06] {\n/*left 11.75rem*/\n  z-index: 2;\n/*background #69c*/\n  -webkit-transform: rotate(180deg);\n          transform: rotate(180deg);\n  border-radius: 100%;\n}\nheader.appbar a.right.active[_v-f9fddb06]::before {\n  -webkit-transform: rotate(45deg);\n          transform: rotate(45deg);\n  box-shadow: none;\n}\nheader.appbar a.right.active[_v-f9fddb06]::after {\n  -webkit-transform: rotate(-45deg);\n          transform: rotate(-45deg);\n  box-shadow: none;\n}\nheader.appbar a.right[_v-f9fddb06]:hover,\nheader.appbar a.right[_v-f9fddb06]:active {\n  box-shadow: 0 0 1px 1px #c0c0c0;\n}\nheader.appbar a.right[_v-f9fddb06]::before,\nheader.appbar a.right[_v-f9fddb06]::after {\n  -webkit-transition: all 0.5s;\n  transition: all 0.5s;\n  position: absolute;\n  width: 50%;\n  content: '';\n  background: #fff;\n  height: 0.1rem;\n  top: 50%;\n  left: 25%;\n  box-shadow: 0 0.4rem 0 #fff, 0 -0.4rem 0 #fff;\n}\n", ""]);
 
 	// exports
 
@@ -15461,6 +15461,9 @@
 	    methods: {
 	        toggleMenu: function toggleMenu() {
 	            _base2.default.actions.toggleMenu();
+	        },
+	        back: function back() {
+	            history.go(-1);
 	        }
 	    },
 	    watch: {},
@@ -15479,7 +15482,7 @@
 /* 38 */
 /***/ function(module, exports) {
 
-	module.exports = "<header class=\"appbar\" _v-f9fddb06=\"\"><a @click.stop=\"toggleMenu\" :class=\"{active: isMenuActive}\" _v-f9fddb06=\"\"></a><h2 v-text=\"title\" _v-f9fddb06=\"\"></h2></header>";
+	module.exports = "<header class=\"appbar\" _v-f9fddb06=\"\"><a @click.stop=\"back\" class=\"left\" _v-f9fddb06=\"\"></a><a @click.stop=\"toggleMenu\" :class=\"{active: isMenuActive}\" class=\"right\" _v-f9fddb06=\"\"></a><h2 v-text=\"title\" _v-f9fddb06=\"\"></h2></header>";
 
 /***/ },
 /* 39 */

@@ -16,7 +16,7 @@ section.side-nav(@click.stop="", :class='{show: isShowMenu}')
     color white
     position fixed
     left 0
-    overflow hidden
+    overflow auto
     /*box-shadow 0 0 .5rem black*/
     max-width 80%
     z-index 1
