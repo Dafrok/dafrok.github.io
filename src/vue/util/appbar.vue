@@ -2,8 +2,8 @@
 header.appbar
     a.left(@click.stop="leftIconHandler", :class="leftIcon")
     a.right(@click.stop="rightIconHandler", :class="rightIcon")
-    div.search-bar(v-if="showSearch", transition="search-bar")
-        input(type="search", placeholder="Search")
+    form.search-bar(v-if="showSearch", transition="search-bar", @submit.prevent="searchHandler")
+        input(type="search", placeholder="Search", v-model="keyword")
     h2(v-text="title", v-if="!showSearch", transition="title")
 </template>
 
@@ -140,6 +140,11 @@ header.appbar
 <script>
 import BaseStore from '../../store/base.js'
 export default {
+    data () {
+        return {
+            keyword: ''
+        }
+    },
     methods: {
         toggleMenu () {
             BaseStore.actions.toggleMenu()
@@ -149,9 +154,10 @@ export default {
         },
         toggleSearch () {
             BaseStore.actions.toggleSearch()
+        },
+        searchHandler (e) {
+            console.log(this.keyword)
         }
-    },
-    watch: {
     },
     computed: {
         title () {
