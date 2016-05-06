@@ -6,7 +6,10 @@ header.appbar
 
 <style lang="stylus" scoped>
 header.appbar
-    position relative
+    position fixed
+    top 0
+    left 0
+    right 0
     height 3.5rem
     line-height 3.5rem
     text-align center
@@ -32,6 +35,8 @@ header.appbar
         border-radius .3rem
         transition all .3s .05s
         cursor pointer
+        z-index 10
+        transform translateZ(10px)
         &.active
             left 11.75rem
             z-index 2

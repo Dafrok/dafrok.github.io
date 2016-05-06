@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import App from '../vue/app.vue'
 import About from '../vue/about/index.vue'
 import Blog from '../vue/blog/index.vue'
+import ArticleBody from '../vue/blog/article-body.vue'
 import Friends from '../vue/friends/index.vue'
 Vue.use(VueRouter)
 
@@ -17,7 +18,7 @@ router.map({
     },
     '/blog/:id': {
         name: 'article',
-        component: Blog
+        component: ArticleBody
     },
     'friends': {
         component: Friends

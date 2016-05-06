@@ -1,9 +1,9 @@
 <template lang="jade">
-section Blog
+section
     loading(:is-loading="!ready")
-    span(v-text="articleId")
+    //- span(v-text="articleId")
     ul
-        list-item(v-for="article in articles", :title="article.title", :date="article.created_at", :summary="article.body", :id="article.id")
+        list-item(v-for="article in articles", :title="article.title", :date="article.created_at", :body="article.body", :id="article.number")
 </template>
 
 <script>
@@ -32,11 +32,6 @@ export default {
                 }
                 this.ready = true
             })
-    },
-    computed: {
-        articleId () {
-            return `(${this.$route.params.id})`
-        }
     }
 }
 </script>

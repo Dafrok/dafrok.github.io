@@ -2,7 +2,7 @@
 section Friends
     ul
         li(v-for="friend in friends")
-            a(v-text="friend.name", :href="firend.link", target="_blank")
+            a(v-text="friend.name", :href="friend.link", target="_blank")
 </template>
 
 <script>
