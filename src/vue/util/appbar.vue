@@ -1,6 +1,6 @@
 <template lang="jade">
 header.appbar
-    a.left(@click.stop="back")
+    a.left(@click.stop="back", v-if="this.$route.path !== '/'")
     a.right(@click.stop="toggleMenu", :class="{active: isMenuActive}")
     h2(v-text="title")
 </template>

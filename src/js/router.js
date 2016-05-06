@@ -13,9 +13,9 @@ router.map({
     '/': {
         component: About
     },
-    '/about': {
-        component: About
-    },
+    // '/about': {
+    //     component: About
+    // },
     '/blog': {
         component: Blog
     },
