@@ -1,7 +1,9 @@
 <template lang="jade">
 header.appbar
-    a.left(@click.stop="back", v-if="this.$route.path !== '/'")
-    a.right(@click.stop="toggleMenu", :class="{active: isMenuActive}")
+    a.left(@click.stop="leftIconHandler", :class="leftIcon")
+    a.right(@click.stop="rightIconHandler", :class="rightIcon")
+    //- a.left.menu(@click.stop="toggleMenu", :class="{active: isMenuActive}", v-if="!showBack")
+    //- a.right.menu(@click.stop="toggleMenu", :class="{active: isMenuActive}")
     h2(v-text="title")
 </template>
 
@@ -26,20 +28,50 @@ header.appbar
         text-overflow ellipsis
         overflow hidden
     a
-        &.left
-            left .5rem
+        &:hover, &:active
+            box-shadow 0 0 1px 1px silver
+        &::after, &::before
+            transition all .5s
+            position absolute
+            content ''
+            display block
+        &.search
+            &::before
+                width 1.2rem
+                height 1.2rem
+                border-radius 100%
+                border 2px solid white
+                background rgba(255, 255, 255, 0.3)
+                top .4rem
+                left .4rem
+            &::after
+                height .75rem
+                width 4px
+                background white
+                transform rotate(-45deg)
+                top 1.5rem
+                left 1.7rem
+
+        &.back
             &::before, &::after
-                position absolute
-                display block
-                content ''
-                top .75rem
+                left 1rem
+                width 1px
+                height .5rem
+                border 1px solid white
+                background white
+            &::before
+                transform skew(-45deg)
+                top .6rem
+            &::after
+                transform skew(45deg)
+                bottom .6rem
+                /*top .75rem
                 left .75rem
                 width 1rem
                 height 1rem
                 transform rotate(-45deg)
-                box-shadow -2px -2px 1px 0px white
-        &.right
-            right .5rem
+                box-shadow -2px -2px 1px 0px white*/
+        &.menu
             &.active
                 /*left 11.75rem*/
                 z-index 2
@@ -55,18 +87,17 @@ header.appbar
                 &::after
                     transform rotate(-45deg)
                     box-shadow none
-            &:hover, &:active
-                box-shadow 0 0 1px 1px silver
             &::before, &::after
-                transition all .5s
-                position absolute
                 width 50%
-                content ''
                 background white
                 height .1rem
                 top 50%
                 left 25%
                 box-shadow 0 .4rem 0 white, 0 -.4rem 0 white
+        &.left
+            left .5rem
+        &.right
+            right .5rem
         position absolute
         height 2.5rem
         width 2.5rem
@@ -89,6 +120,9 @@ export default {
         },
         back () {
             history.go(-1)
+        },
+        toggleSearch () {
+
         }
     },
     watch: {
@@ -99,9 +133,22 @@ export default {
         },
         isMenuActive () {
             return BaseStore.state.menu
+        },
+        showBack () {
+            return this.$route.path.split('/').length > 2
+        },
+        leftIcon () {
+            return this.showBack ? 'back' : 'menu'
+        },
+        leftIconHandler () {
+            return this.showBack ? this.back : this.toggleMenu
+        },
+        rightIcon () {
+            return 'search'
+        },
+        rightIconHandler () {
+            return this.toggleSearch
         }
-    },
-    compiled () {
     }
 }
 </script>
