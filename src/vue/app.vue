@@ -52,7 +52,8 @@ export default {
             BaseStore.actions.toggleMenu(false)
         }
     },
-    compiled () {
+    init () {
+        BaseStore.actions.getRepoInfo()
     }
 }
 </script>

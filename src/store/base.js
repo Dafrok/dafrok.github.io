@@ -13,8 +13,17 @@ const state = {
 }
 
 const mutations = {
-    UPDATEINFO (state, info) {
-        state.info = info
+    GETREPOINFO (state) {
+        fetch('https://api.github.com/repos/dafrok/dafrok.github.io')
+            .then(res => res.json())
+            .then(json => {
+                state.info.owner = json.owner
+            })
+        fetch('https://api.github.com/search/issues?q=repo:dafrok/dafrok.github.io+author:dafrok+is:open&page=1&per_page=1')
+            .then(res => res.json())
+            .then(json => {
+                state.count = json.total_count
+            })
     },
     UPDATETITLE (state, title) {
         state.title = title
@@ -28,7 +37,7 @@ const mutations = {
 }
 
 const actions = {
-    updateInfo: 'UPDATEINFO',
+    getRepoInfo: 'GETREPOINFO',
     updateTitle: 'UPDATETITLE',
     toggleMenu: 'TOGGLEMENUSTATE',
     updateCount: 'UPDATECOUNT'

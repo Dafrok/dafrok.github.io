@@ -14467,7 +14467,9 @@
 	            _base2.default.actions.toggleMenu(false);
 	        }
 	    },
-	    compiled: function compiled() {}
+	    init: function init() {
+	        _base2.default.actions.getRepoInfo();
+	    }
 	};
 
 /***/ },
@@ -14538,8 +14540,17 @@
 	};
 
 	var mutations = {
-	    UPDATEINFO: function UPDATEINFO(state, info) {
-	        state.info = info;
+	    GETREPOINFO: function GETREPOINFO(state) {
+	        fetch('https://api.github.com/repos/dafrok/dafrok.github.io').then(function (res) {
+	            return res.json();
+	        }).then(function (json) {
+	            state.info.owner = json.owner;
+	        });
+	        fetch('https://api.github.com/search/issues?q=repo:dafrok/dafrok.github.io+author:dafrok+is:open&page=1&per_page=1').then(function (res) {
+	            return res.json();
+	        }).then(function (json) {
+	            state.count = json.total_count;
+	        });
 	    },
 	    UPDATETITLE: function UPDATETITLE(state, title) {
 	        state.title = title;
@@ -14553,7 +14564,7 @@
 	};
 
 	var actions = {
-	    updateInfo: 'UPDATEINFO',
+	    getRepoInfo: 'GETREPOINFO',
 	    updateTitle: 'UPDATETITLE',
 	    toggleMenu: 'TOGGLEMENUSTATE',
 	    updateCount: 'UPDATECOUNT'
