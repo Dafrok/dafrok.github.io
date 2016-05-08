@@ -1,7 +1,7 @@
 <template lang="jade">
 section.body(@click="closeMenu")
     appbar
-    side-nav
+    side-nav(:width="13")
     page
     mask
 </template>
