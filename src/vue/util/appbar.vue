@@ -18,6 +18,7 @@ header.appbar
     text-align center
     background #333
     color white
+    box-shadow 0 0 .5rem black
     h2
         position absolute
         left 4rem
@@ -102,18 +103,21 @@ header.appbar
                 background white
             &::before
                 transform skew(-45deg)
-                top .65rem
+                top .625rem
             &::after
                 transform skew(45deg)
-                bottom .65rem
+                bottom .625rem
         &.menu
             &::before, &::after
                 width 50%
                 background white
                 height .1rem
-                top 50%
                 left 25%
                 box-shadow 0 .4rem 0 white, 0 -.4rem 0 white
+            &::before
+                top 50%
+            &::after
+                bottom 50%
         &.left
             left .5rem
         &.right
@@ -128,6 +132,7 @@ header.appbar
         transition all .3s .05s
         cursor pointer
         z-index 10
+        transform translateZ(10px)
 </style>
 
 <script>
