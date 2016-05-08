@@ -1,7 +1,8 @@
 <template lang="jade">
 section.side-nav(@click.stop="", :class='{show: isShowMenu}')
-    info
-    navigator
+    div.nav
+        info
+        navigator
 </template>
 
 <style lang="stylus">
@@ -12,11 +13,11 @@ section.side-nav(@click.stop="", :class='{show: isShowMenu}')
     width 13rem
     top 0
     bottom 0
-    background #69c
+    /*background #69c*/
+    background #333
     color white
     position fixed
     left 0
-    overflow auto
     /*box-shadow 0 0 .5rem black*/
     max-width 80%
     z-index 1

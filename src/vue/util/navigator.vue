@@ -1,6 +1,6 @@
 <template lang="jade">
 nav
-    a(v-link="{path: '/'}", @click="closeMenu") Home
+    a(v-link="{path: '/home'}", @click="closeMenu") Home
     a(v-link="{path: '/blog'}", v-link-active="", @click="closeMenu") Blog
     a(v-link="{path: '/friends'}", @click="closeMenu") Friends
     a(href="//www.github.com/Dafrok", target="_blank", @click="closeMenu") Github

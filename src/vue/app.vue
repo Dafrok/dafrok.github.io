@@ -3,6 +3,7 @@ section.body(@click="closeMenu")
     appbar
     side-nav
     page
+    mask
 </template>
 
 <style lang="stylus">
@@ -29,6 +30,7 @@ a
     text-decoration none
 .body
     padding-top 3.5rem
+    height 100%
 </style>
 
 <script>
@@ -37,6 +39,7 @@ import BaseStore from '../store/base.js'
 import SideNav from './util/side-nav.vue'
 import Appbar from './util/appbar.vue'
 import Page from './util/page.vue'
+import Mask from './util/mask.vue'
 
 const repoUrl = config.repoUrl
 const issueUrl = config.issueUrl
@@ -45,7 +48,8 @@ export default {
     components: {
         appbar: Appbar,
         sideNav: SideNav,
-        page: Page
+        page: Page,
+        mask: Mask
     },
     methods: {
         closeMenu () {
