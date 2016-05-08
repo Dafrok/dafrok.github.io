@@ -71,7 +71,7 @@ export default {
             return `${result}rem`
         },
         isShowMenu () {
-            return BaseStore.state.menu
+            return BaseStore.state.menu.show
         }
     }
 }

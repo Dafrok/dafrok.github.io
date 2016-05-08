@@ -1,5 +1,5 @@
 <template lang="jade">
-aside.mask(v-if="showMask")
+aside.mask(v-if="showMask", @click="toggleMenu")
 </template>
 
 <style lang="stylus" scoped>
@@ -17,7 +17,12 @@ import BaseStore from '../../store/base.js'
 export default {
     computed: {
         showMask () {
-            return BaseStore.state.menu
+            return BaseStore.state.menu.show
+        }
+    },
+    methods: {
+        toggleMenu () {
+            BaseStore.actions.toggleMenu(false)
         }
     }
 }

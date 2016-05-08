@@ -2,7 +2,7 @@
 header.appbar
     a.left(@click.stop="leftIconHandler", :class="leftIcon")
     a.right(@click.stop="rightIconHandler", :class="rightIcon")
-    form.search-bar(v-if="showSearch", transition="search-bar", @submit.prevent="searchHandler")
+    form.search-bar(v-if="showSearch", transition="search-bar", @submit.prevent="searchHandler", @click.stop="pass")
         input(type="search", placeholder="Search", v-model="keyword")
     h2(v-text="title", v-if="!showSearch", transition="title")
 </template>
@@ -144,6 +144,7 @@ export default {
         }
     },
     methods: {
+        pass () {},
         toggleMenu () {
             BaseStore.actions.toggleMenu()
         },

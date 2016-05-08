@@ -1,5 +1,5 @@
 <template lang="jade">
-section.body(@click="closeMenu")
+section.body(@click="closeSearch", @touchstart="prepareMenu", @touchmove="dragMenu", @touchend="showMenu")
     appbar
     side-nav(:width="13")
     page
@@ -51,9 +51,38 @@ export default {
         page: Page,
         mask: Mask
     },
+    data () {
+        return {
+            menuPosition: {
+                origin: null,
+                current: null
+            }
+        }
+    },
     methods: {
-        closeMenu () {
-            BaseStore.actions.toggleMenu(false)
+        convertPxToRem (px) {
+            return px / parseFloat(getComputedStyle(document.documentElement).fontSize)
+        },
+        prepareMenu (e) {
+            if (this.convertPxToRem(e.changedTouches[0].pageX) < 1) {
+                this.menuPosition.origin = this.convertPxToRem(e.changedTouches[0].pageX)
+                this.menuPosition.current = this.convertPxToRem(e.changedTouches[0].pageX)
+            }
+        },
+        dragMenu (e) {
+            if (this.menuPosition.origin) {
+                this.menuPosition.current = this.convertPxToRem(e.changedTouches[0].pageX)
+            }
+        },
+        showMenu (e) {
+            if (this.menuPosition.origin && this.menuPosition.current - this.menuPosition.origin > 13 / 2) {
+                BaseStore.actions.toggleMenu(true)
+                this.menuPosition.origin = null
+                this.menuPosition.current = null
+            }
+        },
+        closeSearch () {
+            BaseStore.actions.toggleSearch(false)
         }
     },
     init () {

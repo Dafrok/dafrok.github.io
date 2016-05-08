@@ -10,8 +10,14 @@ const state = {
     count: 0,
     title: 'Dafrok Scope',
     search: false,
-    menu: false,
-    mask: false
+    mask: false,
+    menu: {
+        show: false,
+        position: {
+            origin: null,
+            current: null
+        }
+    }
 }
 
 const mutations = {
@@ -31,7 +37,7 @@ const mutations = {
         state.title = title
     },
     TOGGLEMENUSTATE (state, bool) {
-        state.menu = (typeof bool === 'boolean') ? bool : !state.menu
+        state.menu.show = (typeof bool === 'boolean') ? bool : !state.menu.show
     },
     TOGGLESEARCHSTATE (state, bool) {
         state.search = (typeof bool === 'boolean') ? bool : !state.search
