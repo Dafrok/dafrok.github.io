@@ -1,5 +1,5 @@
 <template lang="jade">
-section.body(@click="closeSearch", @touchstart.prevent="prepareMenu", @touchmove="dragMenu", @touchend="showMenu")
+section.body(@click="closeSearch", @touchstart="prepareMenu", @touchmove="dragMenu", @touchend="showMenu")
     appbar
     side-nav(:width="navbarWidth")
     page
