@@ -1,8 +1,11 @@
 var gulp = require('gulp')
 var webpack = require('webpack-stream')
 var pug = require('gulp-pug')
-var plumber=require('gulp-plumber')
-var uglify=require('gulp-uglify')
+var plumber = require('gulp-plumber')
+var uglify = require('gulp-uglify')
+var concat = require('gulp-concat')
+var rename = require('gulp-rename')
+var cssmin = require('gulp-cssmin')
 var browserSync=require('browser-sync')
 
 var paths={
@@ -38,6 +41,8 @@ gulp.task('reload',function(){
 
 gulp.task('css',function(){
     return gulp.src(paths.dev.css)
+        .pipe(cssmin())
+        .pipe(concat('all.min.css'))
         .pipe(gulp.dest(paths.build.css))
 })
 
@@ -63,6 +68,7 @@ gulp.task('webpack',function(){
                 ]
             }
         }))
+    .pipe(uglify())
     .pipe(gulp.dest(paths.build.js))
 })
 
