@@ -2,9 +2,9 @@
 header.appbar
     a.left(@click.stop="leftIconHandler", :class="leftIcon")
     a.right(@click.stop="rightIconHandler", :class="rightIcon")
-    //- a.left.menu(@click.stop="toggleMenu", :class="{active: isMenuActive}", v-if="!showBack")
-    //- a.right.menu(@click.stop="toggleMenu", :class="{active: isMenuActive}")
-    h2(v-text="title")
+    div.search-bar(v-if="showSearch", transition="search-bar")
+        input(type="search", placeholder="Search")
+    h2(v-text="title", v-if="!showSearch", transition="title")
 </template>
 
 <style lang="stylus" scoped>
@@ -27,6 +27,30 @@ header.appbar
         white-space nowrap
         text-overflow ellipsis
         overflow hidden
+    .title-transition
+        transition all .3s ease
+        transform translate(0, 0)
+        opacity 1
+    .title-enter, .title-leave
+        opacity 0
+        transform translate(-20%, 0)
+    .search-bar-transition
+        transition all .3s ease
+        left 3.5rem
+    .search-bar-enter, .search-bar-leave
+        left 100%
+    .search-bar
+        padding 0 3.5rem 0 1rem
+        position absolute
+        line-height 3.5rem
+        right 0
+        background #555
+        input
+            color white
+            font-size 1rem
+            width 100%
+            line-height inherit
+            background transparent
     a
         &:hover, &:active
             box-shadow 0 0 1px 1px silver
@@ -35,6 +59,23 @@ header.appbar
             position absolute
             content ''
             display block
+        &.close
+            transform rotate(-180deg)
+            &:hover, &:active
+                box-shadow none
+            &::before, &::after
+                width 1.6rem
+                background white
+                height .1rem
+                top 1.15rem
+                left .35rem
+                box-shadow 0 .5rem 0 white, 0 -.5rem 0 white
+            &::before
+                transform rotate(45deg)
+                box-shadow none
+            &::after
+                transform rotate(-45deg)
+                box-shadow none
         &.search
             &::before
                 width 1.2rem
@@ -72,21 +113,6 @@ header.appbar
                 transform rotate(-45deg)
                 box-shadow -2px -2px 1px 0px white*/
         &.menu
-            &.active
-                /*left 11.75rem*/
-                z-index 2
-                /*background #69c*/
-                transform rotate(180deg)
-                border-radius 100%
-                &:hover, &:active
-                    /*box-shadow none*/
-                    /*background lighten(#69c, 20%)*/
-                &::before
-                    transform rotate(45deg)
-                    box-shadow none
-                &::after
-                    transform rotate(-45deg)
-                    box-shadow none
             &::before, &::after
                 width 50%
                 background white
@@ -122,7 +148,7 @@ export default {
             history.go(-1)
         },
         toggleSearch () {
-
+            BaseStore.actions.toggleSearch()
         }
     },
     watch: {
@@ -131,11 +157,11 @@ export default {
         title () {
             return BaseStore.state.title
         },
-        isMenuActive () {
-            return BaseStore.state.menu
-        },
         showBack () {
             return this.$route.path.split('/').length > 2
+        },
+        showSearch () {
+            return BaseStore.state.search
         },
         leftIcon () {
             return this.showBack ? 'back' : 'menu'
@@ -144,7 +170,7 @@ export default {
             return this.showBack ? this.back : this.toggleMenu
         },
         rightIcon () {
-            return 'search'
+            return BaseStore.state.search ? 'close' : 'search'
         },
         rightIconHandler () {
             return this.toggleSearch

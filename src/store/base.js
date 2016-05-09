@@ -9,6 +9,7 @@ const state = {
     },
     count: 0,
     title: 'Dafrok Scope',
+    search: false,
     menu: false,
     mask: false
 }
@@ -32,6 +33,9 @@ const mutations = {
     TOGGLEMENUSTATE (state, bool) {
         state.menu = (typeof bool === 'boolean') ? bool : !state.menu
     },
+    TOGGLESEARCHSTATE (state, bool) {
+        state.search = (typeof bool === 'boolean') ? bool : !state.search
+    },
     UPDATECOUNT (state, count) {
         state.count = count
     }
@@ -41,6 +45,7 @@ const actions = {
     getRepoInfo: 'GETREPOINFO',
     updateTitle: 'UPDATETITLE',
     toggleMenu: 'TOGGLEMENUSTATE',
+    toggleSearch: 'TOGGLESEARCHSTATE',
     updateCount: 'UPDATECOUNT'
 }
 
