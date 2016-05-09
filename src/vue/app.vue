@@ -1,7 +1,7 @@
 <template lang="jade">
-section.body(@click="closeSearch", @touchstart="prepareMenu", @touchmove="dragMenu", @touchend="showMenu")
+section.body(@click="closeSearch", @touchstart.prevent="prepareMenu", @touchmove="dragMenu", @touchend="showMenu")
     appbar
-    side-nav(:width="13")
+    side-nav(:width="navbarWidth")
     page
     mask
 </template>
@@ -53,10 +53,7 @@ export default {
     },
     data () {
         return {
-            menuPosition: {
-                origin: null,
-                current: null
-            }
+            navbarWidth: 13
         }
     },
     methods: {
@@ -64,25 +61,36 @@ export default {
             return px / parseFloat(getComputedStyle(document.documentElement).fontSize)
         },
         prepareMenu (e) {
-            if (this.convertPxToRem(e.changedTouches[0].pageX) < 1) {
-                this.menuPosition.origin = this.convertPxToRem(e.changedTouches[0].pageX)
-                this.menuPosition.current = this.convertPxToRem(e.changedTouches[0].pageX)
+            if (this.convertPxToRem(e.changedTouches[0].pageX) < this.navbarWidth / 10) {
+                BaseStore.actions.setMenuPosition({
+                    origin: this.convertPxToRem(e.changedTouches[0].pageX),
+                    current: this.convertPxToRem(e.changedTouches[0].pageX)
+                })
             }
         },
         dragMenu (e) {
             if (this.menuPosition.origin) {
-                this.menuPosition.current = this.convertPxToRem(e.changedTouches[0].pageX)
+                BaseStore.actions.setMenuPosition({
+                    current: this.convertPxToRem(e.changedTouches[0].pageX)
+                })
             }
         },
         showMenu (e) {
-            if (this.menuPosition.origin && this.menuPosition.current - this.menuPosition.origin > 13 / 2) {
+            if (this.menuPosition.origin && this.menuPosition.current - this.menuPosition.origin > this.navbarWidth / 2) {
                 BaseStore.actions.toggleMenu(true)
-                this.menuPosition.origin = null
-                this.menuPosition.current = null
             }
+            BaseStore.actions.setMenuPosition({
+                current: null,
+                origin: null
+            })
         },
         closeSearch () {
             BaseStore.actions.toggleSearch(false)
+        }
+    },
+    computed: {
+        menuPosition () {
+            return BaseStore.state.menu.position
         }
     },
     init () {

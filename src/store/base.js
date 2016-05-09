@@ -36,6 +36,10 @@ const mutations = {
     UPDATETITLE (state, title) {
         state.title = title
     },
+    SETMENUPOSITION (state, position = {}) {
+        state.menu.position.origin = typeof position.origin === 'undefined' ? state.menu.position.origin : position.origin
+        state.menu.position.current = typeof position.current === 'undefined' ? state.menu.position.current : position.current
+    },
     TOGGLEMENUSTATE (state, bool) {
         state.menu.show = (typeof bool === 'boolean') ? bool : !state.menu.show
     },
@@ -52,7 +56,8 @@ const actions = {
     updateTitle: 'UPDATETITLE',
     toggleMenu: 'TOGGLEMENUSTATE',
     toggleSearch: 'TOGGLESEARCHSTATE',
-    updateCount: 'UPDATECOUNT'
+    updateCount: 'UPDATECOUNT',
+    setMenuPosition: 'SETMENUPOSITION'
 }
 
 export default new Vuex.Store({
