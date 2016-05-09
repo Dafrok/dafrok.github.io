@@ -14,7 +14,7 @@ section.side-nav(@click.stop="", :class='{show: isShowMenu}')
     top 0
     bottom 0
     /*background #69c*/
-    background #333
+    background rgba(33, 33, 33, 0.8)
     color white
     position fixed
     left 0

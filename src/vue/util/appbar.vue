@@ -102,16 +102,10 @@ header.appbar
                 background white
             &::before
                 transform skew(-45deg)
-                top .6rem
+                top .65rem
             &::after
                 transform skew(45deg)
-                bottom .6rem
-                /*top .75rem
-                left .75rem
-                width 1rem
-                height 1rem
-                transform rotate(-45deg)
-                box-shadow -2px -2px 1px 0px white*/
+                bottom .65rem
         &.menu
             &::before, &::after
                 width 50%
@@ -134,7 +128,6 @@ header.appbar
         transition all .3s .05s
         cursor pointer
         z-index 10
-        transform translateZ(10px)
 </style>
 
 <script>

@@ -14,7 +14,7 @@ nav
         padding 1rem
         transition all .3s
         &.v-link-active
-            background #369
+            background rgba(33,66,99,0.8)
             text-indent 1rem
         &:not(.v-link-active)
             &:hover, &:active
