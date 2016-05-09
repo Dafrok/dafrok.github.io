@@ -146,7 +146,6 @@ export default {
     methods: {
         pass () {},
         toggleMenu () {
-            console.log('1111')
             BaseStore.actions.toggleMenu()
         },
         back () {
