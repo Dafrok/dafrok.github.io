@@ -27,3 +27,7 @@ build/Release
 node_modules
 
 dist/js/main.js
+
+dist/css/all.min.css
+
+dist/index.html
