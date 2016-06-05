@@ -10,16 +10,18 @@ var browserSync=require('browser-sync')
 
 var paths={
     dev:{
-        pug:'src/pug/**/*.pug',
-        js:'src/js/**',
-        store:'src/store/**',
-        vue:'src/vue/**',
-        css:'src/resource/css/**'
+        pug: 'src/pug/**/*.pug',
+        js: 'src/js/**',
+        store: 'src/store/**',
+        vue: 'src/vue/**',
+        css: 'src/resource/css/**',
+        image: 'src/resource/image/**'
     },
     build:{
-        html:'dist',
-        js:'dist/js',
-        css:'dist/css'
+        html: 'dist',
+        js: 'dist/js',
+        css: 'dist/css',
+        image: 'dist/image'
     }
 }
 
@@ -44,6 +46,11 @@ gulp.task('css',function(){
         .pipe(cssmin())
         .pipe(concat('all.min.css'))
         .pipe(gulp.dest(paths.build.css))
+})
+
+gulp.task('image',function(){
+    return gulp.src(paths.dev.image)
+        .pipe(gulp.dest(paths.build.image))
 })
 
 gulp.task('pug',function(){
@@ -72,4 +79,4 @@ gulp.task('webpack',function(){
     .pipe(gulp.dest(paths.build.js))
 })
 
-gulp.task('default',['browser-sync','webpack','pug','css'])
+gulp.task('default',['browser-sync', 'webpack', 'pug', 'css', 'image'])
