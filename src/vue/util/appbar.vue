@@ -53,8 +53,6 @@ header.appbar
             line-height inherit
             background transparent
     a
-        &:hover, &:active
-            box-shadow 0 0 1px 1px silver
         &::after, &::before
             transition all .5s
             position absolute
