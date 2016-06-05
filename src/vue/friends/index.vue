@@ -1,5 +1,6 @@
 <template lang="jade">
-section Friends
+section.friends
+    h2.title FED Friends
     ul
         li(v-for="friend in friends")
             a(v-text="friend.name", :href="friend.link", target="_blank")
@@ -19,3 +20,14 @@ export default {
   }
 }
 </script>
+
+<style lang="stylus" scoped>
+.friends
+  h2
+    padding 1rem
+  a
+    list-style disc square
+    display block
+    padding 1rem 2rem
+    border-bottom 1px dotted #eee
+</style>
