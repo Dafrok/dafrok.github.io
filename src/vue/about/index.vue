@@ -80,6 +80,7 @@ export default {
     background-image url(/image/me.png)
     background-size 100%
     position relative
+    z-index -1
     div
       padding-bottom 30%
     span
