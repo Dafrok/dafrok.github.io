@@ -1,0 +1,23 @@
+{
+  "text": {
+    "en": "Works",
+    "zh": "作品"
+  },
+  "data": [
+    {
+      "text": {
+        "en": "Blog",
+        "zh": "博客"
+      },
+      "url": "https://dafrok.github.io"
+    },
+    {
+      "text": "Github",
+      "url": "https://github.com/Dafrok"
+    },
+    {
+      "text": "Codepen",
+      "url": "http://codepen.io/Dafrok"
+    }
+  ]
+}

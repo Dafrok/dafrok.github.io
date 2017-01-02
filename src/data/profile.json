@@ -1,0 +1,29 @@
+{
+  "text": {
+    "en": "Profile",
+    "zh": "个人信息"
+  },
+  "data": {
+    "name": {
+      "en": "Dafrok Zhang",
+      "zh": "马金花"
+    },
+    "gender": {
+      "en": "Male",
+      "zh": "男"
+    },
+    "company": {
+      "en": "BAIDU",
+      "zh": "百度"
+    },
+    "position": {
+      "en": "FE",
+      "zh": "高级前端工程师"
+    },
+    "location": {
+      "en": "Beijing",
+      "zh": "北京"
+    },
+    "birthday": "1987"
+  }
+}

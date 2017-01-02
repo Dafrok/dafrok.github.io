@@ -1,0 +1,12 @@
+{
+  "text": {
+    "en": "Interests",
+    "zh": "兴趣爱好"
+  },
+  "data": [
+    {"en": "LEGO" , "zh": "乐高"},
+    {"en": "Open Source", "zh": "开源"},
+    {"en": "Pokemon", "zh": "精灵宝可梦"},
+    {"en": "Minecraft", "zh": "我的世界"}
+  ]
+}
