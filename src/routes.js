@@ -21,5 +21,5 @@ export default [
     name: 'FRIENDS',
     path: '/friends',
     component: Friends
-  },
+  }
 ]
