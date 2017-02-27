@@ -21,7 +21,7 @@
   - Babel
   - CoffeeScript
   - TypeScript
-  - Node.js
+  - CommonJS
 - HTML
   - Pug
   - Markdown
@@ -33,6 +33,7 @@
   - SASS
   - LESS
   - Stylus
+- Node.js
 - PHP
 - Python
 
