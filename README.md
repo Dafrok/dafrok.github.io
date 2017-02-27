@@ -21,7 +21,7 @@
   - Babel
   - CoffeeScript
   - TypeScript
-  - CommonJS
+  - CommonJS
 - HTML
   - Pug
   - Markdown
