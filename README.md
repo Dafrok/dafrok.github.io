@@ -56,6 +56,7 @@
 |react-shortcut-key|基于 React 的快捷键高阶组件| React / Webpack |
 |Fattle|多人在线合作 FC 模拟器| Socket.io / Firebase / React |
 |if-emoji|判断一个 emoji 在当前环境是否被正确支持的工具库| canvas |
+|npud|检测工程中依赖项最近更新时间的 cli 工具| Node.js |
 |fuck-ie|判断当前环境是否是狗日的 IE 的特定版本| - |
 |bdshare|百度分享的外壳，暴露关键 API，剥离 UI，并提供 https 支持| Webpack |
 |color-factory|CSS 合法色值转换工具类| Rollup |
