@@ -81,6 +81,8 @@
 |------|----|--------|
 |N3-components|基于 VUE 1.0 / 2.0 的 UI 组件库|版本迁移 / 项目架构|
 |Meibo|基于 Electron 的微博客户端|前端开发|
+|san|百度 MVVM 框架|修复 bug|
+|san-loader|百度 MVVM 框架|修复 bug 添加 feature|
 |TypeScript|微软基于 ECMA Script 2015+ 的脚本语言规范及编译器|修复了一处命令行工具输出的错误|
 |ant-design|蚂蚁金服 React UI 组件库|为一个组件增加了新的 feature|
 |mint-ui|饿了么前端 VUE 移动端 UI 组件库|为一个组件增加了新的 feature|
