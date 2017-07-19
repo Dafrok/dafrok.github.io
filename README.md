@@ -51,7 +51,7 @@
 
 |项目名|描述|主要技术栈|
 |------|----|----------|
-|vue-baidu-map|基于 VUE 2.x 的百度地图组件| docker / VUE 2.x / Pug / Webpack 2.0 |
+|vue-baidu-map|基于 VUE 2.x 的百度地图组件| docker / VUE 2.x / Pug / Webpack |
 |vue-iscroll-view|基于 VUE 2.x 的 IScroll 组件| VUE 2.x / Rollup |
 |san-transition|基于 san 框架的过度动画 HOC 实现|san|
 |if-emoji|判断一个 emoji 在当前环境是否被正确支持的工具库| canvas |
@@ -108,7 +108,8 @@
 
 |项目名|描述|主要技术栈|
 |------|----|----------|
-|HaoUI|基于 VUE 2.0 的 hao123 端化体验组件解决方案|Docker / Webpack 2 / Vue 2.0 / Node.js|
+|Sanrise|所见即得在线可视化 HTML 编辑器|san / Webpack|
+|HaoUI|基于 VUE 2.0 的 hao123 端化体验组件解决方案|Docker / Webpack / Vue 2.0 / Node.js|
 |竞猜夺宝|线上有奖竞猜服务|VUE 2 / Webpack / Pug / SASS|
 |通用专题 2.0|基于 React 的在线 HTML 编辑器|React / Redux / Webpack|
 |通用专题 1.0|基于 Angular 1 的在线 HTML 编辑器|Angular / Gulp|
