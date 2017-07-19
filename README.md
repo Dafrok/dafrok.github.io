@@ -51,16 +51,18 @@
 
 |项目名|描述|主要技术栈|
 |------|----|----------|
-|vue-baidu-map|基于 VUE 2.0 的百度地图组件| docker / VUE 2.0 / Pug / Webpack 2.0 |
-|vue-iscroll-view|基于 VUE 2.0 的 IScroll 组件| VUE 2.0 / Rollup |
+|vue-baidu-map|基于 VUE 2.x 的百度地图组件| docker / VUE 2.x / Pug / Webpack 2.0 |
+|vue-iscroll-view|基于 VUE 2.x 的 IScroll 组件| VUE 2.x / Rollup |
+|san-transition|基于 san 框架的过度动画 HOC 实现|san|
+|if-emoji|判断一个 emoji 在当前环境是否被正确支持的工具库| canvas |
+|v-hotkey|基于 VUE 2.x 的快捷键指令|VUE 2.x|
 |react-shortcut-key|基于 React 的快捷键高阶组件| React / Webpack |
 |Fattle|多人在线合作 FC 模拟器| Socket.io / Firebase / React |
-|if-emoji|判断一个 emoji 在当前环境是否被正确支持的工具库| canvas |
 |npud|检测工程中依赖项最近更新时间的 cli 工具| Node.js |
 |fuck-ie|判断当前环境是否是狗日的 IE 的特定版本| - |
 |bdshare|百度分享的外壳，暴露关键 API，剥离 UI，并提供 https 支持| Webpack |
 |color-factory|CSS 合法色值转换工具类| Rollup |
-|week-reporter|基于 Electorn 的周报生成器，根据日常记录自动整理生成周报并定时发送| Electron / Vue |
+|week-reporter|基于 Electorn 的周报生成器，根据日常记录自动整理生成周报并定时发送| Electron / VUE |
 |weboy|微博移动版 CSS 重构，主要服务于 Meibo，打造更良好的用户体验| Stylus |
 |async-form|异步表单实现| - |
 |awesome-docker-libraries|官方 docker 镜像的列表的爬虫，生成合集，手动提供中文翻译| Node.js |
@@ -81,7 +83,7 @@
 |------|----|--------|
 |N3-components|基于 VUE 1.0 / 2.0 的 UI 组件库|版本迁移 / 项目架构|
 |Meibo|基于 Electron 的微博客户端|前端开发|
-|san|百度 MVVM 框架|修复 bug|
+|san|百度 MVVM 框架|修复拖拽属性不能同步的 bug|
 |san-loader|百度 MVVM 框架|修复 bug 添加 feature|
 |TypeScript|微软基于 ECMA Script 2015+ 的脚本语言规范及编译器|修复了一处命令行工具输出的错误|
 |ant-design|蚂蚁金服 React UI 组件库|为一个组件增加了新的 feature|
