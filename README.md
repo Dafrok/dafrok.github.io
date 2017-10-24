@@ -122,6 +122,8 @@
 |通用专题 2.0|可视化 HTML 编辑器|
 |通用专题 1.0|数据可视化 HTML 编辑器|
 |icms-graceful|摆脱内部 cms 系统上线重试地狱的 Chrome 插件|
+|icode-cli|icode 一键工具|
+|design server|内部文件共享工具|
 |Hao123垂直频道|Hao123 二级频道|
 |菠萝贷|大学生贷款购物网站|
 |赛亚体验科技|官方网站|
