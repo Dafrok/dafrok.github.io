@@ -97,7 +97,6 @@
 |fit-components|百度 React UI 组件库|
 |react-colorpickr|基于 React 的颜色选择组件|
 |J$X|jQuery + JSX 的实现|
-|HEAD|浏览器 head 标签合法声明的文档|
 |TypeScript|微软基于 ECMA Script 2015+ 的脚本语言规范及编译器|
 |FIS3|百度前端工程化构建工具|
 |element|饿了么前端 Vue UI 组件库|
@@ -108,10 +107,12 @@
 |vue-material|Vue UI 组件库|
 |minggeJS|😱|
 |vue-markdown-loader|让 Vue 兼容 markdown 语法的加载器|
-|JavaScript Garden|一本深层介绍 JavaScript 的电子读物|
 |cssgrace|一个自动插入 CSS Hack 的构建工具|
 |rgb-to-hsl|颜色值转换工具库|
 |datetime/week|周数计算工具库|
+|JavaScript Garden|一本深层介绍 JavaScript 的电子读物|
+|HEAD|浏览器 head 标签合法声明的文档|
+|cn.vuejs.org|Vue 文档|
 
 ## 项目经历
 
