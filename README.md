@@ -71,7 +71,7 @@
 |async-form|异步表单实现|
 |awesome-docker-libraries|官方 docker 镜像的列表的爬虫，生成合集，手动提供中文翻译|
 |cookie-proxy|人性化的 cookie 操作工具库|
-|vue-fitd|基于 VUE 的 fit-components 实现|
+|vue-fitd|基于 Vue 的 fit-components 实现|
 |form-to-from|纠正 `import from` 拼写错误的 ATOM 编辑器插件|
 |react-mover|基于 React 的元素拖拽组件|
 |react-initials-index|基于 React 的通讯录组件|
