@@ -84,7 +84,7 @@
 
 |项目名|描述|
 |------|----|
-|N3-components|基于 VUE 1.0 / 2.0 的 UI 组件库|
+|N3-components|Vue 1.0 / 2.0 的 UI 组件库|
 |Meibo|基于 Electron 的微博客户端|
 |san|百度 MVVM 框架|
 |san-loader|百度 MVVM 框架的 loader|
