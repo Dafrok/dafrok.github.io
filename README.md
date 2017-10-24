@@ -87,7 +87,7 @@
 |N3-components|基于 VUE 1.0 / 2.0 的 UI 组件库|
 |Meibo|基于 Electron 的微博客户端|
 |san|百度 MVVM 框架|
-|san-loader|百度 MVVM 框架|
+|san-loader|百度 MVVM 框架的 loader|
 |san-router|基于 san 框架的路由库|
 |san-store|函数式变量更新库|
 |san-mui|基于 san 框架的 UI 组件库|
