@@ -93,21 +93,21 @@
 |san-mui|基于 san 框架的 UI 组件库|
 |ant-design|蚂蚁金服 React UI 组件库|
 |react-uwp|React UI 组件库|
-|mint-ui|饿了么前端 VUE 移动端 UI 组件库|
+|mint-ui|饿了么前端 Vue 移动端 UI 组件库|
 |fit-components|百度 React UI 组件库|
 |react-colorpickr|基于 React 的颜色选择组件|
 |J$X|jQuery + JSX 的实现|
 |HEAD|浏览器 head 标签合法声明的文档|
 |TypeScript|微软基于 ECMA Script 2015+ 的脚本语言规范及编译器|
 |FIS3|百度前端工程化构建工具|
-|element|饿了么前端 VUE UI 组件库|
+|element|饿了么前端 Vue UI 组件库|
 |echarts|百度数据可视化工具库|
 |fecs-loader|百度语法检查工具加载器|
 |UEditor|百度富文本编辑器|
 |vue-antd|基于 Vue 1.0 的 ant-design 实现|
-|vue-material|Vue Ui 组件库|
+|vue-material|Vue UI 组件库|
 |minggeJS|😱|
-|vue-markdown-loader|让 vue 兼容 markdown 语法的加载器|
+|vue-markdown-loader|让 Vue 兼容 markdown 语法的加载器|
 |JavaScript Garden|一本深层介绍 JavaScript 的电子读物|
 |cssgrace|一个自动插入 CSS Hack 的构建工具|
 |rgb-to-hsl|颜色值转换工具库|
