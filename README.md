@@ -63,7 +63,7 @@
 |fuck-ie|判断当前环境是否是狗日的 IE 的特定版本|
 |bdshare|百度分享的外壳，暴露关键 API，剥离 UI，并提供 https 支持|
 |color-factory|CSS 合法色值转换工具类|
-|week-reporter|基于 Electorn 的周报生成器，根据日常记录自动整理生成周报并定时发送|
+|weeport|基于 Electorn 的周报生成器，根据日常记录自动整理生成周报并定时发送|
 |Sanrise|所见即得可视化 HTML 编辑器|
 |BMapLib 系列|百度地图第三方开源库的二次封装|
 |Han|日语汉字与中文汉子的拼写查询对照工具 + 爬虫|
