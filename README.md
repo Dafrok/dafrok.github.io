@@ -93,7 +93,7 @@
 |san-mui|基于 san 框架的 UI 组件库|
 |ant-design|蚂蚁金服 React UI 组件库|
 |react-uwp|React UI 组件库|
-|mint-ui|饿了么前端 Vue 移动端 UI 组件库|
+|mint-ui|Vue 移动端 UI 组件库|
 |fit-components|百度 React UI 组件库|
 |react-colorpickr|基于 React 的颜色选择组件|
 |J$X|jQuery + JSX 的实现|
