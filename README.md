@@ -60,6 +60,7 @@
 |react-shortcut-key|基于 React 的快捷键高阶组件|
 |Fattle|多人在线合作 FC 模拟器|
 |npud|检测工程中依赖项最近更新时间的 cli 工具|
+|mysql-backup|mysql 数据备份工具|
 |fuck-ie|判断当前环境是否是狗日的 IE 的特定版本|
 |bdshare|百度分享的外壳，暴露关键 API，剥离 UI，并提供 https 支持|
 |color-factory|CSS 合法色值转换工具类|
@@ -95,7 +96,8 @@
 |react-uwp|React UI 组件库|
 |mint-ui|Vue 移动端 UI 组件库|
 |fit-components|百度 React UI 组件库|
-|react-colorpickr|基于 React 的颜色选择组件|
+|react-colorpickr|React 的颜色选择组件|
+|react-nestable|React drag & drop 层级排序组件|
 |J$X|jQuery + JSX 的实现|
 |TypeScript|微软基于 ECMA Script 2015+ 的脚本语言规范及编译器|
 |FIS3|百度前端工程化构建工具|
@@ -113,6 +115,7 @@
 |JavaScript Garden|一本深层介绍 JavaScript 的电子读物|
 |HEAD|浏览器 head 标签合法声明的文档|
 |cn.vuejs.org|Vue 文档|
+|share.js|一键分享工具库|
 
 ## 项目经历
 
